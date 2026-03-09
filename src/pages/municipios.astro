@@ -1,0 +1,215 @@
+---
+import Layout from "../layouts/Layout.astro";
+import MunicipalitySearch from "../components/Explorer/MunicipalitySearch";
+---
+
+<Layout title="Buscar Municipio - OCTO Fuel" hideSidebar={true}>
+    <main class="municipios-page">
+        <div class="background-effects">
+            <div class="blob blob-1"></div>
+            <div class="blob blob-2"></div>
+        </div>
+
+        <section class="search-container">
+            <header class="page-header">
+                <a href="/" class="back-link">
+                    <span class="material-symbols-outlined">arrow_back</span>
+                    Volver al inicio
+                </a>
+                <h1 class="title">Encuentra tu <span class="text-gradient">gasolinera</span></h1>
+                <p class="subtitle">Escribe el nombre de tu pueblo o ciudad para comparar los precios exactos del combustible.</p>
+            </header>
+
+            <div class="search-box">
+                <MunicipalitySearch client:only="react" />
+            </div>
+            
+            <div class="quick-links">
+                <h2>Ciudades principales</h2>
+                <div class="cities-grid">
+                    <a href="/explorador?mode=municipality&prov=MADRID&city=MADRID" class="city-card">
+                        <span class="city-name">Madrid</span>
+                        <span class="city-icon material-symbols-outlined">location_city</span>
+                    </a>
+                    <a href="/explorador?mode=municipality&prov=BARCELONA&city=BARCELONA" class="city-card">
+                        <span class="city-name">Barcelona</span>
+                        <span class="city-icon material-symbols-outlined">location_city</span>
+                    </a>
+                    <a href="/explorador?mode=municipality&prov=VALENCIA%20%2F%20VAL%C3%88NCIA&city=VALENCIA" class="city-card">
+                        <span class="city-name">Valencia</span>
+                        <span class="city-icon material-symbols-outlined">location_city</span>
+                    </a>
+                    <a href="/explorador?mode=municipality&prov=SEVILLA&city=SEVILLA" class="city-card">
+                        <span class="city-name">Sevilla</span>
+                        <span class="city-icon material-symbols-outlined">location_city</span>
+                    </a>
+                    <a href="/explorador?mode=municipality&prov=ZARAGOZA&city=ZARAGOZA" class="city-card">
+                        <span class="city-name">Zaragoza</span>
+                        <span class="city-icon material-symbols-outlined">location_city</span>
+                    </a>
+                    <a href="/explorador?mode=municipality&prov=M%C3%81LAGA&city=M%C3%81LAGA" class="city-card">
+                        <span class="city-name">Málaga</span>
+                        <span class="city-icon material-symbols-outlined">location_city</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+</Layout>
+
+<style>
+    .municipios-page {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 6rem 2rem 2rem 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .background-effects {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        overflow: hidden;
+        pointer-events: none;
+    }
+
+    .blob {
+        position: absolute;
+        width: 600px;
+        height: 600px;
+        border-radius: 50%;
+        filter: blur(100px);
+        opacity: 0.15;
+        z-index: -1;
+    }
+
+    .blob-1 {
+        top: -100px;
+        right: -100px;
+        background-color: var(--primary);
+    }
+
+    .blob-2 {
+        bottom: -200px;
+        left: -200px;
+        background-color: #3b82f6; /* A matching blue */
+    }
+
+    .search-container {
+        width: 100%;
+        max-width: 800px;
+        display: flex;
+        flex-direction: column;
+        gap: 3rem;
+        z-index: 1;
+    }
+
+    .page-header {
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .back-link {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-muted);
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.2s;
+        align-self: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .back-link:hover {
+        color: var(--primary);
+    }
+
+    .title {
+        font-size: clamp(2.5rem, 5vw, 4rem);
+        font-weight: 800;
+        color: var(--text);
+        margin: 0;
+        line-height: 1.1;
+    }
+
+    .text-gradient {
+        background: linear-gradient(135deg, var(--primary) 0%, #3b82f6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .subtitle {
+        font-size: 1.1rem;
+        color: var(--text-muted);
+        max-width: 600px;
+        margin: 0 auto;
+        line-height: 1.6;
+    }
+
+    .search-box {
+        width: 100%;
+        margin-top: 1rem;
+    }
+
+    .quick-links {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+
+    .quick-links h2 {
+        font-size: 1.25rem;
+        color: var(--text);
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .cities-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .city-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.25rem;
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        text-decoration: none;
+        color: var(--text);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .city-card:hover {
+        border-color: var(--primary);
+        box-shadow: 0 10px 30px rgba(54, 211, 153, 0.15);
+        transform: translateY(-4px);
+    }
+
+    .city-name {
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+
+    .city-icon {
+        color: var(--primary);
+        opacity: 0.7;
+        transition: opacity 0.2s;
+    }
+
+    .city-card:hover .city-icon {
+        opacity: 1;
+    }
+</style>

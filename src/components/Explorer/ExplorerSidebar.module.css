@@ -1,0 +1,289 @@
+.sidebar {
+    width: 400px;
+    height: 100%;
+    background-color: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 20;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+}
+
+.header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+}
+
+.backButton {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.2s;
+}
+
+.backButton:hover {
+    color: var(--primary);
+}
+
+.controls {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    background-color: rgba(9, 9, 11, 0.3);
+}
+
+.controlGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.fuelSelector, .sortSelector {
+    display: flex;
+    background-color: var(--bg);
+    padding: 0.25rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+}
+
+.fuelOption, .sortOption {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 0.375rem;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.sortOption span {
+    font-size: 1rem;
+}
+
+.fuelOption:hover, .sortOption:hover {
+    color: var(--text);
+}
+
+.selected {
+    background-color: var(--primary);
+    color: #fff !important;
+    box-shadow: 0 2px 10px rgba(54, 211, 153, 0.2);
+}
+
+.listContainer {
+    flex: 1;
+    overflow-y: auto;
+    position: relative;
+    background-color: var(--bg);
+}
+
+/* Scrollbar logic */
+.listContainer::-webkit-scrollbar {
+    width: 6px;
+}
+.listContainer::-webkit-scrollbar-track {
+    background: transparent;
+}
+.listContainer::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 10px;
+}
+
+.resultsCount {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.75rem;
+    color: var(--primary);
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    background-color: rgba(9, 9, 11, 0.9);
+    backdrop-filter: blur(10px);
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+}
+
+.stationList {
+    padding: 1rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.stationCard {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.stationCard:hover {
+    border-color: rgba(54, 211, 153, 0.4);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    transform: translateY(-2px);
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.25rem;
+}
+
+.stationName {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+    line-height: 1.2;
+}
+
+.stationBrand {
+    font-size: 0.75rem;
+    color: var(--primary);
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+    text-transform: uppercase;
+}
+
+.distanceBadge {
+    background-color: var(--primary-dim);
+    color: var(--primary);
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.stationAddress {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0 0 1rem 0;
+    line-height: 1.4;
+}
+
+.priceGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    background-color: var(--bg);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+}
+
+.priceItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    background-color: transparent;
+    transition: background-color 0.2s;
+}
+
+.priceItem.highlight {
+    background-color: rgba(54, 211, 153, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(54, 211, 153, 0.3);
+}
+
+.priceType {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.priceValue {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.priceItem.highlight .priceType,
+.priceItem.highlight .priceValue {
+    color: var(--primary);
+}
+
+.scheduleText {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin: 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+}
+
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    text-align: center;
+    color: var(--text-muted);
+    gap: 1rem;
+}
+
+.emptyState span.material-symbols-outlined {
+    font-size: 3rem;
+    color: var(--border);
+}
+
+.emptyState p {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0;
+}
+
+.emptyState span:last-child {
+    font-size: 0.875rem;
+}
+
+@media (max-width: 768px) {
+    .appContainer {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: 50vh; /* splits screen on mobile */
+        order: 2; /* Put map on top */
+    }
+}

@@ -1,17 +1,162 @@
 ---
-
+import Layout from "../layouts/Layout.astro";
+import ExplorerSelector from "../components/Explorer/ExplorerSelector";
+import styles from "../styles/Home.module.css";
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<Layout title="OCTO - Menos gasto, más kilómetros" hideSidebar={true}>
+    <div class={styles.homeContainer} id="home-container">
+        
+        <!-- Abstract Blurred Background -->
+        <div class={styles.backgroundWrapper}>
+            <div class={`${styles.blob} ${styles.blob1}`}></div>
+            <div class={`${styles.blob} ${styles.blob2}`}></div>
+            <div class={`${styles.blob} ${styles.blob3}`}></div>
+        </div>
+
+        <!-- Hero Section -->
+        <section class={styles.hero}>
+            <div class={styles.logoBox} id="hero-logo">
+                <img src="/images/logo-octo.png" alt="OCTO Logo" class={styles.logoImage} />
+            </div>
+            <h1 class={styles.slogan}>
+                Menos gasto, <span class={styles.sloganAccent}>más kilómetros</span>
+            </h1>
+            
+            <a href="#banners" class={styles.scrollIndicator} id="scroll-btn">
+                <span>Descubre más</span>
+                <span class={`material-symbols-outlined ${styles.scrollIcon}`}>expand_more</span>
+            </a>
+        </section>
+
+        <!-- Banners Anchor -->
+        <div id="banners"></div>
+
+        <!-- Banner 1: Explorador de precios -->
+        <section class={`${styles.banner} observer-banner`}>
+            <div class={styles.bannerContent}>
+                <div class={styles.bannerText}>
+                    <span class={`material-symbols-outlined ${styles.bannerIcon}`}>explore</span>
+                    <h2 class={styles.bannerTitle}>Explorador de precios</h2>
+                    <p class={styles.bannerDescription}>
+                        Encuentra las gasolineras más baratas cerca de ti o en cualquier localidad. 
+                        Visualízalas en nuestro mapa interactivo y compara los precios actualizados 
+                        para maximizar tu ahorro en cada repostaje.
+                    </p>
+                    <ExplorerSelector client:only="react" />
+                </div>
+                <div class={styles.bannerVisual}>
+                    <span class={`material-symbols-outlined ${styles.visualPlaceholderIcon}`}>map</span>
+                    <div class={styles.visualOverlay}></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Banner 2: Planificador de viajes -->
+        <section class={`${styles.banner} ${styles.bannerReverse} observer-banner`}>
+            <div class={styles.bannerContent}>
+                <div class={styles.bannerText}>
+                    <span class={`material-symbols-outlined ${styles.bannerIcon}`}>route</span>
+                    <h2 class={styles.bannerTitle}>Planificador de viajes</h2>
+                    <p class={styles.bannerDescription}>
+                        Calcula tu ruta perfecta y descubre dónde repostar por el camino para 
+                        optimizar tus gastos. Te mostramos las mejores opciones de estaciones de 
+                        servicio en tu trayecto para que el viaje sea más económico.
+                    </p>
+                    <a href="#" class={styles.bannerAction}>Planificar ahora</a>
+                </div>
+                <div class={styles.bannerVisual}>
+                    <span class={`material-symbols-outlined ${styles.visualPlaceholderIcon}`}>add_road</span>
+                    <div class={styles.visualOverlay}></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Banner 3: Favoritos -->
+        <section class={`${styles.banner} observer-banner`}>
+            <div class={styles.bannerContent}>
+                <div class={styles.bannerText}>
+                    <span class={`material-symbols-outlined ${styles.bannerIcon}`}>favorite</span>
+                    <h2 class={styles.bannerTitle}>Tus Favoritos</h2>
+                    <p class={styles.bannerDescription}>
+                        Guarda tus gasolineras habituales y compáralas de un vistazo. 
+                        Revisa su historial de precios de forma rápida para saber siempre 
+                        cuándo y dónde te conviene más llenar el depósito.
+                    </p>
+                    <a href="#" class={styles.bannerAction}>Ver favoritos</a>
+                </div>
+                <div class={styles.bannerVisual}>
+                    <span class={`material-symbols-outlined ${styles.visualPlaceholderIcon}`}>star</span>
+                    <div class={styles.visualOverlay}></div>
+                </div>
+            </div>
+        </section>
+    </div>
+</Layout>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const homeContainer = document.getElementById('home-container');
+        const banners = document.querySelectorAll('.observer-banner');
+        const header = document.getElementById('main-header');
+        const headerLogo = document.getElementById('header-logo');
+        const heroLogo = document.getElementById('hero-logo');
+
+        // --- 1. Banner Scroll Intersection Observer ---
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                }
+            });
+        }, {
+            threshold: 0.2, // Trigger when 20% visible
+            rootMargin: "0px 0px -50px 0px"
+        });
+
+        banners.forEach(banner => observer.observe(banner));
+
+        // --- 2. Header Scroll & Sticky Logo Logic ---
+        if (homeContainer) {
+            homeContainer.addEventListener('scroll', () => {
+                // If we scrolled past 100px, show background on header
+                if (homeContainer.scrollTop > 50) {
+                    header?.setAttribute('data-scrolled', 'true');
+                } else {
+                    header?.setAttribute('data-scrolled', 'false');
+                }
+
+                // Show mini logo when main hero logo is out of view
+                if (heroLogo) {
+                    const heroRect = heroLogo.getBoundingClientRect();
+                    if (heroRect.bottom < 0) {
+                        headerLogo?.setAttribute('data-visible', 'true');
+                    } else {
+                        headerLogo?.setAttribute('data-visible', 'false');
+                    }
+                }
+            });
+        }
+    });
+</script>
+
+<style>
+    /* Trigger the animation state defined in CSS Modules via global classes or attributes */
+    :global(.observer-banner.is-visible) {
+        opacity: 1 !important;
+        transform: translateY(0) !important;
+    }
+
+    /* Scrolled header logic just for padding if needed, no solid background */
+    :global(header[data-scrolled="true"]) {
+        /* No background overrides here anymore, purely floating */
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+    }
+
+    /* Sticky logo visibility */
+    :global([data-visible="true"]) {
+        opacity: 1 !important;
+        transform: translateX(0) !important;
+    }
+</style>

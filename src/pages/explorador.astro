@@ -1,0 +1,8 @@
+---
+import Layout from "../layouts/Layout.astro";
+import ExplorerApp from "../components/Explorer/ExplorerApp";
+---
+
+<Layout title="OCTO Fuel Explorador" hideSidebar={true}>
+    <ExplorerApp client:only="react" />
+</Layout>

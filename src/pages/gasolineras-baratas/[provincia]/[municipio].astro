@@ -1,0 +1,247 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+import MainMap from "../../../components/Map/MainMap";
+import gasData from "../../../data/gasolineras.json";
+import type { GasStation } from "../../../types/gasolinera";
+
+export async function getStaticPaths() {
+    const stations = gasData as unknown as GasStation[];
+
+    // Helper to slugify text
+    const slugify = (text: string) => {
+        return text
+            .toString()
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/\s+/g, "-")
+            .replace(/[^\w\-]+/g, "")
+            .replace(/\-\-+/g, "-")
+            .replace(/^-+/, "")
+            .replace(/-+$/, "");
+    };
+
+    // Group stations by province and municipality
+    const groups: Record<string, Record<string, GasStation[]>> = {};
+
+    stations.forEach((station) => {
+        // Normalize names for grouping
+        // Some data might have empty city or province, verify your json structure.
+        const province = station.province;
+        const city = station.city; // Or municipality if available. Using city for now.
+
+        if (!province || !city) return;
+
+        if (!groups[province]) {
+            groups[province] = {};
+        }
+        if (!groups[province][city]) {
+            groups[province][city] = [];
+        }
+        groups[province][city].push(station);
+    });
+
+    const paths = [];
+
+    for (const provinceName in groups) {
+        for (const municipalityName in groups[provinceName]) {
+            const cityStations = groups[provinceName][municipalityName];
+            const provSlug = slugify(provinceName);
+            const muniSlug = slugify(municipalityName);
+
+            if (provSlug && muniSlug) {
+                paths.push({
+                    params: { provincia: provSlug, municipio: muniSlug },
+                    props: {
+                        provinceName,
+                        municipalityName,
+                        stations: cityStations,
+                    },
+                });
+            }
+        }
+    }
+
+    return paths;
+}
+
+const { provinceName, municipalityName, stations } = Astro.props;
+
+// Find cheapest station for highlight
+const sortedStations = [...stations].sort((a, b) => {
+    const priceA = a.prices.sp95 || 999;
+    const priceB = b.prices.sp95 || 999;
+    return priceA - priceB;
+});
+
+const cheapest = sortedStations.slice(0, 10); // Top 10
+
+// Determine map center (use first station or average)
+const centerLat = stations.reduce((sum, s) => sum + s.lat, 0) / stations.length;
+const centerLng = stations.reduce((sum, s) => sum + s.lng, 0) / stations.length;
+---
+
+<Layout
+    title={`Gasolineras baratas en ${municipalityName}, ${provinceName} - OCTO`}
+>
+    <div class="page-container">
+        <div class="content-wrapper">
+            <header class="page-header">
+                <h1>Gasolineras más baratas en {municipalityName}</h1>
+                <p class="subtitle">
+                    Encuentra el mejor precio de combustible en {
+                        municipalityName
+                    }, {provinceName}. Mostrando {stations.length} estaciones de servicio.
+                </p>
+            </header>
+
+            <section class="map-section">
+                <div class="map-wrapper">
+                    <MainMap
+                        client:only="react"
+                        stations={stations}
+                        initialCenter={[centerLat, centerLng]}
+                        initialZoom={13}
+                        disableGeolocation={true}
+                    />
+                </div>
+            </section>
+
+            <section class="stations-list">
+                <h2>Top Gasolineras Económicas</h2>
+                <div class="list-grid">
+                    {
+                        cheapest.map((station, index) => (
+                            <div class="station-card">
+                                <div class="rank">#{index + 1}</div>
+                                <div class="details">
+                                    <h3>{station.name}</h3>
+                                    <p class="address">{station.address}</p>
+                                    <div class="price-badge">
+                                        <span class="price">
+                                            {station.prices.sp95
+                                                ? station.prices.sp95.toFixed(3)
+                                                : "--"}
+                                        </span>
+                                        <span class="currency">€/L</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    }
+                </div>
+            </section>
+        </div>
+    </div>
+</Layout>
+
+<style>
+    .page-container {
+        padding: 2rem;
+        height: 100vh;
+        overflow-y: auto;
+        background-color: var(--bg);
+        color: var(--text);
+    }
+
+    .content-wrapper {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        margin-bottom: 2rem;
+    }
+
+    h1 {
+        font-family: var(--font-header);
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+        color: var(--text-muted);
+        font-size: 1.1rem;
+    }
+
+    .map-section {
+        height: 500px;
+        margin-bottom: 3rem;
+        border-radius: 1rem;
+        overflow: hidden;
+        border: 1px solid var(--border);
+    }
+
+    .map-wrapper {
+        height: 100%;
+        width: 100%;
+    }
+
+    .stations-list {
+        margin-bottom: 4rem;
+    }
+
+    .stations-list h2 {
+        font-family: var(--font-header);
+        margin-bottom: 1.5rem;
+        color: var(--primary);
+    }
+
+    .list-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .station-card {
+        background: var(--surface);
+        padding: 1.5rem;
+        border-radius: 0.75rem;
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .rank {
+        font-family: var(--font-header);
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        opacity: 0.5;
+    }
+
+    .details {
+        flex: 1;
+    }
+
+    .details h3 {
+        font-size: 1.1rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .address {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        margin-bottom: 0.75rem;
+    }
+
+    .price-badge {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 0.25rem;
+        background: rgba(52, 211, 153, 0.1); /* primary-dim */
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        color: var(--primary);
+    }
+
+    .price {
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+
+    .currency {
+        font-size: 0.8rem;
+    }
+</style>

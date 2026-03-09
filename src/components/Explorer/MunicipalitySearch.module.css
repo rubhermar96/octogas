@@ -1,0 +1,151 @@
+.searchWrapper {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.inputContainer {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 0.5rem;
+    transition: all 0.2s;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.inputContainer:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(54, 211, 153, 0.2), 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.searchIcon {
+    color: var(--text-muted);
+    margin-left: 0.75rem;
+    font-size: 1.5rem;
+}
+
+.searchInput {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    outline: none;
+}
+
+.searchInput::placeholder {
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.clearButton {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.5rem;
+    margin-right: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.clearButton:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text);
+}
+
+.dropdownList {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    right: 0;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    list-style: none;
+    padding: 0.5rem;
+    margin: 0;
+    max-height: 400px;
+    overflow-y: auto;
+    z-index: 50;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    animation: slideDown 0.2s ease-out;
+}
+
+/* Scrollbar for dropdown */
+.dropdownList::-webkit-scrollbar {
+    width: 6px;
+}
+.dropdownList::-webkit-scrollbar-track {
+    background: transparent;
+}
+.dropdownList::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 10px;
+}
+
+.dropdownItem {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+}
+
+.dropdownItem:hover {
+    background-color: rgba(54, 211, 153, 0.1);
+}
+
+.dropdownItem > span {
+    color: var(--text-muted);
+}
+
+.dropdownItem:hover > span {
+    color: var(--primary);
+}
+
+.itemText {
+    display: flex;
+    flex-direction: column;
+}
+
+.itemCity {
+    color: var(--text);
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.itemProvince {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.emptyItem {
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

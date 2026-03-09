@@ -1,0 +1,106 @@
+:root {
+    /* Fuentes */
+    --font-header: 'Unbounded', system-ui, sans-serif;
+    --font-body: 'Geist Sans', system-ui, sans-serif;
+
+    /* Colores */
+    --primary: #34d399;
+    /* Mint Green - Ahorro */
+    --secondary: #38bdf8;
+    /* Sky Blue - Rutas */
+    --accent: #fb923c;
+    /* Orange - Alertas */
+    --brand: #6c2800;
+    /* Deep Brown - Logo */
+
+    /* Neutros para Modo Oscuro (Default) */
+    --bg: #09090b;
+    --surface: #18181b;
+    --text: #f4f4f5;
+    --border: #27272a;
+
+    /* Helpers adapted for existing layout */
+    --primary-dim: rgba(52, 211, 153, 0.1);
+    --text-muted: #a1a1aa;
+    --slate-800: #27272a;
+    /* Using zinc-800 to match border/surface */
+}
+
+[data-theme="light"] {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --text: #0f172a;
+    --border: #e2e8f0;
+
+    --text-muted: #64748b;
+    --slate-800: #e2e8f0;
+}
+
+body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    margin: 0;
+    overflow: hidden;
+    /* Maintain layout behavior */
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-header);
+    font-weight: 700;
+    margin: 0;
+}
+
+/* Rest of base reset */
+html {
+    box-sizing: border-box;
+}
+
+*,
+*:before,
+*:after {
+    box-sizing: inherit;
+}
+
+p {
+    margin: 0;
+}
+
+button {
+    font-family: inherit;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+input {
+    font-family: inherit;
+}
+
+/* Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: var(--bg);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 10px;
+}
+
+.material-symbols-outlined {
+    font-variation-settings:
+        'FILL' 0,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24
+}

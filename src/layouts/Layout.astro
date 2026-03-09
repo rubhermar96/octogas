@@ -1,0 +1,227 @@
+---
+import "../styles/global.css";
+import styles from "../styles/Layout.module.css";
+
+interface Props {
+    title: string;
+    hideSidebar?: boolean;
+}
+
+const { title, hideSidebar = false } = Astro.props;
+const isHome = Astro.url.pathname === "/";
+---
+
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+        <title>{title}</title>
+        <!-- Fonts -->
+        <link
+            href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Unbounded:wght@700&display=swap"
+            rel="stylesheet"
+        />
+        <!-- Icons -->
+        <link
+            href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+            rel="stylesheet"
+        />
+        <slot name="head" />
+    </head>
+    <body class={`custom-scrollbar ${isHome ? 'home-page' : ''}`}>
+        <!-- Floating Header -->
+        <header class={styles.header} id="main-header">
+            <div class={styles.headerLeft} id="header-logo">
+                <a href="/">
+                    <img src="/images/logo-octo.png" alt="OCTO" class={styles.headerLogo} />
+                </a>
+            </div>
+
+            <div class={styles.headerControls}>
+                <button class={styles.themeToggle} id="theme-toggle" aria-label="Toggle Theme">
+                    <span class={`material-symbols-outlined ${styles.themeToggleIcon} ${styles.sun}`}>light_mode</span>
+                    <span class={`material-symbols-outlined ${styles.themeToggleIcon} ${styles.moon}`}>dark_mode</span>
+                </button>
+
+                <button class={styles.hamburger} id="menu-toggle" aria-label="Menu">
+                    <div class={styles.hamburgerLine}></div>
+                    <div class={styles.hamburgerLine}></div>
+                    <div class={styles.hamburgerLine}></div>
+                </button>
+            </div>
+        </header>
+
+        <!-- Flashy Lateral Menu Overlay -->
+        <nav class={styles.menuOverlay} id="menu-overlay">
+            <button class={styles.closeMenu} id="close-menu" aria-label="Close Menu">
+                <span class={`material-symbols-outlined ${styles.closeIcon}`}>close</span>
+            </button>
+            <div class={styles.menuNav}>
+                <a href="/" class={styles.menuLink}>Inicio</a>
+                <a href="/explorador" class={styles.menuLink}>Explorador</a>
+                <a href="#" class={styles.menuLink}>Mis Rutas</a>
+                <a href="#" class={styles.menuLink}>Favoritos</a>
+            </div>
+        </nav>
+
+        <div class={styles.shell}>
+            {/* Sidebar */}
+            {!hideSidebar && (
+            <aside class={`${styles.sidebar} custom-scrollbar`}>
+                {/* Logo Section */}
+                <div class={styles.brandSection}>
+                    <div class={styles.brandContainer}>
+                        <div class={styles.logoBox}>
+                            <img
+                                src="/images/logo-octo.png"
+                                alt="OCTO Logo"
+                                class={styles.logoImage}
+                            />
+                        </div>
+                        <p class={styles.brandSubtitle}>
+                            Menos gasto, más kilómetros
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Navigation -->
+                <nav class={styles.nav}>
+                    <a
+                        href="/"
+                        class={`${styles.navItem} ${Astro.url.pathname === "/" ? styles.active : ""}`}
+                    >
+                        <span
+                            class={`material-symbols-outlined ${styles.navIcon}`}
+                            >home</span
+                        >
+                        <span class={styles.navLabel}
+                            >Inicio</span
+                        >
+                    </a>
+                    <a
+                        href="/explorador"
+                        class={`${styles.navItem} ${Astro.url.pathname === "/explorador" ? styles.active : ""}`}
+                    >
+                        <span
+                            class={`material-symbols-outlined ${styles.navIcon}`}
+                            >explore</span
+                        >
+                        <span class={styles.navLabel}
+                            >Explorador de Precios</span
+                        >
+                    </a>
+                    <div class={styles.navItem}>
+                        <span
+                            class={`material-symbols-outlined ${styles.navIcon}`}
+                            >route</span
+                        >
+                        <span class={styles.navLabel}>Mis Rutas</span>
+                    </div>
+                    <div class={styles.navItem}>
+                        <span
+                            class={`material-symbols-outlined ${styles.navIcon}`}
+                            >favorite</span
+                        >
+                        <span class={styles.navLabel}>Favoritos</span>
+                    </div>
+                </nav>
+
+                <div class={styles.divider}></div>
+
+                {
+                    /* Sidebar content that might be specific to index or shared. 
+                    For now, keeping the static structure but we might want to make it flexible via slots if needed.
+                    The dynamic page only needs the shell, maybe not all the controls.
+                    But to keep consistency, I'll include the shell.
+                */
+                }
+
+                <!-- User Profile -->
+                <div class={styles.userProfile}>
+                    <div class={styles.profileContent}>
+                        <div class={styles.avatar}>
+                            <span
+                                class={`material-symbols-outlined ${styles.avatarIcon}`}
+                                >person</span
+                            >
+                        </div>
+                        <div class={styles.userDetails}>
+                            <p class={styles.userName}>Diego Martínez</p>
+                            <p class={styles.userRole}>Socio Premium OCTO</p>
+                        </div>
+                        <button style={{ color: "#64748b" }}>
+                            <span class="material-symbols-outlined"
+                                >settings</span
+                            >
+                        </button>
+                    </div>
+                </div>
+            </aside>
+            )}
+
+            <!-- Main Content -->
+            <main class={styles.main}>
+                <slot />
+            </main>
+        </div>
+    </body>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const bodyTag = document.body;
+            const menuToggle = document.getElementById('menu-toggle');
+            const themeToggle = document.getElementById('theme-toggle');
+            const closeMenuBtn = document.getElementById('close-menu');
+            const menuLinks = document.querySelectorAll('#menu-overlay a');
+            const htmlElement = document.documentElement;
+
+            // Hamburger Menu Toggle
+            menuToggle?.addEventListener('click', () => {
+                bodyTag.classList.toggle('menu-open');
+            });
+
+            // Close Menu
+            closeMenuBtn?.addEventListener('click', () => {
+                bodyTag.classList.remove('menu-open');
+            });
+
+            menuLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    bodyTag.classList.remove('menu-open');
+                });
+            });
+
+            // Light/Dark Mode Toggle
+            const initTheme = () => {
+                const savedTheme = localStorage.getItem('theme');
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                
+                if (savedTheme === 'light') {
+                    htmlElement.setAttribute('data-theme', 'light');
+                    themeToggle?.classList.remove('is-dark');
+                } else if (savedTheme === 'dark' || prefersDark) {
+                    htmlElement.removeAttribute('data-theme');
+                    themeToggle?.classList.add('is-dark');
+                } else {
+                    htmlElement.removeAttribute('data-theme');
+                    themeToggle?.classList.add('is-dark');
+                }
+            };
+
+            initTheme();
+
+            themeToggle?.addEventListener('click', () => {
+                const isDarCurrently = themeToggle.classList.contains('is-dark');
+                if (isDarCurrently) {
+                    htmlElement.setAttribute('data-theme', 'light');
+                    localStorage.setItem('theme', 'light');
+                    themeToggle.classList.remove('is-dark');
+                } else {
+                    htmlElement.removeAttribute('data-theme');
+                    localStorage.setItem('theme', 'dark');
+                    themeToggle.classList.add('is-dark');
+                }
+            });
+        });
+    </script>
+</html>

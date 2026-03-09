@@ -1,0 +1,92 @@
+.mapContainer {
+    height: 100%;
+    width: 100%;
+    border-radius: 0.75rem;
+    /* rounded-xl */
+    overflow: hidden;
+    position: relative;
+    z-index: 10;
+}
+
+/* Custom popup styles to match the design */
+.popupContent {
+    font-family: var(--font-body);
+}
+
+.popupHeader {
+    font-family: var(--font-header);
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+    color: var(--surface);
+}
+
+.popupAddress {
+    font-size: 0.75rem;
+    color: #64748b;
+    /* slate-500 */
+    margin-bottom: 0.5rem;
+}
+
+.popupPrice {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.priceValue {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.priceLabel {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+:global(.leaflet-popup-content-wrapper) {
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+:global(.leaflet-popup-content) {
+    margin: 1rem;
+}
+
+/* Custom Cluster Styles */
+.clusterIcon {
+    background-color: var(--surface);
+    border: 2px solid var(--primary);
+    border-radius: 50%;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-header);
+    font-weight: 700;
+    font-size: 0.875rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.clusterSmall {
+    width: 2rem;
+    height: 2rem;
+}
+
+.clusterMedium {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-color: var(--secondary);
+    color: var(--secondary);
+}
+
+.clusterLarge {
+    width: 3rem;
+    height: 3rem;
+    border-color: var(--accent);
+    color: var(--accent);
+}
