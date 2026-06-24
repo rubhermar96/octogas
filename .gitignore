@@ -3,6 +3,10 @@ dist/
 # generated types
 .astro/
 
+# generated data (se regenera con `npm run update-data`)
+public/data/
+src/data/
+
 # dependencies
 node_modules/
 

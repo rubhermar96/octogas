@@ -4,7 +4,11 @@ import ExplorerSelector from "../components/Explorer/ExplorerSelector";
 import styles from "../styles/Home.module.css";
 ---
 
-<Layout title="OCTO - Menos gasto, más kilómetros" hideSidebar={true}>
+<Layout
+    title="OCTO - Gasolineras baratas en España | Menos gasto, más kilómetros"
+    description="Encuentra las gasolineras más baratas de España. Compara precios de gasolina 95, 98 y diésel en el mapa interactivo con datos oficiales y ahorra en cada repostaje."
+    hideSidebar={true}
+>
     <div class={styles.homeContainer} id="home-container">
         
         <!-- Abstract Blurred Background -->
@@ -63,7 +67,7 @@ import styles from "../styles/Home.module.css";
                         optimizar tus gastos. Te mostramos las mejores opciones de estaciones de 
                         servicio en tu trayecto para que el viaje sea más económico.
                     </p>
-                    <a href="#" class={styles.bannerAction}>Planificar ahora</a>
+                    <a href="/rutas" class={styles.bannerAction}>Planificar ahora</a>
                 </div>
                 <div class={styles.bannerVisual}>
                     <span class={`material-symbols-outlined ${styles.visualPlaceholderIcon}`}>add_road</span>

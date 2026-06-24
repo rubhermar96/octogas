@@ -1,14 +1,60 @@
 ---
+// Fuentes self-hosted (sin llamadas a Google Fonts -> mejor rendimiento y privacidad)
+import "@fontsource/geist-sans/300.css";
+import "@fontsource/geist-sans/400.css";
+import "@fontsource/geist-sans/500.css";
+import "@fontsource/geist-sans/600.css";
+import "@fontsource/geist-sans/700.css";
+import "@fontsource/unbounded/700.css";
 import "../styles/global.css";
 import styles from "../styles/Layout.module.css";
 
+import { SITE } from "../consts";
+import ConsentBanner from "../components/ConsentBanner.astro";
+
 interface Props {
     title: string;
+    description?: string;
+    ogImage?: string;
+    ogType?: string;
+    noindex?: boolean;
     hideSidebar?: boolean;
+    hideHeaderLogo?: boolean;
 }
 
-const { title, hideSidebar = false } = Astro.props;
+const {
+    title,
+    description = SITE.description,
+    ogImage = SITE.ogImage,
+    ogType = "website",
+    noindex = false,
+    hideSidebar = false,
+    hideHeaderLogo = false,
+} = Astro.props;
+
 const isHome = Astro.url.pathname === "/";
+
+// Canonical y URLs absolutas (Astro.site = dominio de astro.config).
+const canonicalURL = new URL(Astro.url.pathname, Astro.site).href;
+const ogImageURL = new URL(ogImage, Astro.site).href;
+
+// Datos estructurados globales (Organización + buscador del sitio).
+const orgJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE.name,
+    url: Astro.site?.href,
+    description: SITE.description,
+    inLanguage: "es-ES",
+    potentialAction: {
+        "@type": "SearchAction",
+        target: {
+            "@type": "EntryPoint",
+            urlTemplate: new URL("/municipios?q={search_term_string}", Astro.site).href,
+        },
+        "query-input": "required name=search_term_string",
+    },
+};
 ---
 
 <!doctype html>
@@ -16,15 +62,39 @@ const isHome = Astro.url.pathname === "/";
     <head>
         <meta charset="utf-8" />
         <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+        <!-- SEO básico -->
         <title>{title}</title>
-        <!-- Fonts -->
+        <meta name="description" content={description} />
+        <link rel="canonical" href={canonicalURL} />
+        {noindex && <meta name="robots" content="noindex, nofollow" />}
+        <meta name="theme-color" content="#34d399" />
+        <meta name="generator" content={Astro.generator} />
+
+        <!-- Open Graph -->
+        <meta property="og:type" content={ogType} />
+        <meta property="og:site_name" content={SITE.name} />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content={canonicalURL} />
+        <meta property="og:image" content={ogImageURL} />
+        <meta property="og:locale" content={SITE.locale} />
+
+        <!-- Twitter -->
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={title} />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={ogImageURL} />
+
+        <!-- Datos estructurados globales -->
+        <script type="application/ld+json" set:html={JSON.stringify(orgJsonLd)} />
+
+        <!-- Icons (Material Symbols) -->
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
-            href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Unbounded:wght@700&display=swap"
-            rel="stylesheet"
-        />
-        <!-- Icons -->
-        <link
-            href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+            href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
             rel="stylesheet"
         />
         <slot name="head" />
@@ -32,11 +102,13 @@ const isHome = Astro.url.pathname === "/";
     <body class={`custom-scrollbar ${isHome ? 'home-page' : ''}`}>
         <!-- Floating Header -->
         <header class={styles.header} id="main-header">
+            {!hideHeaderLogo && (
             <div class={styles.headerLeft} id="header-logo">
                 <a href="/">
                     <img src="/images/logo-octo.png" alt="OCTO" class={styles.headerLogo} />
                 </a>
             </div>
+            )}
 
             <div class={styles.headerControls}>
                 <button class={styles.themeToggle} id="theme-toggle" aria-label="Toggle Theme">
@@ -60,7 +132,7 @@ const isHome = Astro.url.pathname === "/";
             <div class={styles.menuNav}>
                 <a href="/" class={styles.menuLink}>Inicio</a>
                 <a href="/explorador" class={styles.menuLink}>Explorador</a>
-                <a href="#" class={styles.menuLink}>Mis Rutas</a>
+                <a href="/rutas" class={styles.menuLink}>Planificar viaje</a>
                 <a href="#" class={styles.menuLink}>Favoritos</a>
             </div>
         </nav>
@@ -111,13 +183,16 @@ const isHome = Astro.url.pathname === "/";
                             >Explorador de Precios</span
                         >
                     </a>
-                    <div class={styles.navItem}>
+                    <a
+                        href="/rutas"
+                        class={`${styles.navItem} ${Astro.url.pathname === "/rutas" ? styles.active : ""}`}
+                    >
                         <span
                             class={`material-symbols-outlined ${styles.navIcon}`}
                             >route</span
                         >
-                        <span class={styles.navLabel}>Mis Rutas</span>
-                    </div>
+                        <span class={styles.navLabel}>Planificar viaje</span>
+                    </a>
                     <div class={styles.navItem}>
                         <span
                             class={`material-symbols-outlined ${styles.navIcon}`}
@@ -165,6 +240,8 @@ const isHome = Astro.url.pathname === "/";
                 <slot />
             </main>
         </div>
+
+        <ConsentBanner />
     </body>
     <script>
         document.addEventListener("DOMContentLoaded", () => {

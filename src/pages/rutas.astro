@@ -1,0 +1,13 @@
+---
+import Layout from "../layouts/Layout.astro";
+import RoutePlanner from "../components/Route/RoutePlanner";
+---
+
+<Layout
+    title="Planificador de viajes: reposta más barato en ruta | OCTO"
+    description="Calcula tu ruta en coche y descubre las gasolineras más baratas por el camino según tu consumo. Ahorra en cada viaje con OCTO."
+    hideSidebar={true}
+    hideHeaderLogo={true}
+>
+    <RoutePlanner client:only="react" />
+</Layout>

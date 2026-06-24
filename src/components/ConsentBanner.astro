@@ -1,0 +1,133 @@
+---
+import { ADSENSE_ID } from "../consts";
+---
+
+<div id="cookie-consent" class="consent" hidden>
+    <div class="consent-text">
+        <strong>Usamos cookies</strong>
+        <p>
+            Utilizamos cookies propias y de terceros para mostrar publicidad y analizar el
+            tráfico. Puedes aceptarlas o rechazarlas. <a href="/privacidad">Más información</a>.
+        </p>
+    </div>
+    <div class="consent-actions">
+        <button id="consent-reject" class="btn-reject">Rechazar</button>
+        <button id="consent-accept" class="btn-accept">Aceptar</button>
+    </div>
+</div>
+
+<script define:vars={{ adsenseId: ADSENSE_ID }}>
+    (function () {
+        const KEY = "octo-consent";
+        const banner = document.getElementById("cookie-consent");
+
+        function loadAds() {
+            if (!adsenseId || window.__octoAdsLoaded) return;
+            window.__octoAdsLoaded = true;
+            const s = document.createElement("script");
+            s.async = true;
+            s.src =
+                "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" +
+                adsenseId;
+            s.crossOrigin = "anonymous";
+            s.onload = function () {
+                document.querySelectorAll("ins.adsbygoogle").forEach(function (ins) {
+                    if (ins.getAttribute("data-ad-status")) return;
+                    try {
+                        (window.adsbygoogle = window.adsbygoogle || []).push({});
+                    } catch (e) {}
+                });
+            };
+            document.head.appendChild(s);
+        }
+
+        const choice = localStorage.getItem(KEY);
+        if (choice === "granted") {
+            loadAds();
+        } else if (choice !== "denied" && banner) {
+            banner.hidden = false;
+        }
+
+        document.getElementById("consent-accept")?.addEventListener("click", function () {
+            localStorage.setItem(KEY, "granted");
+            if (banner) banner.hidden = true;
+            loadAds();
+        });
+        document.getElementById("consent-reject")?.addEventListener("click", function () {
+            localStorage.setItem(KEY, "denied");
+            if (banner) banner.hidden = true;
+        });
+    })();
+</script>
+
+<style>
+    .consent {
+        position: fixed;
+        bottom: 1rem;
+        left: 1rem;
+        right: 1rem;
+        max-width: 720px;
+        margin: 0 auto;
+        z-index: 200;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        padding: 1rem 1.25rem;
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    }
+    .consent[hidden] {
+        display: none;
+    }
+    .consent-text {
+        flex: 1;
+        min-width: 240px;
+    }
+    .consent-text strong {
+        color: var(--text);
+        font-size: 0.95rem;
+    }
+    .consent-text p {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        margin: 0.25rem 0 0 0;
+        line-height: 1.45;
+    }
+    .consent-text a {
+        color: var(--primary);
+    }
+    .consent-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-shrink: 0;
+    }
+    .btn-reject,
+    .btn-accept {
+        padding: 0.6rem 1.1rem;
+        border-radius: 0.6rem;
+        font-weight: 700;
+        font-size: 0.85rem;
+        cursor: pointer;
+        border: 1px solid var(--border);
+    }
+    .btn-reject {
+        background: transparent;
+        color: var(--text-muted);
+    }
+    .btn-reject:hover {
+        color: var(--text);
+        border-color: var(--text-muted);
+    }
+    .btn-accept {
+        background-color: var(--primary);
+        color: var(--bg);
+        border-color: var(--primary);
+    }
+    .btn-accept:hover {
+        box-shadow: 0 0 18px rgba(52, 211, 153, 0.5);
+    }
+</style>

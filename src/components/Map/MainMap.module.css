@@ -16,16 +16,93 @@
 .popupHeader {
     font-family: var(--font-header);
     font-weight: 700;
-    font-size: 1rem;
-    margin-bottom: 0.25rem;
-    color: var(--surface);
+    font-size: 0.95rem;
+    margin: 0 0 0.15rem 0;
+    color: #0f172a; /* el popup de Leaflet siempre es blanco -> texto oscuro fijo */
+    line-height: 1.2;
 }
 
 .popupAddress {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: #64748b;
-    /* slate-500 */
-    margin-bottom: 0.5rem;
+    margin: 0;
+}
+
+/* Popup enriquecido */
+.popupBody {
+    min-width: 230px;
+    font-family: var(--font-body);
+}
+
+.popupTop {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.625rem;
+}
+
+.popupGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+    gap: 0.35rem;
+    margin-bottom: 0.625rem;
+}
+
+.popupFuel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.35rem 0.2rem;
+    border-radius: 0.35rem;
+    background-color: #f1f5f9;
+}
+
+.popupFuelActive {
+    background-color: rgba(52, 211, 153, 0.15);
+    box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.4);
+}
+
+.popupFuelLabel {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #64748b;
+    margin-bottom: 0.15rem;
+}
+
+.popupFuelActive .popupFuelLabel {
+    color: #059669;
+}
+
+.popupFuelPrice {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.popupFuelActive .popupFuelPrice {
+    color: #059669;
+}
+
+.popupFooter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 0.5rem;
+    font-size: 0.68rem;
+    color: #64748b;
+}
+
+.popupRoute {
+    color: #0284c7;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.popupRoute:hover {
+    text-decoration: underline;
 }
 
 .popupPrice {
@@ -55,6 +132,49 @@
 
 :global(.leaflet-popup-content) {
     margin: 1rem;
+}
+
+/* Marcador "estás aquí" */
+:global(.octo-user-loc) {
+    position: relative;
+}
+
+:global(.octo-user-loc .octo-user-dot) {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    background-color: #2563eb;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(37, 99, 235, 0.7);
+    z-index: 2;
+}
+
+:global(.octo-user-loc .octo-user-pulse) {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    background-color: rgba(37, 99, 235, 0.4);
+    border-radius: 50%;
+    z-index: 1;
+    animation: octoPulse 2s ease-out infinite;
+}
+
+@keyframes octoPulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(3.2);
+        opacity: 0;
+    }
 }
 
 /* Custom Cluster Styles */

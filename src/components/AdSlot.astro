@@ -1,0 +1,73 @@
+---
+import { ADSENSE_ID } from "../consts";
+
+interface Props {
+    /** ID del bloque de anuncio creado en AdSense (data-ad-slot). */
+    slot?: string;
+    /** Formato del anuncio. */
+    format?: string;
+    /** Altura mínima reservada para evitar saltos de layout (CLS). */
+    minHeight?: number;
+    label?: string;
+}
+
+const { slot = "", format = "auto", minHeight = 120, label = "Publicidad" } = Astro.props;
+const enabled = ADSENSE_ID && slot;
+---
+
+<aside class="ad-slot" style={`min-height:${minHeight}px`} aria-label="Publicidad">
+    <span class="ad-label">{label}</span>
+    {
+        enabled ? (
+            <ins
+                class="adsbygoogle"
+                style="display:block"
+                data-ad-client={ADSENSE_ID}
+                data-ad-slot={slot}
+                data-ad-format={format}
+                data-full-width-responsive="true"
+            />
+        ) : (
+            <div class="ad-placeholder">Espacio reservado para anuncios</div>
+        )
+    }
+</aside>
+
+<style>
+    .ad-slot {
+        position: relative;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 2rem 0;
+        border-radius: 0.75rem;
+        overflow: hidden;
+    }
+    .ad-label {
+        position: absolute;
+        top: 0.25rem;
+        left: 0.5rem;
+        font-size: 0.55rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+        opacity: 0.6;
+    }
+    .ad-slot ins {
+        width: 100%;
+    }
+    .ad-placeholder {
+        width: 100%;
+        height: 100%;
+        min-height: inherit;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px dashed var(--border);
+        border-radius: 0.75rem;
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        background-color: var(--surface);
+    }
+</style>

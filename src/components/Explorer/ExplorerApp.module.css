@@ -6,10 +6,118 @@
     background-color: var(--bg);
 }
 
+.sidebarPanel {
+    flex-shrink: 0;
+    height: 100%;
+    min-width: 320px;
+}
+
 .mapArea {
     flex: 1;
     position: relative;
     height: 100%;
+    min-width: 0;
+}
+
+/* Divisor arrastrable entre listado y mapa */
+.splitter {
+    flex-shrink: 0;
+    width: 8px;
+    height: 100%;
+    cursor: col-resize;
+    background-color: var(--surface);
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 25;
+    transition: background-color 0.2s;
+}
+
+.splitter:hover,
+.splitter:active {
+    background-color: var(--primary);
+}
+
+.splitterGrip {
+    width: 3px;
+    height: 36px;
+    border-radius: 2px;
+    background-color: var(--border);
+    transition: background-color 0.2s;
+}
+
+.splitter:hover .splitterGrip,
+.splitter:active .splitterGrip {
+    background-color: #fff;
+}
+
+/* Botón flotante para desplegar el mapa cuando el listado está a pantalla completa */
+.showMapBtn {
+    position: fixed;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 1rem 0.6rem;
+    background-color: var(--primary);
+    color: var(--bg);
+    font-weight: 700;
+    font-size: 0.7rem;
+    border-radius: 0.75rem 0 0 0.75rem;
+    box-shadow: -4px 4px 20px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: padding 0.2s, box-shadow 0.2s;
+}
+
+.showMapBtn:hover {
+    padding-right: 0.9rem;
+    box-shadow: -6px 6px 28px rgba(52, 211, 153, 0.4);
+}
+
+.showMapBtn .material-symbols-outlined {
+    font-size: 1.4rem;
+}
+
+.showMapLabel {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    letter-spacing: 0.05em;
+}
+
+/* Botón para ocultar el mapa (esquina del mapa) */
+.hideMapBtn {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    z-index: 35;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.hideMapBtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.hideMapBtn .material-symbols-outlined {
+    font-size: 1.1rem;
 }
 
 .loading {
@@ -21,4 +129,34 @@
     color: var(--text-muted);
     font-size: 1.25rem;
     font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .appContainer {
+        flex-direction: column;
+    }
+
+    .sidebarPanel {
+        width: 100% !important;
+        height: 55vh;
+        order: 2;
+    }
+
+    .mapArea {
+        order: 1;
+        height: 45vh;
+    }
+
+    .splitter {
+        display: none;
+    }
+
+    /* Mapa colapsado en móvil: listado a pantalla completa */
+    .collapsed .sidebarPanel {
+        height: 100vh !important;
+    }
+
+    .collapsed .mapArea {
+        display: none;
+    }
 }
