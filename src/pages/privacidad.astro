@@ -1,0 +1,97 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout
+    title="Política de privacidad y cookies | OCTO"
+    description="Política de privacidad y uso de cookies de OCTO."
+    hideSidebar={true}
+    noindex={true}
+>
+    <div class="legal">
+        <a href="/" class="back">← Volver al inicio</a>
+        <h1>Política de privacidad y cookies</h1>
+
+        <p class="note">
+            ⚠️ Plantilla pendiente de revisión legal. Sustituye este texto por tu política
+            definitiva (idealmente revisada por un profesional) antes de publicar y activar la
+            publicidad.
+        </p>
+
+        <h2>1. Responsable</h2>
+        <p>
+            OCTO (en adelante, "el Sitio") facilita la comparación de precios de carburante en
+            España. Para cualquier consulta sobre privacidad puedes contactar a través de los
+            medios indicados en el Sitio.
+        </p>
+
+        <h2>2. Datos que tratamos</h2>
+        <p>
+            El Sitio no requiere registro para su uso básico. Si utilizas la geolocalización,
+            esta se procesa en tu navegador para centrar el mapa y no se almacena en nuestros
+            servidores. Las preferencias (tema, consentimiento de cookies, ancho del panel) se
+            guardan localmente en tu dispositivo.
+        </p>
+
+        <h2>3. Cookies y publicidad</h2>
+        <p>
+            Utilizamos cookies propias técnicas y, previo tu consentimiento, cookies de terceros
+            con fines publicitarios (por ejemplo, Google AdSense) y de medición. Puedes aceptar o
+            rechazar las cookies no esenciales mediante el banner de consentimiento. Sin tu
+            consentimiento no se cargan scripts publicitarios.
+        </p>
+
+        <h2>4. Datos de gasolineras</h2>
+        <p>
+            Los precios y ubicaciones proceden de los datos abiertos del Ministerio para la
+            Transición Ecológica y el Reto Demográfico. OCTO no garantiza la exactitud en tiempo
+            real de los precios mostrados.
+        </p>
+
+        <h2>5. Tus derechos</h2>
+        <p>
+            Puedes revocar el consentimiento de cookies en cualquier momento borrando los datos
+            del Sitio en tu navegador. Para ejercer tus derechos conforme al RGPD, contáctanos.
+        </p>
+    </div>
+</Layout>
+
+<style>
+    .legal {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 5rem 2rem 4rem;
+        color: var(--text);
+        line-height: 1.7;
+    }
+    .back {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.875rem;
+    }
+    .back:hover {
+        color: var(--primary);
+    }
+    .legal h1 {
+        font-family: var(--font-header);
+        font-size: 2rem;
+        margin: 1rem 0 1.5rem;
+    }
+    .legal h2 {
+        font-family: var(--font-header);
+        font-size: 1.2rem;
+        margin: 2rem 0 0.75rem;
+    }
+    .legal p {
+        color: var(--text-muted);
+        margin-bottom: 1rem;
+    }
+    .note {
+        background: rgba(251, 146, 60, 0.12);
+        border: 1px solid rgba(251, 146, 60, 0.3);
+        color: var(--accent) !important;
+        padding: 1rem 1.25rem;
+        border-radius: 0.75rem;
+        font-size: 0.9rem;
+    }
+</style>

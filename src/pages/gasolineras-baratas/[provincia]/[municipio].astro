@@ -1,99 +1,254 @@
 ---
+import fs from "node:fs";
+import path from "node:path";
 import Layout from "../../../layouts/Layout.astro";
 import MainMap from "../../../components/Map/MainMap";
-import gasData from "../../../data/gasolineras.json";
+import AdSlot from "../../../components/AdSlot.astro";
+import { slugify } from "../../../lib/slug";
 import type { GasStation } from "../../../types/gasolinera";
 
+interface Sibling {
+    name: string;
+    slug: string;
+    count: number;
+}
+
 export async function getStaticPaths() {
-    const stations = gasData as unknown as GasStation[];
+    const dataPath = path.resolve("public/data/stations.json");
+    const stations = JSON.parse(fs.readFileSync(dataPath, "utf-8")) as GasStation[];
 
-    // Helper to slugify text
-    const slugify = (text: string) => {
-        return text
-            .toString()
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/\s+/g, "-")
-            .replace(/[^\w\-]+/g, "")
-            .replace(/\-\-+/g, "-")
-            .replace(/^-+/, "")
-            .replace(/-+$/, "");
-    };
-
-    // Group stations by province and municipality
+    // Agrupa por provincia y municipio.
     const groups: Record<string, Record<string, GasStation[]>> = {};
-
     stations.forEach((station) => {
-        // Normalize names for grouping
-        // Some data might have empty city or province, verify your json structure.
         const province = station.province;
-        const city = station.city; // Or municipality if available. Using city for now.
-
+        const city = station.city;
         if (!province || !city) return;
-
-        if (!groups[province]) {
-            groups[province] = {};
-        }
-        if (!groups[province][city]) {
-            groups[province][city] = [];
-        }
+        (groups[province] ??= {})[city] ??= [];
         groups[province][city].push(station);
     });
 
-    const paths = [];
-
-    for (const provinceName in groups) {
-        for (const municipalityName in groups[provinceName]) {
-            const cityStations = groups[provinceName][municipalityName];
-            const provSlug = slugify(provinceName);
-            const muniSlug = slugify(municipalityName);
-
-            if (provSlug && muniSlug) {
-                paths.push({
-                    params: { provincia: provSlug, municipio: muniSlug },
-                    props: {
-                        provinceName,
-                        municipalityName,
-                        stations: cityStations,
-                    },
-                });
-            }
-        }
+    // Lista de municipios por provincia (para enlaces internos), ordenada por nº de estaciones.
+    const provinceMunis: Record<string, Sibling[]> = {};
+    for (const province in groups) {
+        provinceMunis[province] = Object.entries(groups[province])
+            .map(([name, list]) => ({ name, slug: slugify(name), count: list.length }))
+            .sort((a, b) => b.count - a.count);
     }
 
+    const paths = [];
+    for (const provinceName in groups) {
+        for (const municipalityName in groups[provinceName]) {
+            const provSlug = slugify(provinceName);
+            const muniSlug = slugify(municipalityName);
+            if (!provSlug || !muniSlug) continue;
+
+            const siblings = provinceMunis[provinceName]
+                .filter((m) => m.slug !== muniSlug)
+                .slice(0, 24);
+
+            paths.push({
+                params: { provincia: provSlug, municipio: muniSlug },
+                props: {
+                    provinceName,
+                    municipalityName,
+                    provSlug,
+                    stations: groups[provinceName][municipalityName],
+                    siblings,
+                },
+            });
+        }
+    }
     return paths;
 }
 
-const { provinceName, municipalityName, stations } = Astro.props;
+const { provinceName, municipalityName, provSlug, stations, siblings } = Astro.props as {
+    provinceName: string;
+    municipalityName: string;
+    provSlug: string;
+    stations: GasStation[];
+    siblings: Sibling[];
+};
 
-// Find cheapest station for highlight
-const sortedStations = [...stations].sort((a, b) => {
-    const priceA = a.prices.sp95 || 999;
-    const priceB = b.prices.sp95 || 999;
-    return priceA - priceB;
+// --- Estadísticas para contenido y FAQ ---
+const min = (key: "sp95" | "diesel") => {
+    const vals = stations.map((s) => s.prices[key]).filter((p): p is number => p != null);
+    return vals.length ? Math.min(...vals) : null;
+};
+const avg = (key: "sp95" | "diesel") => {
+    const vals = stations.map((s) => s.prices[key]).filter((p): p is number => p != null);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+};
+const fmt = (n: number | null) => (n != null ? n.toFixed(3) : "—");
+
+const minSp95 = min("sp95");
+const minDiesel = min("diesel");
+const avgSp95 = avg("sp95");
+const avgDiesel = avg("diesel");
+
+const cheapestSp95Station = stations
+    .filter((s) => s.prices.sp95 != null)
+    .sort((a, b) => a.prices.sp95! - b.prices.sp95!)[0];
+
+const sortedStations = [...stations].sort(
+    (a, b) => (a.prices.sp95 ?? 999) - (b.prices.sp95 ?? 999)
+);
+const cheapest = sortedStations.slice(0, 12);
+
+const centerLat = stations.reduce((s, x) => s + x.lat, 0) / stations.length;
+const centerLng = stations.reduce((s, x) => s + x.lng, 0) / stations.length;
+
+const updated = new Date().toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
 });
 
-const cheapest = sortedStations.slice(0, 10); // Top 10
+const pageTitle = `Gasolineras baratas en ${municipalityName} (${provinceName}) — Precios hoy | OCTO`;
+const pageDescription = `Compara el precio de la gasolina 95 y el diésel en ${stations.length} gasolineras de ${municipalityName}, ${provinceName}. La más barata desde ${fmt(minSp95)} €/L. Datos oficiales actualizados.`;
 
-// Determine map center (use first station or average)
-const centerLat = stations.reduce((sum, s) => sum + s.lat, 0) / stations.length;
-const centerLng = stations.reduce((sum, s) => sum + s.lng, 0) / stations.length;
+// --- Datos estructurados (FAQ + Breadcrumb) ---
+const faq = [
+    {
+        q: `¿Cuál es la gasolinera más barata en ${municipalityName}?`,
+        a: cheapestSp95Station
+            ? `Actualmente la más barata para Gasolina 95 es ${cheapestSp95Station.name} (${cheapestSp95Station.address}), a ${fmt(minSp95)} €/L.`
+            : `Consulta el listado actualizado de gasolineras en ${municipalityName} para ver la más barata.`,
+    },
+    {
+        q: `¿Cuánto cuesta la gasolina 95 en ${municipalityName}?`,
+        a: `El precio medio de la Gasolina 95 en ${municipalityName} es de ${fmt(avgSp95)} €/L, siendo el más bajo ${fmt(minSp95)} €/L.`,
+    },
+    {
+        q: `¿Cuánto cuesta el diésel en ${municipalityName}?`,
+        a: `El precio medio del Gasóleo A (diésel) en ${municipalityName} es de ${fmt(avgDiesel)} €/L, con un mínimo de ${fmt(minDiesel)} €/L.`,
+    },
+    {
+        q: `¿Cuántas gasolineras hay en ${municipalityName}?`,
+        a: `Hay ${stations.length} estaciones de servicio con precios disponibles en ${municipalityName}.`,
+    },
+    {
+        q: `¿Con qué frecuencia se actualizan los precios?`,
+        a: `Los precios se actualizan a diario a partir de los datos oficiales del Ministerio para la Transición Ecológica.`,
+    },
+];
+
+const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faq.map((f) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+};
+
+const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Inicio", item: new URL("/", Astro.site).href },
+        {
+            "@type": "ListItem",
+            position: 2,
+            name: "Buscar municipio",
+            item: new URL("/municipios", Astro.site).href,
+        },
+        {
+            "@type": "ListItem",
+            position: 3,
+            name: `${municipalityName} (${provinceName})`,
+            item: Astro.url.href,
+        },
+    ],
+};
 ---
 
-<Layout
-    title={`Gasolineras baratas en ${municipalityName}, ${provinceName} - OCTO`}
->
+<Layout title={pageTitle} description={pageDescription}>
+    <script type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} slot="head" />
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd)} slot="head" />
+
     <div class="page-container">
         <div class="content-wrapper">
+            <nav class="breadcrumb" aria-label="Migas de pan">
+                <a href="/">Inicio</a>
+                <span>›</span>
+                <a href="/municipios">Municipios</a>
+                <span>›</span>
+                <span class="current">{municipalityName}</span>
+            </nav>
+
             <header class="page-header">
-                <h1>Gasolineras más baratas en {municipalityName}</h1>
+                <h1>Gasolineras baratas en {municipalityName}</h1>
                 <p class="subtitle">
-                    Encuentra el mejor precio de combustible en {
-                        municipalityName
-                    }, {provinceName}. Mostrando {stations.length} estaciones de servicio.
+                    Precios de gasolina y diésel en {municipalityName}, {provinceName}.
+                    Comparamos {stations.length} estaciones de servicio para que encuentres la
+                    más barata. <span class="updated">Actualizado el {updated}.</span>
                 </p>
             </header>
+
+            <section class="stats-bar" aria-label="Resumen de precios">
+                <div class="stat">
+                    <span class="stat-label">SP95 más barata</span>
+                    <span class="stat-value">{fmt(minSp95)} <small>€/L</small></span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Diésel más barato</span>
+                    <span class="stat-value">{fmt(minDiesel)} <small>€/L</small></span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Media SP95</span>
+                    <span class="stat-value muted">{fmt(avgSp95)} <small>€/L</small></span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Estaciones</span>
+                    <span class="stat-value muted">{stations.length}</span>
+                </div>
+            </section>
+
+            <section class="stations-list">
+                <h2>Top gasolineras económicas en {municipalityName}</h2>
+                <div class="list-grid">
+                    {
+                        cheapest.map((station, index) => (
+                            <div class="station-card">
+                                <div class="rank">#{index + 1}</div>
+                                <div class="details">
+                                    <h3>{station.name}</h3>
+                                    <p class="brand">{station.brand}</p>
+                                    <p class="address">{station.address}</p>
+                                    <div class="prices">
+                                        <div class="price-badge">
+                                            <span class="ptype">SP95</span>
+                                            <span class="price">
+                                                {station.prices.sp95 ? station.prices.sp95.toFixed(3) : "—"}
+                                            </span>
+                                        </div>
+                                        <div class="price-badge alt">
+                                            <span class="ptype">Diésel</span>
+                                            <span class="price">
+                                                {station.prices.diesel ? station.prices.diesel.toFixed(3) : "—"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <a
+                                        class="route"
+                                        href={`https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        Cómo llegar
+                                    </a>
+                                </div>
+                            </div>
+                        ))
+                    }
+                </div>
+                <a class="cta-explore" href={`/explorador?mode=municipality&prov=${encodeURIComponent(provinceName)}&city=${encodeURIComponent(municipalityName)}`}>
+                    Ver todas en el mapa interactivo
+                </a>
+            </section>
+
+            <AdSlot slot="" label="Publicidad" minHeight={120} />
 
             <section class="map-section">
                 <div class="map-wrapper">
@@ -107,141 +262,310 @@ const centerLng = stations.reduce((sum, s) => sum + s.lng, 0) / stations.length;
                 </div>
             </section>
 
-            <section class="stations-list">
-                <h2>Top Gasolineras Económicas</h2>
-                <div class="list-grid">
-                    {
-                        cheapest.map((station, index) => (
-                            <div class="station-card">
-                                <div class="rank">#{index + 1}</div>
-                                <div class="details">
-                                    <h3>{station.name}</h3>
-                                    <p class="address">{station.address}</p>
-                                    <div class="price-badge">
-                                        <span class="price">
-                                            {station.prices.sp95
-                                                ? station.prices.sp95.toFixed(3)
-                                                : "--"}
-                                        </span>
-                                        <span class="currency">€/L</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))
-                    }
-                </div>
+            <section class="faq">
+                <h2>Preguntas frecuentes sobre el precio del combustible en {municipalityName}</h2>
+                {
+                    faq.map((f) => (
+                        <details class="faq-item">
+                            <summary>{f.q}</summary>
+                            <p>{f.a}</p>
+                        </details>
+                    ))
+                }
             </section>
+
+            {
+                siblings.length > 0 && (
+                    <section class="siblings">
+                        <h2>Gasolineras en otros municipios de {provinceName}</h2>
+                        <div class="sibling-grid">
+                            {siblings.map((m) => (
+                                <a href={`/gasolineras-baratas/${provSlug}/${m.slug}`} class="sibling-link">
+                                    {m.name}
+                                    <span>{m.count}</span>
+                                </a>
+                            ))}
+                        </div>
+                    </section>
+                )
+            }
         </div>
     </div>
 </Layout>
 
 <style>
     .page-container {
-        padding: 2rem;
-        height: 100vh;
-        overflow-y: auto;
+        padding: 5rem 2rem 3rem;
+        min-height: 100vh;
         background-color: var(--bg);
         color: var(--text);
     }
 
     .content-wrapper {
-        max-width: 1200px;
+        max-width: 1100px;
         margin: 0 auto;
+    }
+
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .breadcrumb a {
+        color: var(--text-muted);
+        text-decoration: none;
+    }
+    .breadcrumb a:hover {
+        color: var(--primary);
+    }
+    .breadcrumb .current {
+        color: var(--text);
+        font-weight: 600;
     }
 
     .page-header {
         margin-bottom: 2rem;
     }
-
     h1 {
         font-family: var(--font-header);
-        font-size: 2.5rem;
-        margin-bottom: 0.5rem;
+        font-size: clamp(1.8rem, 4vw, 2.6rem);
+        margin-bottom: 0.75rem;
+        line-height: 1.1;
     }
-
     .subtitle {
         color: var(--text-muted);
-        font-size: 1.1rem;
+        font-size: 1.05rem;
+        line-height: 1.6;
+        max-width: 760px;
+    }
+    .updated {
+        color: var(--primary);
+        font-weight: 600;
+    }
+
+    .stats-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 3rem;
+    }
+    .stat {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        padding: 1.1rem 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .stat-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        font-weight: 700;
+    }
+    .stat-value {
+        font-family: var(--font-header);
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--primary);
+    }
+    .stat-value.muted {
+        color: var(--text);
+    }
+    .stat-value small {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+
+    section h2 {
+        font-family: var(--font-header);
+        font-size: 1.4rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stations-list {
+        margin-bottom: 2rem;
+    }
+    .list-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1rem;
+    }
+    .station-card {
+        background: var(--surface);
+        padding: 1.25rem;
+        border-radius: 0.875rem;
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        transition: border-color 0.2s, transform 0.2s;
+    }
+    .station-card:hover {
+        border-color: rgba(52, 211, 153, 0.4);
+        transform: translateY(-2px);
+    }
+    .rank {
+        font-family: var(--font-header);
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--text-muted);
+        opacity: 0.5;
+    }
+    .details {
+        flex: 1;
+        min-width: 0;
+    }
+    .details h3 {
+        font-size: 1rem;
+        margin-bottom: 0.1rem;
+    }
+    .brand {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        color: var(--primary);
+        font-weight: 700;
+        margin-bottom: 0.4rem;
+    }
+    .address {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 0.75rem;
+    }
+    .prices {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+    .price-badge {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: rgba(52, 211, 153, 0.1);
+        padding: 0.4rem 0.7rem;
+        border-radius: 0.6rem;
+        flex: 1;
+    }
+    .price-badge.alt {
+        background: var(--bg);
+    }
+    .ptype {
+        font-size: 0.6rem;
+        font-weight: 700;
+        color: var(--text-muted);
+    }
+    .price {
+        font-weight: 800;
+        font-size: 1rem;
+        color: var(--text);
+    }
+    .route {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--secondary);
+        text-decoration: none;
+    }
+    .route:hover {
+        text-decoration: underline;
+    }
+    .cta-explore {
+        display: inline-block;
+        margin-top: 1.5rem;
+        padding: 0.8rem 1.5rem;
+        background: var(--primary);
+        color: var(--bg);
+        font-weight: 700;
+        border-radius: 0.75rem;
+        text-decoration: none;
+    }
+    .cta-explore:hover {
+        box-shadow: 0 0 20px rgba(52, 211, 153, 0.4);
     }
 
     .map-section {
-        height: 500px;
-        margin-bottom: 3rem;
+        height: 460px;
+        margin: 1rem 0 3rem;
         border-radius: 1rem;
         overflow: hidden;
         border: 1px solid var(--border);
     }
-
     .map-wrapper {
         height: 100%;
         width: 100%;
     }
 
-    .stations-list {
-        margin-bottom: 4rem;
+    .faq {
+        margin-bottom: 3rem;
     }
-
-    .stations-list h2 {
-        font-family: var(--font-header);
-        margin-bottom: 1.5rem;
-        color: var(--primary);
-    }
-
-    .list-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 1.5rem;
-    }
-
-    .station-card {
-        background: var(--surface);
-        padding: 1.5rem;
-        border-radius: 0.75rem;
+    .faq-item {
         border: 1px solid var(--border);
-        display: flex;
-        align-items: flex-start;
-        gap: 1rem;
-    }
-
-    .rank {
-        font-family: var(--font-header);
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--text-muted);
-        opacity: 0.5;
-    }
-
-    .details {
-        flex: 1;
-    }
-
-    .details h3 {
-        font-size: 1.1rem;
-        margin-bottom: 0.25rem;
-    }
-
-    .address {
-        font-size: 0.875rem;
-        color: var(--text-muted);
+        border-radius: 0.75rem;
         margin-bottom: 0.75rem;
+        background: var(--surface);
+        overflow: hidden;
+    }
+    .faq-item summary {
+        padding: 1rem 1.25rem;
+        font-weight: 700;
+        cursor: pointer;
+        color: var(--text);
+        list-style: none;
+    }
+    .faq-item summary::-webkit-details-marker {
+        display: none;
+    }
+    .faq-item summary::after {
+        content: "+";
+        float: right;
+        color: var(--primary);
+        font-weight: 800;
+    }
+    .faq-item[open] summary::after {
+        content: "−";
+    }
+    .faq-item p {
+        padding: 0 1.25rem 1.1rem;
+        color: var(--text-muted);
+        line-height: 1.6;
     }
 
-    .price-badge {
-        display: inline-flex;
-        align-items: baseline;
-        gap: 0.25rem;
-        background: rgba(52, 211, 153, 0.1); /* primary-dim */
-        padding: 0.25rem 0.75rem;
-        border-radius: 999px;
+    .siblings {
+        margin-bottom: 3rem;
+    }
+    .sibling-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 0.6rem;
+    }
+    .sibling-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.7rem 1rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        text-decoration: none;
+        color: var(--text);
+        font-size: 0.875rem;
+        transition: border-color 0.2s, color 0.2s;
+    }
+    .sibling-link:hover {
+        border-color: var(--primary);
         color: var(--primary);
     }
-
-    .price {
-        font-weight: 700;
-        font-size: 1.1rem;
-    }
-
-    .currency {
-        font-size: 0.8rem;
+    .sibling-link span {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        background: var(--bg);
+        padding: 0.1rem 0.45rem;
+        border-radius: 999px;
     }
 </style>

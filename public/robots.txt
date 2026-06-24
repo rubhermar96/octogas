@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Sitemap generado por @astrojs/sitemap
+Sitemap: https://octogas.es/sitemap-index.xml

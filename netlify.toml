@@ -1,0 +1,19 @@
+# Configuración de despliegue en Netlify
+# El build regenera primero los datos del Ministerio (no se versionan) y luego compila.
+[build]
+  command = "npm run update-data && npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Cabeceras de caché: los datos cambian a diario, el resto es estático con hash.
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/_astro/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

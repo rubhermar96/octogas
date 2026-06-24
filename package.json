@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@astrojs/react": "^4.4.2",
+    "@astrojs/sitemap": "^3.7.3",
     "@fontsource/geist-sans": "^5.2.5",
     "@fontsource/unbounded": "^5.2.8",
     "@types/react": "^19.2.13",

@@ -1,45 +1,51 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import styles from './MunicipalitySearch.module.css';
-import gasData from '../../data/gasolineras.json';
-import type { GasStation } from '../../types/gasolinera';
 
 interface LocationItem {
     city: string;
     province: string;
+    provinceSlug: string;
+    citySlug: string;
+    count: number;
 }
 
 const MunicipalitySearch: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isOpen, setIsOpen] = useState(false);
+    const [locations, setLocations] = useState<LocationItem[]>([]);
     const wrapperRef = useRef<HTMLDivElement>(null);
 
-    const allStations = gasData as unknown as GasStation[];
+    // Cargamos el índice ligero de municipios (~340 KB) en vez de las 11k estaciones.
+    useEffect(() => {
+        fetch('/data/municipios.json')
+            .then((r) => r.json())
+            .then((data: LocationItem[]) => setLocations(data))
+            .catch(() => setLocations([]));
+    }, []);
 
-    // Extract unique locations
-    const locations = useMemo(() => {
-        const uniqueSet = new Set<string>();
-        const uniqueLocations: LocationItem[] = [];
-
-        allStations.forEach(s => {
-            const key = `${s.city}-${s.province}`;
-            if (!uniqueSet.has(key)) {
-                uniqueSet.add(key);
-                uniqueLocations.push({ city: s.city, province: s.province });
-            }
-        });
-
-        // Sort alphabetically by city
-        return uniqueLocations.sort((a, b) => a.city.localeCompare(b.city));
-    }, [allStations]);
-
-    // Filter based on input
+    // Filtra y ordena por relevancia: la ciudad buscada aparece antes que los
+    // pueblos de su provincia, y dentro de cada grupo, las más grandes primero.
     const filteredLocations = useMemo(() => {
         if (!searchTerm) return [];
-        const lowerSearch = searchTerm.toLowerCase();
-        return locations.filter(loc => 
-            loc.city.toLowerCase().includes(lowerSearch) || 
-            loc.province.toLowerCase().includes(lowerSearch)
-        ).slice(0, 8); // Limit to top 8 results for performance
+        const q = searchTerm.toLowerCase().trim();
+
+        const score = (loc: LocationItem): number => {
+            const city = loc.city.toLowerCase();
+            const prov = loc.province.toLowerCase();
+            if (city === q) return 0;
+            if (city.startsWith(q)) return 1;
+            if (city.includes(q)) return 2;
+            if (prov.startsWith(q)) return 3;
+            if (prov.includes(q)) return 4;
+            return 99;
+        };
+
+        return locations
+            .map((loc) => ({ loc, s: score(loc) }))
+            .filter((x) => x.s < 99)
+            .sort((a, b) => (a.s !== b.s ? a.s - b.s : b.loc.count - a.loc.count))
+            .slice(0, 8)
+            .map((x) => x.loc);
     }, [searchTerm, locations]);
 
     // Close dropdown when clicking outside
@@ -61,10 +67,10 @@ const MunicipalitySearch: React.FC = () => {
         <div className={styles.searchWrapper} ref={wrapperRef}>
             <div className={styles.inputContainer}>
                 <span className={`material-symbols-outlined ${styles.searchIcon}`}>search</span>
-                <input 
-                    type="text" 
+                <input
+                    type="text"
                     className={styles.searchInput}
-                    placeholder="Ej. Madrid, Barcelona, Valencia..." 
+                    placeholder="Ej. Madrid, Barcelona, Valencia..."
                     value={searchTerm}
                     onChange={(e) => {
                         setSearchTerm(e.target.value);
@@ -73,7 +79,7 @@ const MunicipalitySearch: React.FC = () => {
                     onFocus={() => setIsOpen(true)}
                 />
                 {searchTerm && (
-                    <button 
+                    <button
                         className={styles.clearButton}
                         onClick={() => {
                             setSearchTerm('');
@@ -89,8 +95,8 @@ const MunicipalitySearch: React.FC = () => {
                 <ul className={styles.dropdownList}>
                     {filteredLocations.length > 0 ? (
                         filteredLocations.map((loc, idx) => (
-                            <li 
-                                key={idx} 
+                            <li
+                                key={idx}
                                 className={styles.dropdownItem}
                                 onClick={() => handleSelect(loc.city, loc.province)}
                             >

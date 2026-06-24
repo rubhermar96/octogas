@@ -23,10 +23,11 @@
 .main {
     flex: 1;
     position: relative;
-    background-color: #0c0c10;
-    /* Keep specific map bg or use var(--bg)? keeping hex to be safe or maybe var(--bg) is better. User said bg is 09090b. 0c0c10 is slightly different. I'll switch to var(--bg) to respect user wish */
     background-color: var(--bg);
-    overflow: hidden;
+    /* Permite scroll en páginas de contenido (rutas, municipio, etc.).
+       El explorador y la home gestionan su propio alto (100vh / 100%), así que no scrollean de más. */
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 /* Sidebar Sections */
@@ -89,7 +90,7 @@
 }
 
 .navItem:hover {
-    color: white;
+    color: var(--text);
 }
 
 .navItem.active {
@@ -363,8 +364,7 @@
     margin-top: auto;
     padding: 1rem;
     border-top: 1px solid var(--border);
-    background-color: rgba(9, 9, 11, 0.8);
-    /* Keep rgba for backdrop blur */
+    background-color: var(--surface);
     backdrop-filter: blur(12px);
     position: sticky;
     bottom: 0;
@@ -400,7 +400,7 @@
 .userName {
     font-size: 0.75rem;
     font-weight: 700;
-    color: white;
+    color: var(--text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

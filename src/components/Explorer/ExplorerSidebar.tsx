@@ -1,6 +1,9 @@
-import React, { useMemo } from 'react';
-import type { GasStation } from '../../types/gasolinera';
-import type { FuelType, SortType } from './ExplorerApp';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
+import type { GasStation, FuelType } from '../../types/gasolinera';
+import type { SortType } from './ExplorerApp';
+import { FUEL_LABELS, MAIN_FUELS, OTHER_FUELS, FUEL_ORDER } from '../../lib/fuels';
+import { getDistance } from '../../lib/geo';
+import BrandLogo from './BrandLogo';
 import styles from './ExplorerSidebar.module.css';
 
 interface ExplorerSidebarProps {
@@ -8,102 +11,118 @@ interface ExplorerSidebarProps {
     center: [number, number];
     fuelType: FuelType;
     sortType: SortType;
+    selectedId: string | null;
+    wide: boolean;
     onFuelTypeChange: (type: FuelType) => void;
     onSortTypeChange: (type: SortType) => void;
+    onSelectStation: (id: string | null) => void;
 }
 
-// Haversine formula to calculate distance between two lat/lng pairs
-function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371; // km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-        Math.sin(dLon/2) * Math.sin(dLon/2); 
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-    return R * c;
-}
+const formatPrice = (price: number | null) => (price ? price.toFixed(3) : '--');
 
-const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({ 
-    stations, 
-    center, 
-    fuelType, 
-    sortType, 
-    onFuelTypeChange, 
-    onSortTypeChange 
+// Tope de tarjetas renderizadas a la vez (rendimiento del DOM).
+const MAX_RENDER = 150;
+
+const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
+    stations,
+    center,
+    fuelType,
+    sortType,
+    selectedId,
+    wide,
+    onFuelTypeChange,
+    onSortTypeChange,
+    onSelectStation,
 }) => {
+    const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    const lastScroll = useRef(0);
+    const [controlsHidden, setControlsHidden] = useState(false);
+
+    // Oculta los filtros al bajar y los recupera al subir.
+    const handleListScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const st = e.currentTarget.scrollTop;
+        if (st > lastScroll.current && st > 50) {
+            setControlsHidden(true);
+        } else if (st < lastScroll.current - 4) {
+            setControlsHidden(false);
+        }
+        lastScroll.current = st;
+    };
 
     const sortedStations = useMemo(() => {
-        const withDistances = stations.map(s => ({
+        const withDistances = stations.map((s) => ({
             ...s,
-            distanceToCenter: getDistance(center[0], center[1], s.lat, s.lng)
+            distanceToCenter: getDistance(center[0], center[1], s.lat, s.lng),
         }));
 
         return withDistances.sort((a, b) => {
             if (sortType === 'distance') {
                 return a.distanceToCenter - b.distanceToCenter;
-            } else {
-                // Sort by price
-                const priceA = a.prices[fuelType] || Infinity;
-                const priceB = b.prices[fuelType] || Infinity;
-                return priceA - priceB;
             }
+            const priceA = a.prices[fuelType] || Infinity;
+            const priceB = b.prices[fuelType] || Infinity;
+            return priceA - priceB;
         });
     }, [stations, center, sortType, fuelType]);
 
-    // Format price elegantly with 3 decimals usually
-    const formatPrice = (price: number | null) => {
-        if (!price) return '--';
-        return price.toFixed(3);
-    };
+    // Cuando se selecciona una estación (desde el mapa), la traemos a la vista.
+    useEffect(() => {
+        if (selectedId && cardRefs.current[selectedId]) {
+            cardRefs.current[selectedId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [selectedId]);
 
     return (
         <aside className={styles.sidebar}>
             <div className={styles.header}>
-                <h2 className={styles.title}>Estaciones Cercanas</h2>
-                <a href="/" className={styles.backButton}>
-                    <span className="material-symbols-outlined">arrow_back</span>
-                    Volver
+                <a href="/" className={styles.brand} title="Volver al inicio">
+                    <img src="/images/logo-octo.png" alt="OCTO" className={styles.brandLogo} />
+                    <span className={styles.title}>Estaciones</span>
                 </a>
             </div>
 
-            <div className={styles.controls}>
+            <div className={`${styles.controls} ${controlsHidden ? styles.controlsHidden : ''}`}>
                 <div className={styles.controlGroup}>
                     <label className={styles.label}>Combustible Principal</label>
-                    <div className={styles.fuelSelector}>
-                        <button 
-                            className={`${styles.fuelOption} ${fuelType === 'sp95' ? styles.selected : ''}`}
-                            onClick={() => onFuelTypeChange('sp95')}
+                    <div className={styles.fuelRow}>
+                        <div className={styles.fuelSelector}>
+                            {MAIN_FUELS.map((f) => (
+                                <button
+                                    key={f}
+                                    className={`${styles.fuelOption} ${fuelType === f ? styles.selected : ''}`}
+                                    onClick={() => onFuelTypeChange(f)}
+                                >
+                                    {FUEL_LABELS[f]}
+                                </button>
+                            ))}
+                        </div>
+                        <select
+                            className={`${styles.fuelSelect} ${OTHER_FUELS.includes(fuelType) ? styles.fuelSelectActive : ''}`}
+                            value={OTHER_FUELS.includes(fuelType) ? fuelType : ''}
+                            onChange={(e) => e.target.value && onFuelTypeChange(e.target.value as FuelType)}
+                            title="Otros carburantes"
                         >
-                            SP95
-                        </button>
-                        <button 
-                            className={`${styles.fuelOption} ${fuelType === 'sp98' ? styles.selected : ''}`}
-                            onClick={() => onFuelTypeChange('sp98')}
-                        >
-                            SP98
-                        </button>
-                        <button 
-                            className={`${styles.fuelOption} ${fuelType === 'diesel' ? styles.selected : ''}`}
-                            onClick={() => onFuelTypeChange('diesel')}
-                        >
-                            Diesel
-                        </button>
+                            <option value="">Otros…</option>
+                            {OTHER_FUELS.map((f) => (
+                                <option key={f} value={f}>
+                                    {FUEL_LABELS[f]}
+                                </option>
+                            ))}
+                        </select>
                     </div>
                 </div>
 
                 <div className={styles.controlGroup}>
                     <label className={styles.label}>Ordenar por</label>
                     <div className={styles.sortSelector}>
-                        <button 
+                        <button
                             className={`${styles.sortOption} ${sortType === 'distance' ? styles.selected : ''}`}
                             onClick={() => onSortTypeChange('distance')}
                         >
                             <span className="material-symbols-outlined">near_me</span>
                             Cercanía
                         </button>
-                        <button 
+                        <button
                             className={`${styles.sortOption} ${sortType === 'price' ? styles.selected : ''}`}
                             onClick={() => onSortTypeChange('price')}
                         >
@@ -114,50 +133,91 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
                 </div>
             </div>
 
-            <div className={styles.listContainer}>
+            <div className={styles.listContainer} onScroll={handleListScroll}>
                 <div className={styles.resultsCount}>
-                    {stations.length} resultados en el área visible
+                    {stations.length > MAX_RENDER
+                        ? `Mostrando ${MAX_RENDER} de ${stations.length} · acerca el mapa para afinar`
+                        : `${stations.length} estaciones en el área`}{' '}
+                    · {FUEL_LABELS[fuelType]}
                 </div>
-                
-                <div className={styles.stationList}>
-                    {sortedStations.map(station => (
-                        <div key={station.id} className={styles.stationCard}>
-                            <div className={styles.cardHeader}>
-                                <div>
-                                    <h3 className={styles.stationName}>{station.name}</h3>
-                                    <p className={styles.stationBrand}>{station.brand}</p>
-                                </div>
-                                <div className={styles.distanceBadge}>
-                                    {station.distanceToCenter.toFixed(1)} km
-                                </div>
-                            </div>
-                            
-                            <p className={styles.stationAddress}>
-                                {station.address}, {station.city}
-                            </p>
-                            
-                            <div className={styles.priceGrid}>
-                                <div className={`${styles.priceItem} ${fuelType === 'sp95' ? styles.highlight : ''}`}>
-                                    <span className={styles.priceType}>SP95</span>
-                                    <span className={styles.priceValue}>{formatPrice(station.prices.sp95)} €</span>
-                                </div>
-                                <div className={`${styles.priceItem} ${fuelType === 'sp98' ? styles.highlight : ''}`}>
-                                    <span className={styles.priceType}>SP98</span>
-                                    <span className={styles.priceValue}>{formatPrice(station.prices.sp98)} €</span>
-                                </div>
-                                <div className={`${styles.priceItem} ${fuelType === 'diesel' ? styles.highlight : ''}`}>
-                                    <span className={styles.priceType}>Diesel</span>
-                                    <span className={styles.priceValue}>{formatPrice(station.prices.diesel)} €</span>
-                                </div>
-                            </div>
 
-                            <p className={styles.scheduleText}>
-                                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>schedule</span>
-                                {station.schedule}
-                            </p>
-                        </div>
-                    ))}
-                    
+                <div className={`${styles.stationList} ${wide ? styles.stationListWide : ''}`}>
+                    {sortedStations.slice(0, MAX_RENDER).map((station) => {
+                        const isSelected = station.id === selectedId;
+                        const availableFuels = FUEL_ORDER.filter((f) => station.prices[f] != null);
+                        const mainPrice = station.prices[fuelType];
+
+                        return (
+                            <div
+                                key={station.id}
+                                ref={(el) => {
+                                    cardRefs.current[station.id] = el;
+                                }}
+                                className={`${styles.stationCard} ${isSelected ? styles.selectedCard : ''}`}
+                                onClick={() => onSelectStation(station.id)}
+                            >
+                                <div className={styles.cardHeader}>
+                                    <div className={styles.brandRow}>
+                                        <BrandLogo brand={station.brand} size={40} />
+                                        <div className={styles.nameBlock}>
+                                            <h3 className={styles.stationName}>{station.name}</h3>
+                                            <p className={styles.stationBrand}>{station.brand}</p>
+                                        </div>
+                                    </div>
+                                    <div className={styles.priceTag}>
+                                        <span className={styles.priceMain}>{formatPrice(mainPrice)}</span>
+                                        <span className={styles.priceUnit}>€/L · {FUEL_LABELS[fuelType]}</span>
+                                    </div>
+                                </div>
+
+                                <p className={styles.stationAddress}>
+                                    <span className="material-symbols-outlined">location_on</span>
+                                    {station.address}, {station.city}
+                                    {station.postalCode ? ` (${station.postalCode})` : ''}
+                                </p>
+
+                                <div className={styles.priceGrid}>
+                                    {availableFuels.map((f) => (
+                                        <div
+                                            key={f}
+                                            className={`${styles.priceItem} ${fuelType === f ? styles.highlight : ''}`}
+                                        >
+                                            <span className={styles.priceType}>{FUEL_LABELS[f]}</span>
+                                            <span className={styles.priceValue}>{formatPrice(station.prices[f])}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className={styles.cardFooter}>
+                                    <span className={styles.metaItem}>
+                                        <span className="material-symbols-outlined">schedule</span>
+                                        {station.schedule || 'Horario no disponible'}
+                                    </span>
+                                    <div className={styles.footerRight}>
+                                        <span className={styles.distanceBadge}>
+                                            {station.distanceToCenter.toFixed(1)} km
+                                        </span>
+                                        <a
+                                            className={styles.routeLink}
+                                            href={`https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                            title="Cómo llegar"
+                                        >
+                                            <span className="material-symbols-outlined">directions</span>
+                                            Cómo llegar
+                                        </a>
+                                    </div>
+                                </div>
+
+                                {station.saleType === 'R' && (
+                                    <span className={styles.restrictedTag}>Venta restringida (cooperativa/flota)</span>
+                                )}
+                            </div>
+                        );
+                    })}
+
                     {sortedStations.length === 0 && (
                         <div className={styles.emptyState}>
                             <span className="material-symbols-outlined">location_off</span>

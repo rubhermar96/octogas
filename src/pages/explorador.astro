@@ -3,6 +3,11 @@ import Layout from "../layouts/Layout.astro";
 import ExplorerApp from "../components/Explorer/ExplorerApp";
 ---
 
-<Layout title="OCTO Fuel Explorador" hideSidebar={true}>
+<Layout
+    title="Explorador de gasolineras en el mapa | OCTO"
+    description="Explora en el mapa todas las gasolineras de España y compara precios de gasolina 95, 98, diésel, GLP y más. Ordena por precio o cercanía y encuentra la más barata."
+    hideSidebar={true}
+    hideHeaderLogo={true}
+>
     <ExplorerApp client:only="react" />
 </Layout>

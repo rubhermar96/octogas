@@ -24,11 +24,14 @@ Octogas es una aplicación web rápida y moderna para consultar los precios de l
 
 ```text
 /
-├── public/                 # Archivos estáticos e imágenes (logo, iconos)
+├── public/
+│   └── data/               # Datos generados y servidos como estáticos
+│                           #   - stations.json (todas las estaciones)
+│                           #   - municipios.json (índice ligero para autocompletado)
 ├── src/
 │   ├── components/         # Componentes React y Astro (Mapas, Botones, Tarjetas)
-│   ├── data/               # Datos generados (gasolineras.json)
 │   ├── layouts/            # Layouts principales de Astro (Layout.astro)
+│   ├── lib/                # Utilidades compartidas (slugify, normalización de marcas)
 │   ├── pages/              # Rutas de la aplicación (index, municipio, rutas dinámicas)
 │   ├── scripts/            # Scripts de utilidad (actualización de precios)
 │   ├── styles/             # Hojas de estilo globales y módulos CSS
@@ -42,7 +45,7 @@ Octogas es una aplicación web rápida y moderna para consultar los precios de l
 | Comando | Acción |
 | :--- | :--- |
 | `npm install` | Instala todas las dependencias del proyecto. |
-| `npm run update-data` | Ejecuta el script `src/scripts/update-prices.ts` para descargar los últimos precios del Ministerio y actualizar `src/data/gasolineras.json`. |
+| `npm run update-data` | Descarga los últimos precios del Ministerio y regenera `public/data/stations.json` y `public/data/municipios.json`. **Debe ejecutarse antes del primer `build`** (los datos están en `.gitignore`). |
 | `npm run dev` | Inicia el servidor de desarrollo local en `localhost:4321`. |
 | `npm run build` | Construye el sitio para producción en la carpeta `./dist/`. |
 | `npm run preview` | Previsualiza el build de producción localmente. |
@@ -55,7 +58,7 @@ Los precios de las gasolineras en España cambian constantemente. Para tener la 
 npm run update-data
 ```
 
-Esto procesará más de 12,000 estaciones de servicio terrestres, filtrará aquellas sin ubicación válida y guardará la información estructurada en `src/data/gasolineras.json`.
+Esto procesa más de 11.000 estaciones de servicio terrestres, filtra las que no tienen ubicación válida ni ningún precio, normaliza las marcas y guarda la información en `public/data/`. Los datos **no se versionan en git** (cambian a diario): se regeneran en cada despliegue o mediante una tarea programada (cron) que vuelve a ejecutar `npm run update-data`.
 
 ---
 *Construido con 💚 usando Astro.*
