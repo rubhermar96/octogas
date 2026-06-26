@@ -62,7 +62,8 @@
     gap: 1.25rem;
     background-color: var(--bg);
     flex-shrink: 0;
-    overflow: hidden;
+    position: relative;
+    z-index: 5;
 }
 
 .controls.controlsHidden {

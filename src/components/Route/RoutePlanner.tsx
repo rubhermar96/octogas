@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Polyline, CircleMarker, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -6,10 +6,12 @@ import type { GasStation, FuelType } from '../../types/gasolinera';
 import { MAIN_FUELS, FUEL_LABELS } from '../../lib/fuels';
 import {
     geocode,
-    getRoute,
+    getRouteMulti,
     findCorridorStations,
     pickStops,
     computeFuelPlan,
+    progressOnRoute,
+    type GeoResult,
     type CorridorStation,
     type Priority,
     type FuelPlan,
@@ -55,6 +57,7 @@ interface RouteData {
     durationMin: number;
     origin: { lat: number; lng: number; label: string };
     destination: { lat: number; lng: number; label: string };
+    customStops: GeoResult[];
     corridorAvg: number;
     fuelPlan: FuelPlan;
     nStops: number;
@@ -85,6 +88,7 @@ const RoutePlanner: React.FC = () => {
     const [allStations, setAllStations] = useState<GasStation[]>([]);
     const [origin, setOrigin] = useState('');
     const [destination, setDestination] = useState('');
+    const [waypoints, setWaypoints] = useState<string[]>([]);
     const [fuel, setFuel] = useState<FuelType>('sp95');
     const [consumption, setConsumption] = useState(6.5);
     const [capacity, setCapacity] = useState(50);
@@ -94,6 +98,7 @@ const RoutePlanner: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<RouteData | null>(null);
+    const feedbackRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         fetch('/data/stations.json')
@@ -101,6 +106,18 @@ const RoutePlanner: React.FC = () => {
             .then(setAllStations)
             .catch(() => setAllStations([]));
     }, []);
+
+    // Al empezar a calcular o al tener resultado, llevamos la vista a esa sección.
+    useEffect(() => {
+        if (loading || result) {
+            feedbackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, [loading, result]);
+
+    const addWaypoint = () => setWaypoints((w) => [...w, '']);
+    const removeWaypoint = (i: number) => setWaypoints((w) => w.filter((_, idx) => idx !== i));
+    const updateWaypoint = (i: number, val: string) =>
+        setWaypoints((w) => w.map((x, idx) => (idx === i ? val : x)));
 
     const buildPlan = (
         corridor: CorridorStation[],
@@ -125,21 +142,32 @@ const RoutePlanner: React.FC = () => {
         setLoading(true);
         setResult(null);
         try {
-            const [a, b] = await Promise.all([geocode(origin), geocode(destination)]);
+            // Geocodificamos origen, destino y las paradas propias (las que no estén vacías).
+            const wpQueries = waypoints.map((w) => w.trim()).filter(Boolean);
+            const [a, b, ...wpGeo] = await Promise.all([
+                geocode(origin),
+                geocode(destination),
+                ...wpQueries.map((q) => geocode(q)),
+            ]);
             if (!a) throw new Error(`No se encontró el origen "${origin}".`);
             if (!b) throw new Error(`No se encontró el destino "${destination}".`);
+            const customStops = wpGeo.filter((g): g is GeoResult => g != null);
+            if (wpGeo.length !== customStops.length) {
+                throw new Error('No se encontró alguna de las paradas indicadas.');
+            }
 
-            const route = await getRoute(a, b);
-            if (!route) throw new Error('No se pudo calcular la ruta entre esos puntos.');
+            // Ruta base: pasa por tus paradas propias (p. ej. donde vas a comer).
+            const baseRoute = await getRouteMulti([a, ...customStops, b]);
+            if (!baseRoute) throw new Error('No se pudo calcular la ruta entre esos puntos.');
 
-            const corridor = findCorridorStations(allStations, route.coords, fuel);
+            const corridor = findCorridorStations(allStations, baseRoute.coords, fuel);
             if (corridor.length === 0) {
                 throw new Error('No hay gasolineras con ese combustible cerca de la ruta.');
             }
             const corridorAvg = corridor.reduce((s, x) => s + x.price, 0) / corridor.length;
 
             const fuelPlan = computeFuelPlan({
-                distanceKm: route.distanceKm,
+                distanceKm: baseRoute.distanceKm,
                 consumption,
                 capacity,
                 startPct,
@@ -155,12 +183,28 @@ const RoutePlanner: React.FC = () => {
             const cheapPlan = nStops > 0 ? buildPlan(corridor, nStops, 'cheap', litersToBuy) : null;
             const fastPlan = nStops > 0 ? buildPlan(corridor, nStops, 'fast', litersToBuy) : null;
 
+            // Ruta final: pasa también por los repostajes recomendados (en orden a lo largo del trayecto).
+            let finalRoute = baseRoute;
+            if (recommended.picks.length > 0) {
+                const intermediates = [
+                    ...customStops.map((c) => ({
+                        lat: c.lat,
+                        lng: c.lng,
+                        progress: progressOnRoute(baseRoute.coords, c.lat, c.lng),
+                    })),
+                    ...recommended.picks.map((s) => ({ lat: s.lat, lng: s.lng, progress: s.progress })),
+                ].sort((x, y) => x.progress - y.progress);
+                const routed = await getRouteMulti([a, ...intermediates, b]);
+                if (routed) finalRoute = routed;
+            }
+
             setResult({
-                coords: route.coords,
-                distanceKm: route.distanceKm,
-                durationMin: route.durationMin,
+                coords: finalRoute.coords,
+                distanceKm: finalRoute.distanceKm,
+                durationMin: finalRoute.durationMin,
                 origin: a,
                 destination: b,
+                customStops,
                 corridorAvg,
                 fuelPlan,
                 nStops,
@@ -198,6 +242,28 @@ const RoutePlanner: React.FC = () => {
                         <label>Destino</label>
                         <input className={styles.input} placeholder="Ej. Valencia" value={destination} onChange={(e) => setDestination(e.target.value)} />
                     </div>
+                </div>
+
+                <div className={styles.field}>
+                    <label>Paradas en la ruta (opcional)</label>
+                    {waypoints.map((w, i) => (
+                        <div key={i} className={styles.wpRow}>
+                            <span className="material-symbols-outlined">place</span>
+                            <input
+                                className={styles.input}
+                                placeholder="Ej. Cuenca (parada para comer)"
+                                value={w}
+                                onChange={(e) => updateWaypoint(i, e.target.value)}
+                            />
+                            <button type="button" className={styles.wpRemove} onClick={() => removeWaypoint(i)} title="Quitar parada">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                    ))}
+                    <button type="button" className={styles.addWp} onClick={addWaypoint}>
+                        <span className="material-symbols-outlined">add</span>
+                        Añadir parada
+                    </button>
                 </div>
 
                 <div className={styles.row}>
@@ -293,7 +359,15 @@ const RoutePlanner: React.FC = () => {
                 </button>
             </form>
 
-            {result && (
+            <div ref={feedbackRef}>
+            {loading && (
+                <div className={styles.loadingPanel}>
+                    <div className={styles.spinner} />
+                    <p>Calculando tu ruta y los mejores repostajes…</p>
+                </div>
+            )}
+
+            {result && !loading && (
                 <div className={styles.results}>
                     <div className={styles.statsBar}>
                         <div className={styles.stat}>
@@ -425,6 +499,11 @@ const RoutePlanner: React.FC = () => {
                                 <Polyline positions={result.coords} pathOptions={{ color: '#2563eb', weight: 5, opacity: 0.8 }} />
                                 <Marker position={[result.origin.lat, result.origin.lng]} icon={endpointIcon('A', '#0ea5e9')} />
                                 <Marker position={[result.destination.lat, result.destination.lng]} icon={endpointIcon('B', '#ef4444')} />
+                                {result.customStops.map((c, i) => (
+                                    <Marker key={`wp-${i}`} position={[c.lat, c.lng]} icon={endpointIcon('P', '#a855f7')}>
+                                        <Popup>Parada: {c.label.split(',')[0]}</Popup>
+                                    </Marker>
+                                ))}
                                 {result.recommended.picks.map((s) => (
                                     <CircleMarker key={s.id} center={[s.lat, s.lng]} radius={9} pathOptions={{ color: '#fff', weight: 3, fillColor: '#34d399', fillOpacity: 1 }}>
                                         <Popup>
@@ -439,6 +518,7 @@ const RoutePlanner: React.FC = () => {
                     </div>
                 </div>
             )}
+            </div>
         </div>
     );
 };

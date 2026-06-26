@@ -34,7 +34,14 @@ export async function geocode(query: string): Promise<GeoResult | null> {
 
 /** Calcula la ruta en coche entre dos puntos con OSRM (demo público). */
 export async function getRoute(a: GeoPoint, b: GeoPoint): Promise<RouteResult | null> {
-    const url = `https://router.project-osrm.org/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`;
+    return getRouteMulti([a, b]);
+}
+
+/** Calcula la ruta en coche pasando por varios puntos en orden (origen, paradas…, destino). */
+export async function getRouteMulti(points: GeoPoint[]): Promise<RouteResult | null> {
+    if (points.length < 2) return null;
+    const coordsStr = points.map((p) => `${p.lng},${p.lat}`).join(';');
+    const url = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
@@ -44,6 +51,22 @@ export async function getRoute(a: GeoPoint, b: GeoPoint): Promise<RouteResult | 
         ([lng, lat]) => [lat, lng] as [number, number]
     );
     return { coords, distanceKm: r.distance / 1000, durationMin: r.duration / 60 };
+}
+
+/** Progreso (0..1) de un punto a lo largo del trazado de la ruta. */
+export function progressOnRoute(route: [number, number][], lat: number, lng: number): number {
+    if (route.length < 2) return 0;
+    const step = Math.max(1, Math.floor(route.length / 400));
+    let minD = Infinity;
+    let bestIdx = 0;
+    for (let i = 0; i < route.length; i += step) {
+        const d = getDistance(lat, lng, route[i][0], route[i][1]);
+        if (d < minD) {
+            minD = d;
+            bestIdx = i;
+        }
+    }
+    return bestIdx / (route.length - 1);
 }
 
 export type Priority = 'cheap' | 'balanced' | 'fast';

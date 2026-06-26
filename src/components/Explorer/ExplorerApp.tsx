@@ -25,6 +25,7 @@ const ExplorerApp: React.FC = () => {
     const [disableGeolocation, setDisableGeolocation] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [mapCollapsed, setMapCollapsed] = useState(false);
+    const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
 
     const [sidebarWidth, setSidebarWidth] = useState<number>(DEFAULT_WIDTH);
     const isDragging = useRef(false);
@@ -141,6 +142,21 @@ const ExplorerApp: React.FC = () => {
         );
     };
 
+    // Opciones de marca (con conteo) para el filtro.
+    const brandOptions = useMemo(() => {
+        const counts = new Map<string, number>();
+        for (const s of allStations) counts.set(s.brand, (counts.get(s.brand) ?? 0) + 1);
+        return [...counts.entries()]
+            .map(([brand, count]) => ({ brand, count }))
+            .sort((a, b) => b.count - a.count);
+    }, [allStations]);
+
+    // Estaciones filtradas por marca (afecta a lista y mapa). Vacío = todas.
+    const brandFilteredStations = useMemo(() => {
+        if (selectedBrands.size === 0) return allStations;
+        return allStations.filter((s) => selectedBrands.has(s.brand));
+    }, [allStations, selectedBrands]);
+
     // Estaciones para el listado:
     // - mapa visible -> las que caben en el área del mapa.
     // - mapa colapsado (ancho 0, sin bounds fiables) -> por proximidad al centro.
@@ -148,10 +164,10 @@ const ExplorerApp: React.FC = () => {
     const visibleStations = useMemo(() => {
         if (mapCollapsed || !mapBounds) {
             const [clat, clng] = mapCenter;
-            return allStations.filter((s) => getDistance(clat, clng, s.lat, s.lng) <= RADIUS_KM);
+            return brandFilteredStations.filter((s) => getDistance(clat, clng, s.lat, s.lng) <= RADIUS_KM);
         }
-        return allStations.filter((s) => mapBounds.contains([s.lat, s.lng]));
-    }, [allStations, mapBounds, mapCollapsed, mapCenter]);
+        return brandFilteredStations.filter((s) => mapBounds.contains([s.lat, s.lng]));
+    }, [brandFilteredStations, mapBounds, mapCollapsed, mapCenter]);
 
     // Al mostrar el mapa, forzamos a Leaflet a recalcular su tamaño (evita el mapa
     // en blanco/negro cuando pasa de oculto a visible, sobre todo en móvil).
@@ -180,6 +196,9 @@ const ExplorerApp: React.FC = () => {
                             sortType={sortType}
                             selectedId={selectedId}
                             wide={isWide}
+                            brandOptions={brandOptions}
+                            selectedBrands={selectedBrands}
+                            onBrandsChange={setSelectedBrands}
                             onFuelTypeChange={setFuelType}
                             onSortTypeChange={setSortType}
                             onSelectStation={(id) => {
@@ -218,7 +237,7 @@ const ExplorerApp: React.FC = () => {
                             </button>
                         )}
                         <MainMap
-                            stations={allStations}
+                            stations={brandFilteredStations}
                             initialCenter={initialCenter}
                             initialZoom={initialZoom}
                             onBoundsChange={handleBoundsChange}
