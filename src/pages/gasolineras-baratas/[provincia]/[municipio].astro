@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Layout from "../../../layouts/Layout.astro";
 import MainMap from "../../../components/Map/MainMap";
+import MunicipioTop from "../../../components/Municipio/MunicipioTop";
 import AdSlot from "../../../components/AdSlot.astro";
 import { slugify } from "../../../lib/slug";
 import type { GasStation } from "../../../types/gasolinera";
@@ -70,11 +71,12 @@ const { provinceName, municipalityName, provSlug, stations, siblings } = Astro.p
 };
 
 // --- Estadísticas para contenido y FAQ ---
-const min = (key: "sp95" | "diesel") => {
+type FuelKey = "sp95" | "sp98" | "diesel" | "glp";
+const min = (key: FuelKey) => {
     const vals = stations.map((s) => s.prices[key]).filter((p): p is number => p != null);
     return vals.length ? Math.min(...vals) : null;
 };
-const avg = (key: "sp95" | "diesel") => {
+const avg = (key: FuelKey) => {
     const vals = stations.map((s) => s.prices[key]).filter((p): p is number => p != null);
     return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
 };
@@ -85,17 +87,28 @@ const minDiesel = min("diesel");
 const avgSp95 = avg("sp95");
 const avgDiesel = avg("diesel");
 
+// Precio medio de cada combustible disponible en el municipio.
+const fuelAverages = (
+    [
+        ["sp95", "SP95"],
+        ["sp98", "SP98"],
+        ["diesel", "Diésel"],
+        ["glp", "GLP"],
+    ] as [FuelKey, string][]
+)
+    .map(([key, label]) => ({ key, label, avg: avg(key) }))
+    .filter((x) => x.avg != null);
+
 const cheapestSp95Station = stations
     .filter((s) => s.prices.sp95 != null)
     .sort((a, b) => a.prices.sp95! - b.prices.sp95!)[0];
 
-const sortedStations = [...stations].sort(
-    (a, b) => (a.prices.sp95 ?? 999) - (b.prices.sp95 ?? 999)
-);
-const cheapest = sortedStations.slice(0, 12);
-
 const centerLat = stations.reduce((s, x) => s + x.lat, 0) / stations.length;
 const centerLng = stations.reduce((s, x) => s + x.lng, 0) / stations.length;
+
+const explorerUrl = `/explorador?mode=municipality&prov=${encodeURIComponent(
+    provinceName
+)}&city=${encodeURIComponent(municipalityName)}`;
 
 const updated = new Date().toLocaleDateString("es-ES", {
     day: "numeric",
@@ -186,67 +199,22 @@ const breadcrumbJsonLd = {
                 </p>
             </header>
 
-            <section class="stats-bar" aria-label="Resumen de precios">
-                <div class="stat">
-                    <span class="stat-label">SP95 más barata</span>
-                    <span class="stat-value">{fmt(minSp95)} <small>€/L</small></span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Diésel más barato</span>
-                    <span class="stat-value">{fmt(minDiesel)} <small>€/L</small></span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Media SP95</span>
-                    <span class="stat-value muted">{fmt(avgSp95)} <small>€/L</small></span>
-                </div>
+            <section class="stats-bar" aria-label="Precio medio por combustible">
                 <div class="stat">
                     <span class="stat-label">Estaciones</span>
-                    <span class="stat-value muted">{stations.length}</span>
+                    <span class="stat-value">{stations.length}</span>
                 </div>
+                {
+                    fuelAverages.map((f) => (
+                        <div class="stat">
+                            <span class="stat-label">Media {f.label}</span>
+                            <span class="stat-value muted">{fmt(f.avg)} <small>€/L</small></span>
+                        </div>
+                    ))
+                }
             </section>
 
-            <section class="stations-list">
-                <h2>Top gasolineras económicas en {municipalityName}</h2>
-                <div class="list-grid">
-                    {
-                        cheapest.map((station, index) => (
-                            <div class="station-card">
-                                <div class="rank">#{index + 1}</div>
-                                <div class="details">
-                                    <h3>{station.name}</h3>
-                                    <p class="brand">{station.brand}</p>
-                                    <p class="address">{station.address}</p>
-                                    <div class="prices">
-                                        <div class="price-badge">
-                                            <span class="ptype">SP95</span>
-                                            <span class="price">
-                                                {station.prices.sp95 ? station.prices.sp95.toFixed(3) : "—"}
-                                            </span>
-                                        </div>
-                                        <div class="price-badge alt">
-                                            <span class="ptype">Diésel</span>
-                                            <span class="price">
-                                                {station.prices.diesel ? station.prices.diesel.toFixed(3) : "—"}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <a
-                                        class="route"
-                                        href={`https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        Cómo llegar
-                                    </a>
-                                </div>
-                            </div>
-                        ))
-                    }
-                </div>
-                <a class="cta-explore" href={`/explorador?mode=municipality&prov=${encodeURIComponent(provinceName)}&city=${encodeURIComponent(municipalityName)}`}>
-                    Ver todas en el mapa interactivo
-                </a>
-            </section>
+            <MunicipioTop client:load stations={stations} explorerUrl={explorerUrl} />
 
             <AdSlot slot="" label="Publicidad" minHeight={120} />
 

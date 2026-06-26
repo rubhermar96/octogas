@@ -10,11 +10,12 @@ import {
     findCorridorStations,
     pickStops,
     computeFuelPlan,
+    allocateRefuels,
     progressOnRoute,
     type GeoResult,
-    type CorridorStation,
     type Priority,
     type FuelPlan,
+    type RefuelStop,
 } from '../../lib/route';
 import BrandLogo from '../Explorer/BrandLogo';
 import BrandFilter, { type BrandOption } from '../Explorer/BrandFilter';
@@ -46,7 +47,7 @@ const endpointIcon = (letter: string, color: string) =>
     });
 
 interface PlanOption {
-    picks: CorridorStation[];
+    picks: RefuelStop[];
     avgPrice: number;
     cost: number;
     avgDetour: number;
@@ -94,6 +95,7 @@ const RoutePlanner: React.FC = () => {
     const [consumption, setConsumption] = useState(6.5);
     const [capacity, setCapacity] = useState(50);
     const [startPct, setStartPct] = useState(80);
+    const [arrivePct, setArrivePct] = useState(15);
     const [priority, setPriority] = useState<Priority>('cheap');
     const [stopsMode, setStopsMode] = useState<StopsMode>('auto');
     const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
@@ -131,15 +133,22 @@ const RoutePlanner: React.FC = () => {
     }, [allStations]);
 
     const buildPlan = (
-        corridor: CorridorStation[],
+        corridor: ReturnType<typeof findCorridorStations>,
         n: number,
         prio: Priority,
-        litersToBuy: number
+        ctx: { totalDistanceKm: number; startLiters: number }
     ): PlanOption => {
-        const picks = pickStops(corridor, n, prio);
+        const raw = pickStops(corridor, n, prio);
+        const picks = allocateRefuels(raw, {
+            totalDistanceKm: ctx.totalDistanceKm,
+            consumption,
+            capacity,
+            startLiters: ctx.startLiters,
+            arrivePct,
+        });
         const avgPrice = picks.length ? picks.reduce((s, x) => s + x.price, 0) / picks.length : 0;
         const avgDetour = picks.length ? picks.reduce((s, x) => s + x.detourKm, 0) / picks.length : 0;
-        const cost = n > 0 && picks.length ? litersToBuy * avgPrice : 0;
+        const cost = picks.reduce((s, x) => s + x.cost, 0);
         return { picks, avgPrice, cost, avgDetour };
     };
 
@@ -191,17 +200,19 @@ const RoutePlanner: React.FC = () => {
                 consumption,
                 capacity,
                 startPct,
+                reservePct: arrivePct, // queremos llegar con esta reserva
             });
 
             const nStops = stopsMode === 'auto' ? fuelPlan.minStops : parseInt(stopsMode, 10);
             const litersToBuy = fuelPlan.litersToBuy;
+            const ctx = { totalDistanceKm: baseRoute.distanceKm, startLiters: fuelPlan.startLiters };
 
-            const recommended = buildPlan(corridor, nStops, priority, litersToBuy);
+            const recommended = buildPlan(corridor, nStops, priority, ctx);
             const baselineCost = nStops > 0 ? litersToBuy * corridorAvg : 0;
             const savings = Math.max(0, baselineCost - recommended.cost);
 
-            const cheapPlan = nStops > 0 ? buildPlan(corridor, nStops, 'cheap', litersToBuy) : null;
-            const fastPlan = nStops > 0 ? buildPlan(corridor, nStops, 'fast', litersToBuy) : null;
+            const cheapPlan = nStops > 0 ? buildPlan(corridor, nStops, 'cheap', ctx) : null;
+            const fastPlan = nStops > 0 ? buildPlan(corridor, nStops, 'fast', ctx) : null;
 
             // Ruta final: pasa también por los repostajes recomendados (en orden a lo largo del trayecto).
             let finalRoute = baseRoute;
@@ -351,6 +362,22 @@ const RoutePlanner: React.FC = () => {
                     </div>
                 </div>
 
+                <div className={styles.field}>
+                    <label>Quiero llegar con al menos: {arrivePct}%</label>
+                    <input
+                        className={styles.range}
+                        type="range"
+                        min="0"
+                        max="50"
+                        step="5"
+                        value={arrivePct}
+                        onChange={(e) => setArrivePct(parseInt(e.target.value, 10))}
+                    />
+                    <span className={styles.hint}>
+                        ≈ {((capacity * arrivePct) / 100).toFixed(0)} L de reserva al llegar al destino
+                    </span>
+                </div>
+
                 <div className={styles.row}>
                     <div className={styles.field}>
                         <label>Prioridad</label>
@@ -464,11 +491,16 @@ const RoutePlanner: React.FC = () => {
                                                         <div className={styles.stopMeta}>
                                                             {s.city} · desvío {s.detourKm.toFixed(1)} km
                                                         </div>
+                                                        <div className={styles.stopRefuel}>
+                                                            <span className="material-symbols-outlined">local_gas_station</span>
+                                                            Repostar <b>{s.liters.toFixed(0)} L</b> · {s.cost.toFixed(2)} €
+                                                        </div>
                                                     </div>
                                                     <div className={styles.stopPrice}>
                                                         <b>{s.price.toFixed(3)}</b>
+                                                        <span>€/L</span>
                                                         <span className={delta <= 0 ? styles.deltaGood : styles.deltaBad}>
-                                                            {delta <= 0 ? '▼' : '▲'} {Math.abs(delta).toFixed(3)} vs media
+                                                            {delta <= 0 ? '▼' : '▲'} {Math.abs(delta).toFixed(3)}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -535,6 +567,8 @@ const RoutePlanner: React.FC = () => {
                                             <strong>{s.name}</strong>
                                             <br />
                                             {s.price.toFixed(3)} €/L · {FUEL_LABELS[result.fuel]}
+                                            <br />
+                                            Repostar {s.liters.toFixed(0)} L · {s.cost.toFixed(2)} €
                                         </Popup>
                                     </CircleMarker>
                                 ))}

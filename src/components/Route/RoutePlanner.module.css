@@ -247,6 +247,24 @@
     color: var(--text-muted);
 }
 
+.stopRefuel {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.3rem;
+    font-size: 0.78rem;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.stopRefuel .material-symbols-outlined {
+    font-size: 1rem;
+}
+
+.stopRefuel b {
+    color: var(--primary);
+}
+
 .stopPrice {
     text-align: right;
     flex-shrink: 0;
