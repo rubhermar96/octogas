@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { MapContainer, TileLayer, Polyline, CircleMarker, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -17,6 +17,7 @@ import {
     type FuelPlan,
 } from '../../lib/route';
 import BrandLogo from '../Explorer/BrandLogo';
+import BrandFilter, { type BrandOption } from '../Explorer/BrandFilter';
 import styles from './RoutePlanner.module.css';
 
 const ROUTE_FUELS: FuelType[] = [...MAIN_FUELS, 'glp'];
@@ -95,6 +96,7 @@ const RoutePlanner: React.FC = () => {
     const [startPct, setStartPct] = useState(80);
     const [priority, setPriority] = useState<Priority>('cheap');
     const [stopsMode, setStopsMode] = useState<StopsMode>('auto');
+    const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<RouteData | null>(null);
@@ -118,6 +120,15 @@ const RoutePlanner: React.FC = () => {
     const removeWaypoint = (i: number) => setWaypoints((w) => w.filter((_, idx) => idx !== i));
     const updateWaypoint = (i: number, val: string) =>
         setWaypoints((w) => w.map((x, idx) => (idx === i ? val : x)));
+
+    // Marcas disponibles (con conteo) para restringir dónde repostar.
+    const brandOptions = useMemo<BrandOption[]>(() => {
+        const counts = new Map<string, number>();
+        for (const s of allStations) counts.set(s.brand, (counts.get(s.brand) ?? 0) + 1);
+        return [...counts.entries()]
+            .map(([brand, count]) => ({ brand, count }))
+            .sort((a, b) => b.count - a.count);
+    }, [allStations]);
 
     const buildPlan = (
         corridor: CorridorStation[],
@@ -160,9 +171,18 @@ const RoutePlanner: React.FC = () => {
             const baseRoute = await getRouteMulti([a, ...customStops, b]);
             if (!baseRoute) throw new Error('No se pudo calcular la ruta entre esos puntos.');
 
-            const corridor = findCorridorStations(allStations, baseRoute.coords, fuel);
-            if (corridor.length === 0) {
+            const corridorRaw = findCorridorStations(allStations, baseRoute.coords, fuel);
+            if (corridorRaw.length === 0) {
                 throw new Error('No hay gasolineras con ese combustible cerca de la ruta.');
+            }
+            // Si has elegido marcas, solo repostamos en ellas.
+            const corridor = selectedBrands.size
+                ? corridorRaw.filter((s) => selectedBrands.has(s.brand))
+                : corridorRaw;
+            if (corridor.length === 0) {
+                throw new Error(
+                    'No hay gasolineras de las marcas elegidas cerca de la ruta. Prueba a quitar el filtro de marcas.'
+                );
             }
             const corridorAvg = corridor.reduce((s, x) => s + x.price, 0) / corridor.length;
 
@@ -294,6 +314,11 @@ const RoutePlanner: React.FC = () => {
                             ))}
                         </div>
                     </div>
+                </div>
+
+                <div className={styles.field}>
+                    <label>Repostar solo en estas marcas (opcional)</label>
+                    <BrandFilter options={brandOptions} selected={selectedBrands} onChange={setSelectedBrands} />
                 </div>
 
                 <div className={styles.row}>
