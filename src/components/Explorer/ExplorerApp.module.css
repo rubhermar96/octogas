@@ -136,27 +136,31 @@
         flex-direction: column;
     }
 
-    .sidebarPanel {
-        width: 100% !important;
-        height: 55vh;
-        order: 2;
-    }
-
-    .mapArea {
-        order: 1;
-        height: 45vh;
-    }
-
     .splitter {
         display: none;
     }
 
-    /* Mapa colapsado en móvil: listado a pantalla completa */
-    .collapsed .sidebarPanel {
-        height: 100vh !important;
+    /* Listado siempre a pantalla completa en móvil */
+    .sidebarPanel {
+        width: 100% !important;
+        height: 100vh;
+    }
+
+    /* El mapa se muestra como overlay a pantalla completa (no un split apretado) */
+    .mapArea {
+        position: fixed;
+        inset: 0;
+        width: 100vw !important;
+        height: 100vh;
+        z-index: 60;
     }
 
     .collapsed .mapArea {
         display: none;
+    }
+
+    .hideMapBtn {
+        top: 0.75rem;
+        left: 0.75rem;
     }
 }

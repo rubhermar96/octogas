@@ -90,14 +90,32 @@ const BoundsReporter = ({ onBoundsChange }: { onBoundsChange: (bounds: L.LatLngB
     return null;
 };
 
-// Vuela a la estación seleccionada desde el listado.
-const SelectionController = ({ station }: { station: GasStation | null }) => {
+// Vuela a la estación seleccionada desde el listado (solo si el mapa es visible).
+const SelectionController = ({ station, active }: { station: GasStation | null; active: boolean }) => {
     const map = useMap();
-    useEffect(() => {
-        if (station) {
+    const wasVisible = useRef(map.getSize().x > 0);
+
+    const focus = () => {
+        if (station && active && map.getSize().x > 0) {
             map.flyTo([station.lat, station.lng], Math.max(map.getZoom(), 15), { duration: 0.8 });
         }
-    }, [station, map]);
+    };
+
+    useEffect(() => {
+        // Evita operar sobre un mapa oculto (tamaño 0) -> evita crash en móvil.
+        focus();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [station, active, map]);
+
+    // Cuando el mapa pasa de oculto a visible (p. ej. "Ver mapa" en móvil), enfocamos.
+    useMapEvents({
+        resize: () => {
+            const visible = map.getSize().x > 0;
+            if (visible && !wasVisible.current) focus();
+            wasVisible.current = visible;
+        },
+    });
+
     return null;
 };
 
@@ -124,6 +142,8 @@ interface MainMapProps {
     fuelType?: FuelType;
     selectedId?: string | null;
     onSelectStation?: (id: string | null) => void;
+    /** Si el mapa está visible. Cuando es false, no se vuela/abre popup (evita crash con mapa oculto). */
+    active?: boolean;
 }
 
 const StationPopup: React.FC<{ station: GasStation; fuelType: FuelType }> = ({ station, fuelType }) => {
@@ -168,7 +188,8 @@ const MainMap: React.FC<MainMapProps> = ({
     onBoundsChange,
     fuelType = 'sp95',
     selectedId = null,
-    onSelectStation
+    onSelectStation,
+    active = true
 }) => {
     const [visibleStations, setVisibleStations] = useState<GasStation[]>([]);
     const [bounds, setBounds] = useState<L.LatLngBounds | null>(null);
@@ -198,12 +219,12 @@ const MainMap: React.FC<MainMapProps> = ({
         [stations, selectedId]
     );
 
-    // Al seleccionar una estación, abrimos su popup en el mapa.
+    // Al seleccionar una estación (con el mapa visible), abrimos su popup.
     useEffect(() => {
-        if (selectedStation && selectedMarkerRef.current) {
+        if (active && selectedStation && selectedMarkerRef.current) {
             selectedMarkerRef.current.openPopup();
         }
-    }, [selectedStation]);
+    }, [selectedStation, active]);
 
     const getColor = (price: number | null) => {
         if (!price) return '#94a3b8';
@@ -231,7 +252,7 @@ const MainMap: React.FC<MainMapProps> = ({
                 />
 
                 <ResizeHandler />
-                <SelectionController station={selectedStation} />
+                <SelectionController station={selectedStation} active={active} />
 
                 {!disableGeolocation && <LocationController onBoundsChange={handleLocalBoundsChange} onLocate={setUserPos} />}
                 {disableGeolocation && <BoundsReporter onBoundsChange={handleLocalBoundsChange} />}

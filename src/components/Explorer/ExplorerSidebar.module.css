@@ -62,17 +62,11 @@
     gap: 1.25rem;
     background-color: var(--bg);
     flex-shrink: 0;
-    max-height: 320px;
     overflow: hidden;
-    transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.25s ease;
 }
 
-.controlsHidden {
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    opacity: 0;
-    border-bottom-color: transparent;
+.controls.controlsHidden {
+    display: none;
 }
 
 .controlGroup {

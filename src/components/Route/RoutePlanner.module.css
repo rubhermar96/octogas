@@ -263,6 +263,139 @@
     color: var(--text-muted);
 }
 
+.range {
+    width: 100%;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.hint {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+/* Análisis del depósito */
+.tankBox {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--primary);
+    border-radius: 0.875rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.tankBox .material-symbols-outlined {
+    color: var(--primary);
+    font-size: 1.5rem;
+}
+
+.tankBox p {
+    margin: 0;
+    color: var(--text-muted);
+    line-height: 1.55;
+    font-size: 0.9rem;
+}
+
+.tankBox b {
+    color: var(--text);
+}
+
+.warn {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.deltaGood {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.deltaBad {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+/* Comparativa */
+.compare {
+    margin-top: 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.875rem;
+    padding: 1.1rem 1.25rem;
+}
+
+.compare h3 {
+    font-family: var(--font-header);
+    font-size: 1rem;
+    margin: 0 0 0.75rem;
+}
+
+.compare table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.compare th {
+    text-align: left;
+    color: var(--text-muted);
+    font-weight: 700;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.3rem 0.4rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.compare td {
+    padding: 0.5rem 0.4rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+}
+
+.compare tbody tr:first-child td {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.baselineRow td {
+    color: var(--text-muted) !important;
+    font-weight: 500 !important;
+}
+
+.compareNote {
+    margin: 0.75rem 0 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.compareNote b {
+    color: var(--primary);
+}
+
+.noStops {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 0.5rem;
+    padding: 2rem;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.875rem;
+}
+
+.noStops .material-symbols-outlined {
+    font-size: 2.5rem;
+    color: var(--primary);
+}
+
 .mapBox {
     height: 520px;
     border-radius: 1rem;

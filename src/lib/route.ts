@@ -110,6 +110,56 @@ export function findCorridorStations(
     return result;
 }
 
+export interface FuelPlan {
+    fuelNeeded: number;     // litros que consume el viaje
+    startLiters: number;    // litros con los que sales
+    usableStart: number;    // litros de salida utilizables (descontada la reserva)
+    startRangeKm: number;   // km que puedes recorrer con el combustible de salida
+    maxRangeKm: number;     // autonomía con depósito lleno (descontada la reserva)
+    canMakeItNoStops: boolean;
+    minStops: number;       // paradas mínimas necesarias
+    litersToBuy: number;    // litros que necesitas comprar en el viaje
+    reserveLiters: number;
+}
+
+/** Modelo de depósito: autonomía, paradas mínimas y litros a repostar. */
+export function computeFuelPlan(params: {
+    distanceKm: number;
+    consumption: number; // L/100km
+    capacity: number; // L
+    startPct: number; // 0..100
+    reservePct?: number; // % a no bajar (def. 10)
+}): FuelPlan {
+    const reservePct = params.reservePct ?? 10;
+    const fuelNeeded = (params.distanceKm * params.consumption) / 100;
+    const startLiters = (params.capacity * params.startPct) / 100;
+    const reserveLiters = (params.capacity * reservePct) / 100;
+    const usableStart = Math.max(0, startLiters - reserveLiters);
+    const startRangeKm = (usableStart / params.consumption) * 100;
+    const fullUsable = Math.max(0.1, params.capacity * (1 - reservePct / 100));
+    const maxRangeKm = (fullUsable / params.consumption) * 100;
+    const canMakeItNoStops = fuelNeeded <= usableStart;
+
+    let minStops = 0;
+    if (!canMakeItNoStops) {
+        const remaining = params.distanceKm - startRangeKm;
+        minStops = Math.max(1, Math.ceil(remaining / maxRangeKm));
+    }
+    const litersToBuy = Math.max(0, fuelNeeded - usableStart);
+
+    return {
+        fuelNeeded,
+        startLiters,
+        usableStart,
+        startRangeKm,
+        maxRangeKm,
+        canMakeItNoStops,
+        minStops,
+        litersToBuy,
+        reserveLiters,
+    };
+}
+
 /** Penalización por km de desvío según prioridad (€ equivalentes por km). */
 const DETOUR_PENALTY: Record<Priority, number> = {
     cheap: 0.01,
