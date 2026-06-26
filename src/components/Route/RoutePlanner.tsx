@@ -60,6 +60,7 @@ interface RouteData {
     origin: { lat: number; lng: number; label: string };
     destination: { lat: number; lng: number; label: string };
     customStops: GeoResult[];
+    orderedPoints: { lat: number; lng: number; label: string; type: 'wp' | 'fuel' }[];
     corridorAvg: number;
     fuelPlan: FuelPlan;
     nStops: number;
@@ -88,6 +89,52 @@ const fmtDuration = (min: number) => {
     const m = total % 60;
     return h > 0 ? `${h} h ${m} min` : `${m} min`;
 };
+
+/** Enlace de Google Maps con las paradas (repostajes incluidos) como waypoints. */
+function googleMapsUrl(r: RouteData): string {
+    const base =
+        `https://www.google.com/maps/dir/?api=1` +
+        `&origin=${r.origin.lat},${r.origin.lng}` +
+        `&destination=${r.destination.lat},${r.destination.lng}` +
+        `&travelmode=driving`;
+    const wp = r.orderedPoints.map((p) => `${p.lat},${p.lng}`).join('|');
+    return wp ? `${base}&waypoints=${encodeURIComponent(wp)}` : base;
+}
+
+/** Texto resumen para compartir (WhatsApp, etc.). */
+function buildShareText(r: RouteData): string {
+    const lines: string[] = [];
+    lines.push(`🚗 Ruta OCTO: ${r.origin.label.split(',')[0]} → ${r.destination.label.split(',')[0]}`);
+    lines.push(
+        `📏 ${r.distanceKm.toFixed(0)} km · ⏱️ ${fmtDuration(r.durationMin)} · ⛽ ${r.fuelPlan.fuelNeeded.toFixed(0)} L (~${r.tripFuelCost.toFixed(2)} €)`
+    );
+    if (r.hasToll) lines.push('⚠️ Incluye peajes');
+    if (r.recommended.picks.length > 0) {
+        lines.push('', 'Repostajes recomendados:');
+        r.recommended.picks.forEach((s, i) => {
+            lines.push(
+                `${i + 1}. ${s.name} (${s.city}) — ${s.price.toFixed(3)} €/L · repostar ${s.liters.toFixed(0)} L (${s.cost.toFixed(2)} €)`
+            );
+        });
+    }
+    lines.push('', `🗺️ ${googleMapsUrl(r)}`, 'Calculado con OCTO ⛽');
+    return lines.join('\n');
+}
+
+async function shareRoute(r: RouteData) {
+    const text = buildShareText(r);
+    const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
+    if (nav.share) {
+        try {
+            await nav.share({ title: 'Ruta OCTO', text });
+            return;
+        } catch {
+            return; // el usuario canceló
+        }
+    }
+    // Sin Web Share API (p. ej. escritorio): abrimos WhatsApp.
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+}
 
 const RoutePlanner: React.FC = () => {
     const [allStations, setAllStations] = useState<GasStation[]>([]);
@@ -225,18 +272,31 @@ const RoutePlanner: React.FC = () => {
             const cheapPlan = nStops > 0 ? buildPlan(corridor, nStops, 'cheap', ctx) : null;
             const fastPlan = nStops > 0 ? buildPlan(corridor, nStops, 'fast', ctx) : null;
 
-            // Ruta final: pasa también por los repostajes recomendados (en orden a lo largo del trayecto).
+            // Puntos intermedios ordenados (paradas tuyas + repostajes) a lo largo de la ruta.
+            const orderedPoints = [
+                ...customStops.map((c) => ({
+                    lat: c.lat,
+                    lng: c.lng,
+                    label: c.label.split(",")[0],
+                    type: "wp" as const,
+                    progress: progressOnRoute(baseRoute.coords, c.lat, c.lng),
+                })),
+                ...recommended.picks.map((s) => ({
+                    lat: s.lat,
+                    lng: s.lng,
+                    label: s.name,
+                    type: "fuel" as const,
+                    progress: s.progress,
+                })),
+            ].sort((x, y) => x.progress - y.progress);
+
+            // Ruta final: pasa también por los repostajes recomendados.
             let finalRoute = baseRoute;
-            if (recommended.picks.length > 0) {
-                const intermediates = [
-                    ...customStops.map((c) => ({
-                        lat: c.lat,
-                        lng: c.lng,
-                        progress: progressOnRoute(baseRoute.coords, c.lat, c.lng),
-                    })),
-                    ...recommended.picks.map((s) => ({ lat: s.lat, lng: s.lng, progress: s.progress })),
-                ].sort((x, y) => x.progress - y.progress);
-                const routed = await getRouteMulti([a, ...intermediates, b], { avoidTolls });
+            if (orderedPoints.length > 0) {
+                const routed = await getRouteMulti(
+                    [a, ...orderedPoints.map((p) => ({ lat: p.lat, lng: p.lng })), b],
+                    { avoidTolls }
+                );
                 if (routed) finalRoute = routed;
             }
 
@@ -247,6 +307,7 @@ const RoutePlanner: React.FC = () => {
                 origin: a,
                 destination: b,
                 customStops,
+                orderedPoints: orderedPoints.map(({ lat, lng, label, type }) => ({ lat, lng, label, type })),
                 corridorAvg,
                 fuelPlan,
                 nStops,
@@ -270,6 +331,9 @@ const RoutePlanner: React.FC = () => {
     return (
         <div className={styles.wrapper}>
             <div className={styles.intro}>
+                <a href="/" className={styles.brand} title="Volver al inicio">
+                    <img src="/images/logo-octo.png" alt="OCTO" className={styles.brandLogo} />
+                </a>
                 <h1>Planificador de viajes</h1>
                 <p>
                     Indica tu trayecto, tu coche y tu depósito, y calculamos dónde y cuánto repostar
@@ -485,6 +549,23 @@ const RoutePlanner: React.FC = () => {
                             <span>Ruta <b>sin peajes</b>.</span>
                         </div>
                     )}
+
+                    {/* Exportar / compartir */}
+                    <div className={styles.actions}>
+                        <a
+                            className={styles.gmapsBtn}
+                            href={googleMapsUrl(result)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <span className="material-symbols-outlined">map</span>
+                            Abrir en Google Maps
+                        </a>
+                        <button type="button" className={styles.shareBtn} onClick={() => shareRoute(result)}>
+                            <span className="material-symbols-outlined">share</span>
+                            Compartir
+                        </button>
+                    </div>
 
                     {/* Análisis del depósito */}
                     <div className={styles.tankBox}>
