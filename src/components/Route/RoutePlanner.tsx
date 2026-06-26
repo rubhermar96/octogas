@@ -63,6 +63,8 @@ interface RouteData {
     corridorAvg: number;
     fuelPlan: FuelPlan;
     nStops: number;
+    hasToll?: boolean;
+    avoidedTolls: boolean;
     recommended: PlanOption;
     tripFuelCost: number;
     baselineCost: number;
@@ -99,6 +101,7 @@ const RoutePlanner: React.FC = () => {
     const [arrivePct, setArrivePct] = useState(15);
     const [priority, setPriority] = useState<Priority>('cheap');
     const [stopsMode, setStopsMode] = useState<StopsMode>('auto');
+    const [avoidTolls, setAvoidTolls] = useState(false);
     const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -178,7 +181,7 @@ const RoutePlanner: React.FC = () => {
             }
 
             // Ruta base: pasa por tus paradas propias (p. ej. donde vas a comer).
-            const baseRoute = await getRouteMulti([a, ...customStops, b]);
+            const baseRoute = await getRouteMulti([a, ...customStops, b], { avoidTolls });
             if (!baseRoute) throw new Error('No se pudo calcular la ruta entre esos puntos.');
 
             const corridorRaw = findCorridorStations(allStations, baseRoute.coords, fuel);
@@ -233,7 +236,7 @@ const RoutePlanner: React.FC = () => {
                     })),
                     ...recommended.picks.map((s) => ({ lat: s.lat, lng: s.lng, progress: s.progress })),
                 ].sort((x, y) => x.progress - y.progress);
-                const routed = await getRouteMulti([a, ...intermediates, b]);
+                const routed = await getRouteMulti([a, ...intermediates, b], { avoidTolls });
                 if (routed) finalRoute = routed;
             }
 
@@ -247,6 +250,8 @@ const RoutePlanner: React.FC = () => {
                 corridorAvg,
                 fuelPlan,
                 nStops,
+                hasToll: finalRoute.hasToll ?? baseRoute.hasToll,
+                avoidedTolls: avoidTolls,
                 recommended,
                 tripFuelCost,
                 baselineCost,
@@ -412,6 +417,12 @@ const RoutePlanner: React.FC = () => {
                     </div>
                 </div>
 
+                <label className={styles.toggle}>
+                    <input type="checkbox" checked={avoidTolls} onChange={(e) => setAvoidTolls(e.target.checked)} />
+                    <span className="material-symbols-outlined">toll</span>
+                    Evitar peajes
+                </label>
+
                 {error && <div className={styles.error}>{error}</div>}
 
                 <button className={styles.submit} type="submit" disabled={loading || allStations.length === 0}>
@@ -456,6 +467,24 @@ const RoutePlanner: React.FC = () => {
                             <span className={styles.statValue}>{result.savings.toFixed(2)} <small>€</small></span>
                         </div>
                     </div>
+
+                    {/* Aviso de peajes */}
+                    {result.hasToll === true && (
+                        <div className={styles.tollWarn}>
+                            <span className="material-symbols-outlined">toll</span>
+                            <span>
+                                Esta ruta incluye <b>peajes</b>.
+                                {result.avoidedTolls && ' No se han podido evitar todos en este trayecto.'}
+                                {' '}El coste de peaje no se incluye en las cifras.
+                            </span>
+                        </div>
+                    )}
+                    {result.hasToll === false && result.avoidedTolls && (
+                        <div className={styles.tollOk}>
+                            <span className="material-symbols-outlined">check_circle</span>
+                            <span>Ruta <b>sin peajes</b>.</span>
+                        </div>
+                    )}
 
                     {/* Análisis del depósito */}
                     <div className={styles.tankBox}>

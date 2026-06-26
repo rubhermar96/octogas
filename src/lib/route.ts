@@ -14,6 +14,41 @@ export interface RouteResult {
     coords: [number, number][]; // [lat, lng]
     distanceKm: number;
     durationMin: number;
+    hasToll?: boolean; // si la ruta usa peajes (solo disponible con Valhalla)
+}
+
+export interface RouteOptions {
+    avoidTolls?: boolean;
+}
+
+/** Decodifica la geometría de Valhalla (polyline con precisión 6). */
+function decodePolyline6(str: string): [number, number][] {
+    let index = 0,
+        lat = 0,
+        lng = 0;
+    const coords: [number, number][] = [];
+    const factor = 1e6;
+    while (index < str.length) {
+        let shift = 0,
+            result = 0,
+            byte: number;
+        do {
+            byte = str.charCodeAt(index++) - 63;
+            result |= (byte & 0x1f) << shift;
+            shift += 5;
+        } while (byte >= 0x20);
+        lat += result & 1 ? ~(result >> 1) : result >> 1;
+        shift = 0;
+        result = 0;
+        do {
+            byte = str.charCodeAt(index++) - 63;
+            result |= (byte & 0x1f) << shift;
+            shift += 5;
+        } while (byte >= 0x20);
+        lng += result & 1 ? ~(result >> 1) : result >> 1;
+        coords.push([lat / factor, lng / factor]);
+    }
+    return coords;
 }
 
 /** Geocodifica una dirección/municipio en España con Nominatim (OpenStreetMap). */
@@ -32,14 +67,50 @@ export async function geocode(query: string): Promise<GeoResult | null> {
     };
 }
 
-/** Calcula la ruta en coche entre dos puntos con OSRM (demo público). */
-export async function getRoute(a: GeoPoint, b: GeoPoint): Promise<RouteResult | null> {
-    return getRouteMulti([a, b]);
+/** Calcula la ruta en coche entre dos puntos. */
+export async function getRoute(a: GeoPoint, b: GeoPoint, opts: RouteOptions = {}): Promise<RouteResult | null> {
+    return getRouteMulti([a, b], opts);
 }
 
-/** Calcula la ruta en coche pasando por varios puntos en orden (origen, paradas…, destino). */
-export async function getRouteMulti(points: GeoPoint[]): Promise<RouteResult | null> {
+/**
+ * Calcula la ruta pasando por varios puntos en orden. Usa Valhalla (gratis, sin
+ * clave) para soportar "evitar peajes" y detectar si la ruta los usa; si falla,
+ * cae a OSRM (sin info de peajes).
+ */
+export async function getRouteMulti(points: GeoPoint[], opts: RouteOptions = {}): Promise<RouteResult | null> {
     if (points.length < 2) return null;
+    try {
+        const body = {
+            locations: points.map((p) => ({ lat: p.lat, lon: p.lng })),
+            costing: 'auto',
+            costing_options: { auto: { use_tolls: opts.avoidTolls ? 0 : 1 } },
+            units: 'kilometers',
+        };
+        const res = await fetch('https://valhalla1.openstreetmap.de/route', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.trip?.legs?.length) {
+                const coords = (data.trip.legs as any[]).flatMap((l) => decodePolyline6(l.shape));
+                return {
+                    coords,
+                    distanceKm: data.trip.summary.length,
+                    durationMin: data.trip.summary.time / 60,
+                    hasToll: !!data.trip.summary.has_toll,
+                };
+            }
+        }
+    } catch {
+        // Si Valhalla falla, usamos OSRM como respaldo.
+    }
+    return getRouteOSRM(points);
+}
+
+/** Respaldo con OSRM (no informa de peajes). */
+async function getRouteOSRM(points: GeoPoint[]): Promise<RouteResult | null> {
     const coordsStr = points.map((p) => `${p.lng},${p.lat}`).join(';');
     const url = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`;
     const res = await fetch(url);
