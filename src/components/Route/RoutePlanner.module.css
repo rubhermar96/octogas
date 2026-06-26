@@ -141,6 +141,57 @@
     font-size: 0.85rem;
 }
 
+.toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+    align-self: flex-start;
+}
+
+.toggle input {
+    width: 1.05rem;
+    height: 1.05rem;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.toggle .material-symbols-outlined {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+}
+
+.tollWarn,
+.tollOk {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.7rem;
+    font-size: 0.85rem;
+    margin-bottom: 1.5rem;
+}
+
+.tollWarn {
+    color: var(--accent);
+    background: rgba(251, 146, 60, 0.12);
+    border: 1px solid rgba(251, 146, 60, 0.3);
+}
+
+.tollOk {
+    color: var(--primary);
+    background: rgba(52, 211, 153, 0.12);
+    border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.tollWarn b,
+.tollOk b {
+    font-weight: 800;
+}
+
 /* Resultados */
 .results {
     margin-top: 2.5rem;
