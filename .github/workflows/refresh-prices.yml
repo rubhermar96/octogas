@@ -1,0 +1,27 @@
+name: Refrescar precios
+
+# Dispara un build de Netlify según un horario. El build de Netlify ejecuta
+# `npm run update-data && npm run build`, así que vuelve a descargar los precios
+# del Ministerio y republica el sitio. No se versiona ningún dato.
+
+on:
+  schedule:
+    # OJO: GitHub usa horario UTC. España es UTC+1 (invierno) / UTC+2 (verano).
+    # Por defecto: 06:00 y 14:00 UTC (~8:00 y 16:00 en España en verano).
+    - cron: "0 6 * * *"
+    - cron: "0 14 * * *"
+  # Permite lanzarlo a mano desde la pestaña Actions de GitHub.
+  workflow_dispatch: {}
+
+jobs:
+  trigger-netlify-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disparar build de Netlify
+        run: |
+          if [ -z "${{ secrets.NETLIFY_BUILD_HOOK }}" ]; then
+            echo "Falta el secreto NETLIFY_BUILD_HOOK."
+            exit 1
+          fi
+          curl -fsSL -X POST -d '{}' "${{ secrets.NETLIFY_BUILD_HOOK }}"
+          echo "Build de Netlify disparado."
