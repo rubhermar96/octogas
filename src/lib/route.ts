@@ -224,36 +224,68 @@ export function allocateRefuels(
     return out;
 }
 
-/** Penalización por km de desvío según prioridad (€ equivalentes por km). */
-const DETOUR_PENALTY: Record<Priority, number> = {
-    cheap: 0.01,
-    balanced: 0.05,
-    fast: 0.2,
+// Pesos relativos de precio vs. tiempo según la prioridad (sobre valores 0..1).
+const PRIORITY_WEIGHTS: Record<Priority, { price: number; time: number }> = {
+    cheap: { price: 1, time: 0.1 },
+    balanced: { price: 0.5, time: 0.5 },
+    fast: { price: 0.1, time: 1 },
 };
 
+// "Coste" en km de hacer una parada dedicada solo para repostar.
+const DEDICATED_STOP_KM = 6;
+// Si estás a <= esta distancia de una parada tuya, repostar ahí no añade tiempo.
+const NEAR_WAYPOINT_KM = 4;
+
 /**
- * Selecciona las paradas de repostaje recomendadas a lo largo de la ruta.
- * Divide la ruta en tramos y elige en cada uno la estación con mejor puntuación
- * (precio + penalización por desvío según la prioridad).
+ * Selecciona las paradas de repostaje a lo largo de la ruta según la prioridad.
+ * - "barato": minimiza el precio.
+ * - "rápido": minimiza el tiempo perdido (desvío + parada). Si pasas cerca de una
+ *   parada tuya (p. ej. un restaurante), repostar ahí no cuesta tiempo y se prefiere.
+ * - "equilibrado": mezcla ambos.
+ * Precio y tiempo se normalizan a 0..1 para poder combinarlos de forma justa.
  */
 export function pickStops(
     corridor: CorridorStation[],
     stops: number,
-    priority: Priority
+    priority: Priority,
+    waypoints: GeoPoint[] = []
 ): CorridorStation[] {
     if (corridor.length === 0 || stops <= 0) return [];
-    const penalty = DETOUR_PENALTY[priority];
-    const scored = corridor.map((s) => ({ s, score: s.price + s.detourKm * penalty }));
+
+    const nearestWaypointKm = (s: CorridorStation) =>
+        waypoints.length
+            ? Math.min(...waypoints.map((w) => getDistance(s.lat, s.lng, w.lat, w.lng)))
+            : Infinity;
+
+    // Coste de tiempo (km equivalentes): desvío + penalización si es parada dedicada.
+    const enriched = corridor.map((s) => {
+        const convenient = nearestWaypointKm(s) <= NEAR_WAYPOINT_KM;
+        const timeCost = s.detourKm + (convenient ? 0 : DEDICATED_STOP_KM);
+        return { s, price: s.price, timeCost };
+    });
+
+    const prices = enriched.map((e) => e.price);
+    const times = enriched.map((e) => e.timeCost);
+    const pMin = Math.min(...prices), pMax = Math.max(...prices);
+    const tMin = Math.min(...times), tMax = Math.max(...times);
+    const norm = (v: number, lo: number, hi: number) => (hi > lo ? (v - lo) / (hi - lo) : 0);
+
+    const w = PRIORITY_WEIGHTS[priority];
+    const scored = enriched.map((e) => ({
+        s: e.s,
+        score: w.price * norm(e.price, pMin, pMax) + w.time * norm(e.timeCost, tMin, tMax),
+    }));
 
     const picks: CorridorStation[] = [];
     for (let k = 0; k < stops; k++) {
-        // Tramo k de la ruta (reparte las paradas a lo largo del trayecto).
         const lo = k / stops;
         const hi = (k + 1) / stops;
-        const inSegment = scored.filter((x) => x.s.progress >= lo && x.s.progress < hi);
-        const pool = inSegment.length > 0 ? inSegment : scored;
+        const available = scored.filter((x) => !picks.some((p) => p.id === x.s.id));
+        const inSegment = available.filter((x) => x.s.progress >= lo && x.s.progress < hi);
+        const pool = inSegment.length > 0 ? inSegment : available;
+        if (pool.length === 0) break;
         const best = pool.reduce((a, b) => (b.score < a.score ? b : a));
-        if (!picks.find((p) => p.id === best.s.id)) picks.push(best.s);
+        picks.push(best.s);
     }
     return picks.sort((a, b) => a.progress - b.progress);
 }

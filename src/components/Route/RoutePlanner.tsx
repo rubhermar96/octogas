@@ -64,6 +64,7 @@ interface RouteData {
     fuelPlan: FuelPlan;
     nStops: number;
     recommended: PlanOption;
+    tripFuelCost: number;
     baselineCost: number;
     savings: number;
     cheapPlan: PlanOption | null;
@@ -136,9 +137,9 @@ const RoutePlanner: React.FC = () => {
         corridor: ReturnType<typeof findCorridorStations>,
         n: number,
         prio: Priority,
-        ctx: { totalDistanceKm: number; startLiters: number }
+        ctx: { totalDistanceKm: number; startLiters: number; waypoints: { lat: number; lng: number }[] }
     ): PlanOption => {
-        const raw = pickStops(corridor, n, prio);
+        const raw = pickStops(corridor, n, prio, ctx.waypoints);
         const picks = allocateRefuels(raw, {
             totalDistanceKm: ctx.totalDistanceKm,
             consumption,
@@ -205,11 +206,18 @@ const RoutePlanner: React.FC = () => {
 
             const nStops = stopsMode === 'auto' ? fuelPlan.minStops : parseInt(stopsMode, 10);
             const litersToBuy = fuelPlan.litersToBuy;
-            const ctx = { totalDistanceKm: baseRoute.distanceKm, startLiters: fuelPlan.startLiters };
+            const ctx = {
+                totalDistanceKm: baseRoute.distanceKm,
+                startLiters: fuelPlan.startLiters,
+                waypoints: customStops.map((c) => ({ lat: c.lat, lng: c.lng })),
+            };
 
             const recommended = buildPlan(corridor, nStops, priority, ctx);
             const baselineCost = nStops > 0 ? litersToBuy * corridorAvg : 0;
             const savings = Math.max(0, baselineCost - recommended.cost);
+            // Coste de combustible de TODO el viaje (litros consumidos × precio representativo).
+            const repPrice = recommended.avgPrice || corridorAvg;
+            const tripFuelCost = fuelPlan.fuelNeeded * repPrice;
 
             const cheapPlan = nStops > 0 ? buildPlan(corridor, nStops, 'cheap', ctx) : null;
             const fastPlan = nStops > 0 ? buildPlan(corridor, nStops, 'fast', ctx) : null;
@@ -240,6 +248,7 @@ const RoutePlanner: React.FC = () => {
                 fuelPlan,
                 nStops,
                 recommended,
+                tripFuelCost,
                 baselineCost,
                 savings,
                 cheapPlan,
@@ -433,6 +442,10 @@ const RoutePlanner: React.FC = () => {
                         <div className={styles.stat}>
                             <span className={styles.statLabel}>Combustible</span>
                             <span className={styles.statValue}>{result.fuelPlan.fuelNeeded.toFixed(1)} <small>L</small></span>
+                        </div>
+                        <div className={`${styles.stat} ${styles.tripCost}`}>
+                            <span className={styles.statLabel}>Coste del viaje</span>
+                            <span className={styles.statValue}>{result.tripFuelCost.toFixed(2)} <small>€</small></span>
                         </div>
                         <div className={styles.stat}>
                             <span className={styles.statLabel}>{result.nStops > 0 ? 'Coste repostaje' : 'Coste'}</span>
