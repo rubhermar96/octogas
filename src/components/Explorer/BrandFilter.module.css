@@ -1,0 +1,124 @@
+.wrapper {
+    position: relative;
+}
+
+.trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    color: var(--text);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.trigger .material-symbols-outlined {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+}
+
+.summary {
+    flex: 1;
+    text-align: left;
+    color: var(--text);
+}
+
+.chevron {
+    margin-left: auto;
+}
+
+.dropdown {
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.6rem;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+    padding: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.search {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 0.45rem;
+    padding: 0.5rem 0.6rem;
+    color: var(--text);
+    font-size: 0.8rem;
+    outline: none;
+}
+
+.search:focus {
+    border-color: var(--primary);
+}
+
+.clear {
+    text-align: left;
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0.1rem 0.2rem;
+}
+
+.list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.item {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.45rem 0.4rem;
+    border-radius: 0.4rem;
+    cursor: pointer;
+    font-size: 0.82rem;
+}
+
+.item:hover {
+    background: var(--bg);
+}
+
+.item input {
+    accent-color: var(--primary);
+    pointer-events: none;
+}
+
+.brandName {
+    flex: 1;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.count {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    background: var(--bg);
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+}
+
+.empty {
+    padding: 0.75rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}

@@ -4,6 +4,7 @@ import type { SortType } from './ExplorerApp';
 import { FUEL_LABELS, MAIN_FUELS, OTHER_FUELS, FUEL_ORDER } from '../../lib/fuels';
 import { getDistance } from '../../lib/geo';
 import BrandLogo from './BrandLogo';
+import BrandFilter, { type BrandOption } from './BrandFilter';
 import styles from './ExplorerSidebar.module.css';
 
 interface ExplorerSidebarProps {
@@ -13,6 +14,9 @@ interface ExplorerSidebarProps {
     sortType: SortType;
     selectedId: string | null;
     wide: boolean;
+    brandOptions: BrandOption[];
+    selectedBrands: Set<string>;
+    onBrandsChange: (next: Set<string>) => void;
     onFuelTypeChange: (type: FuelType) => void;
     onSortTypeChange: (type: SortType) => void;
     onSelectStation: (id: string | null) => void;
@@ -30,6 +34,9 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
     sortType,
     selectedId,
     wide,
+    brandOptions,
+    selectedBrands,
+    onBrandsChange,
     onFuelTypeChange,
     onSortTypeChange,
     onSelectStation,
@@ -109,6 +116,15 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
                             ))}
                         </select>
                     </div>
+                </div>
+
+                <div className={styles.controlGroup}>
+                    <label className={styles.label}>Marcas</label>
+                    <BrandFilter
+                        options={brandOptions}
+                        selected={selectedBrands}
+                        onChange={onBrandsChange}
+                    />
                 </div>
 
                 <div className={styles.controlGroup}>

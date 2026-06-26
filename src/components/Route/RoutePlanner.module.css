@@ -263,6 +263,92 @@
     color: var(--text-muted);
 }
 
+/* Paradas en la ruta */
+.wpRow {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+
+.wpRow .material-symbols-outlined {
+    color: #a855f7;
+    font-size: 1.2rem;
+}
+
+.wpRemove {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wpRemove:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.addWp {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: none;
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    align-self: flex-start;
+}
+
+.addWp:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+.addWp .material-symbols-outlined {
+    font-size: 1.1rem;
+}
+
+/* Panel de carga */
+.loadingPanel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 3rem 2rem;
+    margin-top: 2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.spinner {
+    width: 42px;
+    height: 42px;
+    border: 4px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: octoSpin 0.8s linear infinite;
+}
+
+@keyframes octoSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .range {
     width: 100%;
     accent-color: var(--primary);
