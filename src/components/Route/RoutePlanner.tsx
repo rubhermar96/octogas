@@ -90,6 +90,61 @@ const fmtDuration = (min: number) => {
     return h > 0 ? `${h} h ${m} min` : `${m} min`;
 };
 
+// --- Parámetros de la ruta en la URL (para compartir/reabrir el planificador) ---
+interface RouteInputs {
+    origin: string;
+    destination: string;
+    waypoints: string[];
+    fuel: FuelType;
+    consumption: number;
+    capacity: number;
+    startPct: number;
+    arrivePct: number;
+    priority: Priority;
+    stopsMode: StopsMode;
+    avoidTolls: boolean;
+    brands: string[];
+}
+
+function serializeInputs(v: RouteInputs): string {
+    const p = new URLSearchParams();
+    p.set('o', v.origin);
+    p.set('d', v.destination);
+    if (v.waypoints.length) p.set('w', v.waypoints.join('~'));
+    p.set('f', v.fuel);
+    p.set('c', String(v.consumption));
+    p.set('cap', String(v.capacity));
+    p.set('s', String(v.startPct));
+    p.set('a', String(v.arrivePct));
+    p.set('p', v.priority);
+    p.set('st', v.stopsMode);
+    if (v.avoidTolls) p.set('t', '1');
+    if (v.brands.length) p.set('b', v.brands.join('~'));
+    return p.toString();
+}
+
+function parseInputs(search: string): RouteInputs | null {
+    const p = new URLSearchParams(search);
+    const o = p.get('o');
+    const d = p.get('d');
+    if (!o || !d) return null;
+    const num = (key: string, def: number) => (p.get(key) != null ? Number(p.get(key)) : def);
+    return {
+        origin: o,
+        destination: d,
+        waypoints: p.get('w') ? p.get('w')!.split('~') : [],
+        fuel: (p.get('f') as FuelType) || 'sp95',
+        consumption: num('c', 6.5),
+        capacity: num('cap', 50),
+        startPct: num('s', 80),
+        arrivePct: num('a', 15),
+        priority: (p.get('p') as Priority) || 'cheap',
+        stopsMode: (p.get('st') as StopsMode) || 'auto',
+        avoidTolls: p.get('t') === '1',
+        brands: p.get('b') ? p.get('b')!.split('~') : [],
+    };
+}
+
 /** Enlace de Google Maps con las paradas (repostajes incluidos) como waypoints. */
 function googleMapsUrl(r: RouteData): string {
     const base =
@@ -101,7 +156,18 @@ function googleMapsUrl(r: RouteData): string {
     return wp ? `${base}&waypoints=${encodeURIComponent(wp)}` : base;
 }
 
-/** Texto resumen para compartir (WhatsApp, etc.). */
+/** Apple Maps: encadena las paradas con "to:" (compatibilidad variable). */
+function appleMapsUrl(r: RouteData): string {
+    const dests = [...r.orderedPoints.map((p) => `${p.lat},${p.lng}`), `${r.destination.lat},${r.destination.lng}`];
+    return `https://maps.apple.com/?saddr=${r.origin.lat},${r.origin.lng}&daddr=${encodeURIComponent(dests.join(' to:'))}&dirflg=d`;
+}
+
+/** Waze solo admite un destino: navegamos al destino final. */
+function wazeUrl(r: RouteData): string {
+    return `https://www.waze.com/ul?ll=${r.destination.lat},${r.destination.lng}&navigate=yes`;
+}
+
+/** Texto resumen para compartir (WhatsApp, etc.), con enlace para reabrir en OCTO. */
 function buildShareText(r: RouteData): string {
     const lines: string[] = [];
     lines.push(`🚗 Ruta OCTO: ${r.origin.label.split(',')[0]} → ${r.destination.label.split(',')[0]}`);
@@ -117,16 +183,18 @@ function buildShareText(r: RouteData): string {
             );
         });
     }
-    lines.push('', `🗺️ ${googleMapsUrl(r)}`, 'Calculado con OCTO ⛽');
+    lines.push('', `🐙 Abrir en OCTO: ${typeof window !== 'undefined' ? window.location.href : ''}`);
+    lines.push(`🗺️ Google Maps: ${googleMapsUrl(r)}`);
     return lines.join('\n');
 }
 
 async function shareRoute(r: RouteData) {
     const text = buildShareText(r);
+    const url = typeof window !== 'undefined' ? window.location.href : undefined;
     const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
     if (nav.share) {
         try {
-            await nav.share({ title: 'Ruta OCTO', text });
+            await nav.share({ title: 'Ruta OCTO', text, url });
             return;
         } catch {
             return; // el usuario canceló
@@ -134,6 +202,35 @@ async function shareRoute(r: RouteData) {
     }
     // Sin Web Share API (p. ej. escritorio): abrimos WhatsApp.
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+}
+
+interface PlanCtx {
+    totalDistanceKm: number;
+    startLiters: number;
+    waypoints: { lat: number; lng: number }[];
+    consumption: number;
+    capacity: number;
+    arrivePct: number;
+}
+
+function buildPlan(
+    corridor: ReturnType<typeof findCorridorStations>,
+    n: number,
+    prio: Priority,
+    ctx: PlanCtx
+): PlanOption {
+    const raw = pickStops(corridor, n, prio, ctx.waypoints);
+    const picks = allocateRefuels(raw, {
+        totalDistanceKm: ctx.totalDistanceKm,
+        consumption: ctx.consumption,
+        capacity: ctx.capacity,
+        startLiters: ctx.startLiters,
+        arrivePct: ctx.arrivePct,
+    });
+    const avgPrice = picks.length ? picks.reduce((s, x) => s + x.price, 0) / picks.length : 0;
+    const avgDetour = picks.length ? picks.reduce((s, x) => s + x.detourKm, 0) / picks.length : 0;
+    const cost = picks.reduce((s, x) => s + x.cost, 0);
+    return { picks, avgPrice, cost, avgDetour };
 }
 
 const RoutePlanner: React.FC = () => {
@@ -154,6 +251,7 @@ const RoutePlanner: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<RouteData | null>(null);
     const feedbackRef = useRef<HTMLDivElement>(null);
+    const autoRan = useRef(false);
 
     useEffect(() => {
         fetch('/data/stations.json')
@@ -183,30 +281,29 @@ const RoutePlanner: React.FC = () => {
             .sort((a, b) => b.count - a.count);
     }, [allStations]);
 
-    const buildPlan = (
-        corridor: ReturnType<typeof findCorridorStations>,
-        n: number,
-        prio: Priority,
-        ctx: { totalDistanceKm: number; startLiters: number; waypoints: { lat: number; lng: number }[] }
-    ): PlanOption => {
-        const raw = pickStops(corridor, n, prio, ctx.waypoints);
-        const picks = allocateRefuels(raw, {
-            totalDistanceKm: ctx.totalDistanceKm,
-            consumption,
-            capacity,
-            startLiters: ctx.startLiters,
-            arrivePct,
-        });
-        const avgPrice = picks.length ? picks.reduce((s, x) => s + x.price, 0) / picks.length : 0;
-        const avgDetour = picks.length ? picks.reduce((s, x) => s + x.detourKm, 0) / picks.length : 0;
-        const cost = picks.reduce((s, x) => s + x.cost, 0);
-        return { picks, avgPrice, cost, avgDetour };
+    const currentInputs = (): RouteInputs => ({
+        origin,
+        destination,
+        waypoints,
+        fuel,
+        consumption,
+        capacity,
+        startPct,
+        arrivePct,
+        priority,
+        stopsMode,
+        avoidTolls,
+        brands: [...selectedBrands],
+    });
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        runCalculation(currentInputs());
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const runCalculation = async (inp: RouteInputs) => {
         setError(null);
-        if (!origin.trim() || !destination.trim()) {
+        if (!inp.origin.trim() || !inp.destination.trim()) {
             setError('Indica origen y destino.');
             return;
         }
@@ -214,30 +311,31 @@ const RoutePlanner: React.FC = () => {
         setResult(null);
         try {
             // Geocodificamos origen, destino y las paradas propias (las que no estén vacías).
-            const wpQueries = waypoints.map((w) => w.trim()).filter(Boolean);
+            const wpQueries = inp.waypoints.map((w) => w.trim()).filter(Boolean);
             const [a, b, ...wpGeo] = await Promise.all([
-                geocode(origin),
-                geocode(destination),
+                geocode(inp.origin),
+                geocode(inp.destination),
                 ...wpQueries.map((q) => geocode(q)),
             ]);
-            if (!a) throw new Error(`No se encontró el origen "${origin}".`);
-            if (!b) throw new Error(`No se encontró el destino "${destination}".`);
+            if (!a) throw new Error(`No se encontró el origen "${inp.origin}".`);
+            if (!b) throw new Error(`No se encontró el destino "${inp.destination}".`);
             const customStops = wpGeo.filter((g): g is GeoResult => g != null);
             if (wpGeo.length !== customStops.length) {
                 throw new Error('No se encontró alguna de las paradas indicadas.');
             }
 
             // Ruta base: pasa por tus paradas propias (p. ej. donde vas a comer).
-            const baseRoute = await getRouteMulti([a, ...customStops, b], { avoidTolls });
+            const baseRoute = await getRouteMulti([a, ...customStops, b], { avoidTolls: inp.avoidTolls });
             if (!baseRoute) throw new Error('No se pudo calcular la ruta entre esos puntos.');
 
-            const corridorRaw = findCorridorStations(allStations, baseRoute.coords, fuel);
+            const corridorRaw = findCorridorStations(allStations, baseRoute.coords, inp.fuel);
             if (corridorRaw.length === 0) {
                 throw new Error('No hay gasolineras con ese combustible cerca de la ruta.');
             }
             // Si has elegido marcas, solo repostamos en ellas.
-            const corridor = selectedBrands.size
-                ? corridorRaw.filter((s) => selectedBrands.has(s.brand))
+            const brandSet = new Set(inp.brands);
+            const corridor = brandSet.size
+                ? corridorRaw.filter((s) => brandSet.has(s.brand))
                 : corridorRaw;
             if (corridor.length === 0) {
                 throw new Error(
@@ -248,21 +346,24 @@ const RoutePlanner: React.FC = () => {
 
             const fuelPlan = computeFuelPlan({
                 distanceKm: baseRoute.distanceKm,
-                consumption,
-                capacity,
-                startPct,
-                reservePct: arrivePct, // queremos llegar con esta reserva
+                consumption: inp.consumption,
+                capacity: inp.capacity,
+                startPct: inp.startPct,
+                reservePct: inp.arrivePct, // queremos llegar con esta reserva
             });
 
-            const nStops = stopsMode === 'auto' ? fuelPlan.minStops : parseInt(stopsMode, 10);
+            const nStops = inp.stopsMode === 'auto' ? fuelPlan.minStops : parseInt(inp.stopsMode, 10);
             const litersToBuy = fuelPlan.litersToBuy;
             const ctx = {
                 totalDistanceKm: baseRoute.distanceKm,
                 startLiters: fuelPlan.startLiters,
                 waypoints: customStops.map((c) => ({ lat: c.lat, lng: c.lng })),
+                consumption: inp.consumption,
+                capacity: inp.capacity,
+                arrivePct: inp.arrivePct,
             };
 
-            const recommended = buildPlan(corridor, nStops, priority, ctx);
+            const recommended = buildPlan(corridor, nStops, inp.priority, ctx);
             const baselineCost = nStops > 0 ? litersToBuy * corridorAvg : 0;
             const savings = Math.max(0, baselineCost - recommended.cost);
             // Coste de combustible de TODO el viaje (litros consumidos × precio representativo).
@@ -295,7 +396,7 @@ const RoutePlanner: React.FC = () => {
             if (orderedPoints.length > 0) {
                 const routed = await getRouteMulti(
                     [a, ...orderedPoints.map((p) => ({ lat: p.lat, lng: p.lng })), b],
-                    { avoidTolls }
+                    { avoidTolls: inp.avoidTolls }
                 );
                 if (routed) finalRoute = routed;
             }
@@ -312,21 +413,47 @@ const RoutePlanner: React.FC = () => {
                 fuelPlan,
                 nStops,
                 hasToll: finalRoute.hasToll ?? baseRoute.hasToll,
-                avoidedTolls: avoidTolls,
+                avoidedTolls: inp.avoidTolls,
                 recommended,
                 tripFuelCost,
                 baselineCost,
                 savings,
                 cheapPlan,
                 fastPlan,
-                fuel,
+                fuel: inp.fuel,
             });
+
+            // Guardamos la ruta en la URL para poder compartirla/reabrirla en OCTO.
+            history.replaceState(null, '', `${location.pathname}?${serializeInputs(inp)}`);
         } catch (err: any) {
             setError(err.message || 'Error al calcular la ruta.');
         } finally {
             setLoading(false);
         }
     };
+
+    // Si la URL trae una ruta (al abrir un enlace compartido), rellenamos el
+    // formulario y la calculamos automáticamente una sola vez.
+    useEffect(() => {
+        if (allStations.length === 0 || autoRan.current) return;
+        const inp = parseInputs(window.location.search);
+        if (!inp) return;
+        autoRan.current = true;
+        setOrigin(inp.origin);
+        setDestination(inp.destination);
+        setWaypoints(inp.waypoints);
+        setFuel(inp.fuel);
+        setConsumption(inp.consumption);
+        setCapacity(inp.capacity);
+        setStartPct(inp.startPct);
+        setArrivePct(inp.arrivePct);
+        setPriority(inp.priority);
+        setStopsMode(inp.stopsMode);
+        setAvoidTolls(inp.avoidTolls);
+        setSelectedBrands(new Set(inp.brands));
+        runCalculation(inp);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [allStations]);
 
     return (
         <div className={styles.wrapper}>
@@ -552,14 +679,17 @@ const RoutePlanner: React.FC = () => {
 
                     {/* Exportar / compartir */}
                     <div className={styles.actions}>
-                        <a
-                            className={styles.gmapsBtn}
-                            href={googleMapsUrl(result)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
+                        <a className={styles.gmapsBtn} href={googleMapsUrl(result)} target="_blank" rel="noopener noreferrer">
                             <span className="material-symbols-outlined">map</span>
-                            Abrir en Google Maps
+                            Google Maps
+                        </a>
+                        <a className={styles.mapBtn} href={appleMapsUrl(result)} target="_blank" rel="noopener noreferrer">
+                            <span className="material-symbols-outlined">map</span>
+                            Apple Maps
+                        </a>
+                        <a className={styles.mapBtn} href={wazeUrl(result)} target="_blank" rel="noopener noreferrer" title="Waze solo navega al destino final">
+                            <span className="material-symbols-outlined">navigation</span>
+                            Waze
                         </a>
                         <button type="button" className={styles.shareBtn} onClick={() => shareRoute(result)}>
                             <span className="material-symbols-outlined">share</span>

@@ -32,6 +32,7 @@
 }
 
 .gmapsBtn,
+.mapBtn,
 .shareBtn {
     display: inline-flex;
     align-items: center;
@@ -56,17 +57,20 @@
     box-shadow: 0 0 18px rgba(56, 189, 248, 0.4);
 }
 
+.mapBtn,
 .shareBtn {
     background: var(--surface);
     color: var(--text);
 }
 
+.mapBtn:hover,
 .shareBtn:hover {
     border-color: var(--primary);
     color: var(--primary);
 }
 
 .gmapsBtn .material-symbols-outlined,
+.mapBtn .material-symbols-outlined,
 .shareBtn .material-symbols-outlined {
     font-size: 1.15rem;
 }
