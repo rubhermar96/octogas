@@ -59,8 +59,9 @@ const MunicipalitySearch: React.FC = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handleSelect = (city: string, province: string) => {
-        window.location.href = `/explorador?mode=municipality&prov=${encodeURIComponent(province)}&city=${encodeURIComponent(city)}`;
+    const handleSelect = (loc: LocationItem) => {
+        // Vamos a la pantalla de resumen del municipio (precios medios + top 10).
+        window.location.href = `/gasolineras-baratas/${loc.provinceSlug}/${loc.citySlug}`;
     };
 
     return (
@@ -98,7 +99,7 @@ const MunicipalitySearch: React.FC = () => {
                             <li
                                 key={idx}
                                 className={styles.dropdownItem}
-                                onClick={() => handleSelect(loc.city, loc.province)}
+                                onClick={() => handleSelect(loc)}
                             >
                                 <span className="material-symbols-outlined">location_on</span>
                                 <div className={styles.itemText}>

@@ -149,13 +149,6 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
             </div>
 
             <div className={styles.listContainer} onScroll={handleListScroll}>
-                <div className={styles.resultsCount}>
-                    {stations.length > MAX_RENDER
-                        ? `Mostrando ${MAX_RENDER} de ${stations.length} · acerca el mapa para afinar`
-                        : `${stations.length} estaciones en el área`}{' '}
-                    · {FUEL_LABELS[fuelType]}
-                </div>
-
                 <div className={`${styles.stationList} ${wide ? styles.stationListWide : ''}`}>
                     {sortedStations.slice(0, MAX_RENDER).map((station) => {
                         const isSelected = station.id === selectedId;

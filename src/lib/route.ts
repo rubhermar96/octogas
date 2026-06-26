@@ -183,6 +183,47 @@ export function computeFuelPlan(params: {
     };
 }
 
+export interface RefuelStop extends CorridorStation {
+    liters: number; // litros a repostar en esta parada
+    cost: number; // coste de ese repostaje
+}
+
+/**
+ * Reparte el repostaje entre las paradas: en cada una se echa lo justo para
+ * llegar a la siguiente (o al destino) manteniendo la reserva de llegada.
+ */
+export function allocateRefuels(
+    stops: CorridorStation[],
+    params: {
+        totalDistanceKm: number;
+        consumption: number;
+        capacity: number;
+        startLiters: number;
+        arrivePct: number;
+    }
+): RefuelStop[] {
+    const sorted = [...stops].sort((a, b) => a.progress - b.progress);
+    const reserveL = (params.capacity * params.arrivePct) / 100;
+    const perKm = params.consumption / 100;
+    let tank = params.startLiters;
+    let prev = 0;
+    const out: RefuelStop[] = [];
+
+    for (let i = 0; i < sorted.length; i++) {
+        const s = sorted[i];
+        const legToHere = (s.progress - prev) * params.totalDistanceKm;
+        tank = Math.max(0, tank - legToHere * perKm); // combustible al llegar a la parada
+        const nextProgress = i < sorted.length - 1 ? sorted[i + 1].progress : 1;
+        const legToNext = (nextProgress - s.progress) * params.totalDistanceKm;
+        const needToNext = legToNext * perKm + reserveL;
+        const fill = Math.max(0, Math.min(params.capacity, needToNext) - tank);
+        tank += fill;
+        out.push({ ...s, liters: fill, cost: fill * s.price });
+        prev = s.progress;
+    }
+    return out;
+}
+
 /** Penalización por km de desvío según prioridad (€ equivalentes por km). */
 const DETOUR_PENALTY: Record<Priority, number> = {
     cheap: 0.01,
