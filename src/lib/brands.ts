@@ -8,7 +8,7 @@
  */
 const BRAND_PATTERNS: Array<[RegExp, string]> = [
     [/repsol/i, "Repsol"],
-    [/cepsa/i, "Cepsa"],
+    [/cepsa|moeve/i, "Cepsa"], // Moeve es el nuevo nombre comercial de Cepsa
     [/\bbp\b|british petroleum/i, "BP"],
     [/shell/i, "Shell"],
     [/galp/i, "Galp"],
