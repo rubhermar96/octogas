@@ -9,8 +9,10 @@ import {
     getRoute,
     findCorridorStations,
     pickStops,
+    computeFuelPlan,
     type CorridorStation,
     type Priority,
+    type FuelPlan,
 } from '../../lib/route';
 import BrandLogo from '../Explorer/BrandLogo';
 import styles from './RoutePlanner.module.css';
@@ -30,6 +32,8 @@ const PRIORITIES: { id: Priority; label: string }[] = [
     { id: 'fast', label: 'Más rápido' },
 ];
 
+type StopsMode = 'auto' | '0' | '1' | '2' | '3';
+
 const endpointIcon = (letter: string, color: string) =>
     L.divIcon({
         className: 'octo-route-endpoint',
@@ -38,27 +42,34 @@ const endpointIcon = (letter: string, color: string) =>
         iconAnchor: [13, 26],
     });
 
+interface PlanOption {
+    picks: CorridorStation[];
+    avgPrice: number;
+    cost: number;
+    avgDetour: number;
+}
+
 interface RouteData {
     coords: [number, number][];
     distanceKm: number;
     durationMin: number;
     origin: { lat: number; lng: number; label: string };
     destination: { lat: number; lng: number; label: string };
-    stops: CorridorStation[];
-    corridor: CorridorStation[];
-    fuelNeeded: number;
-    estimatedCost: number;
-    savings: number;
     corridorAvg: number;
+    fuelPlan: FuelPlan;
+    nStops: number;
+    recommended: PlanOption;
+    baselineCost: number;
+    savings: number;
+    cheapPlan: PlanOption | null;
+    fastPlan: PlanOption | null;
     fuel: FuelType;
 }
 
 const FitBounds: React.FC<{ coords: [number, number][] }> = ({ coords }) => {
     const map = useMap();
     useEffect(() => {
-        if (coords.length) {
-            map.fitBounds(L.latLngBounds(coords), { padding: [40, 40] });
-        }
+        if (coords.length) map.fitBounds(L.latLngBounds(coords), { padding: [40, 40] });
     }, [coords, map]);
     return null;
 };
@@ -76,8 +87,10 @@ const RoutePlanner: React.FC = () => {
     const [destination, setDestination] = useState('');
     const [fuel, setFuel] = useState<FuelType>('sp95');
     const [consumption, setConsumption] = useState(6.5);
+    const [capacity, setCapacity] = useState(50);
+    const [startPct, setStartPct] = useState(80);
     const [priority, setPriority] = useState<Priority>('cheap');
-    const [stops, setStops] = useState(1);
+    const [stopsMode, setStopsMode] = useState<StopsMode>('auto');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<RouteData | null>(null);
@@ -88,6 +101,19 @@ const RoutePlanner: React.FC = () => {
             .then(setAllStations)
             .catch(() => setAllStations([]));
     }, []);
+
+    const buildPlan = (
+        corridor: CorridorStation[],
+        n: number,
+        prio: Priority,
+        litersToBuy: number
+    ): PlanOption => {
+        const picks = pickStops(corridor, n, prio);
+        const avgPrice = picks.length ? picks.reduce((s, x) => s + x.price, 0) / picks.length : 0;
+        const avgDetour = picks.length ? picks.reduce((s, x) => s + x.detourKm, 0) / picks.length : 0;
+        const cost = n > 0 && picks.length ? litersToBuy * avgPrice : 0;
+        return { picks, avgPrice, cost, avgDetour };
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -110,13 +136,24 @@ const RoutePlanner: React.FC = () => {
             if (corridor.length === 0) {
                 throw new Error('No hay gasolineras con ese combustible cerca de la ruta.');
             }
-            const picked = pickStops(corridor, stops, priority);
-
-            const fuelNeeded = (route.distanceKm * consumption) / 100;
-            const pickedAvg = picked.reduce((s, x) => s + x.price, 0) / picked.length;
             const corridorAvg = corridor.reduce((s, x) => s + x.price, 0) / corridor.length;
-            const estimatedCost = fuelNeeded * pickedAvg;
-            const savings = Math.max(0, (corridorAvg - pickedAvg) * fuelNeeded);
+
+            const fuelPlan = computeFuelPlan({
+                distanceKm: route.distanceKm,
+                consumption,
+                capacity,
+                startPct,
+            });
+
+            const nStops = stopsMode === 'auto' ? fuelPlan.minStops : parseInt(stopsMode, 10);
+            const litersToBuy = fuelPlan.litersToBuy;
+
+            const recommended = buildPlan(corridor, nStops, priority, litersToBuy);
+            const baselineCost = nStops > 0 ? litersToBuy * corridorAvg : 0;
+            const savings = Math.max(0, baselineCost - recommended.cost);
+
+            const cheapPlan = nStops > 0 ? buildPlan(corridor, nStops, 'cheap', litersToBuy) : null;
+            const fastPlan = nStops > 0 ? buildPlan(corridor, nStops, 'fast', litersToBuy) : null;
 
             setResult({
                 coords: route.coords,
@@ -124,12 +161,14 @@ const RoutePlanner: React.FC = () => {
                 durationMin: route.durationMin,
                 origin: a,
                 destination: b,
-                stops: picked,
-                corridor,
-                fuelNeeded,
-                estimatedCost,
-                savings,
                 corridorAvg,
+                fuelPlan,
+                nStops,
+                recommended,
+                baselineCost,
+                savings,
+                cheapPlan,
+                fastPlan,
                 fuel,
             });
         } catch (err: any) {
@@ -144,8 +183,8 @@ const RoutePlanner: React.FC = () => {
             <div className={styles.intro}>
                 <h1>Planificador de viajes</h1>
                 <p>
-                    Indica tu origen y destino, tu coche y consumo, y te decimos dónde repostar por
-                    el camino para gastar lo menos posible.
+                    Indica tu trayecto, tu coche y tu depósito, y calculamos dónde y cuánto repostar
+                    para gastar lo menos posible.
                 </p>
             </div>
 
@@ -153,49 +192,37 @@ const RoutePlanner: React.FC = () => {
                 <div className={styles.row}>
                     <div className={styles.field}>
                         <label>Origen</label>
-                        <input
-                            className={styles.input}
-                            placeholder="Ej. Madrid"
-                            value={origin}
-                            onChange={(e) => setOrigin(e.target.value)}
-                        />
+                        <input className={styles.input} placeholder="Ej. Madrid" value={origin} onChange={(e) => setOrigin(e.target.value)} />
                     </div>
                     <div className={styles.field}>
                         <label>Destino</label>
-                        <input
-                            className={styles.input}
-                            placeholder="Ej. Valencia"
-                            value={destination}
-                            onChange={(e) => setDestination(e.target.value)}
-                        />
+                        <input className={styles.input} placeholder="Ej. Valencia" value={destination} onChange={(e) => setDestination(e.target.value)} />
                     </div>
                 </div>
 
                 <div className={styles.row}>
                     <div className={styles.field}>
                         <label>Combustible</label>
-                        <select
-                            className={styles.select}
-                            value={fuel}
-                            onChange={(e) => setFuel(e.target.value as FuelType)}
-                        >
+                        <select className={styles.select} value={fuel} onChange={(e) => setFuel(e.target.value as FuelType)}>
                             {ROUTE_FUELS.map((f) => (
-                                <option key={f} value={f}>
-                                    {FUEL_LABELS[f]}
-                                </option>
+                                <option key={f} value={f}>{FUEL_LABELS[f]}</option>
                             ))}
                         </select>
                     </div>
                     <div className={styles.field}>
-                        <label>Consumo: {consumption.toFixed(1)} L/100km</label>
+                        <label>Consumo (L/100km)</label>
+                        <input
+                            className={styles.input}
+                            type="number"
+                            min="2"
+                            max="30"
+                            step="0.1"
+                            value={consumption}
+                            onChange={(e) => setConsumption(parseFloat(e.target.value) || 0)}
+                        />
                         <div className={styles.presets}>
                             {CONSUMPTION_PRESETS.map((p) => (
-                                <button
-                                    type="button"
-                                    key={p.label}
-                                    className={`${styles.preset} ${consumption === p.v ? styles.active : ''}`}
-                                    onClick={() => setConsumption(p.v)}
-                                >
+                                <button type="button" key={p.label} className={`${styles.preset} ${consumption === p.v ? styles.active : ''}`} onClick={() => setConsumption(p.v)}>
                                     {p.label} · {p.v}
                                 </button>
                             ))}
@@ -205,15 +232,40 @@ const RoutePlanner: React.FC = () => {
 
                 <div className={styles.row}>
                     <div className={styles.field}>
+                        <label>Capacidad del depósito (L)</label>
+                        <input
+                            className={styles.input}
+                            type="number"
+                            min="10"
+                            max="200"
+                            step="1"
+                            value={capacity}
+                            onChange={(e) => setCapacity(parseFloat(e.target.value) || 0)}
+                        />
+                    </div>
+                    <div className={styles.field}>
+                        <label>Combustible al salir: {startPct}%</label>
+                        <input
+                            className={styles.range}
+                            type="range"
+                            min="0"
+                            max="100"
+                            step="5"
+                            value={startPct}
+                            onChange={(e) => setStartPct(parseInt(e.target.value, 10))}
+                        />
+                        <span className={styles.hint}>
+                            ≈ {((capacity * startPct) / 100).toFixed(0)} L en el depósito
+                        </span>
+                    </div>
+                </div>
+
+                <div className={styles.row}>
+                    <div className={styles.field}>
                         <label>Prioridad</label>
                         <div className={styles.segmented}>
                             {PRIORITIES.map((p) => (
-                                <button
-                                    type="button"
-                                    key={p.id}
-                                    className={`${styles.segment} ${priority === p.id ? styles.active : ''}`}
-                                    onClick={() => setPriority(p.id)}
-                                >
+                                <button type="button" key={p.id} className={`${styles.segment} ${priority === p.id ? styles.active : ''}`} onClick={() => setPriority(p.id)}>
                                     {p.label}
                                 </button>
                             ))}
@@ -222,16 +274,13 @@ const RoutePlanner: React.FC = () => {
                     <div className={styles.field}>
                         <label>Paradas para repostar</label>
                         <div className={styles.segmented}>
-                            {[1, 2, 3].map((n) => (
-                                <button
-                                    type="button"
-                                    key={n}
-                                    className={`${styles.segment} ${stops === n ? styles.active : ''}`}
-                                    onClick={() => setStops(n)}
-                                >
-                                    {n}
-                                </button>
-                            ))}
+                            {([['auto', 'Auto'], ['0', 'Sin paradas'], ['1', '1'], ['2', '2'], ['3', '3']] as [StopsMode, string][]).map(
+                                ([val, lbl]) => (
+                                    <button type="button" key={val} className={`${styles.segment} ${stopsMode === val ? styles.active : ''}`} onClick={() => setStopsMode(val)}>
+                                        {lbl}
+                                    </button>
+                                )
+                            )}
                         </div>
                     </div>
                 </div>
@@ -249,9 +298,7 @@ const RoutePlanner: React.FC = () => {
                     <div className={styles.statsBar}>
                         <div className={styles.stat}>
                             <span className={styles.statLabel}>Distancia</span>
-                            <span className={styles.statValue}>
-                                {result.distanceKm.toFixed(0)} <small>km</small>
-                            </span>
+                            <span className={styles.statValue}>{result.distanceKm.toFixed(0)} <small>km</small></span>
                         </div>
                         <div className={styles.stat}>
                             <span className={styles.statLabel}>Duración</span>
@@ -259,69 +306,127 @@ const RoutePlanner: React.FC = () => {
                         </div>
                         <div className={styles.stat}>
                             <span className={styles.statLabel}>Combustible</span>
-                            <span className={styles.statValue}>
-                                {result.fuelNeeded.toFixed(1)} <small>L</small>
-                            </span>
+                            <span className={styles.statValue}>{result.fuelPlan.fuelNeeded.toFixed(1)} <small>L</small></span>
                         </div>
                         <div className={styles.stat}>
-                            <span className={styles.statLabel}>Coste estimado</span>
-                            <span className={styles.statValue}>
-                                {result.estimatedCost.toFixed(2)} <small>€</small>
-                            </span>
+                            <span className={styles.statLabel}>{result.nStops > 0 ? 'Coste repostaje' : 'Coste'}</span>
+                            <span className={styles.statValue}>{result.recommended.cost.toFixed(2)} <small>€</small></span>
                         </div>
                         <div className={`${styles.stat} ${styles.savings}`}>
                             <span className={styles.statLabel}>Ahorro vs. media</span>
-                            <span className={styles.statValue}>
-                                {result.savings.toFixed(2)} <small>€</small>
-                            </span>
+                            <span className={styles.statValue}>{result.savings.toFixed(2)} <small>€</small></span>
+                        </div>
+                    </div>
+
+                    {/* Análisis del depósito */}
+                    <div className={styles.tankBox}>
+                        <span className="material-symbols-outlined">local_gas_station</span>
+                        <div>
+                            {result.fuelPlan.canMakeItNoStops ? (
+                                <p>
+                                    <b>Llegas sin repostar.</b> Sales con ~{result.fuelPlan.startLiters.toFixed(0)} L
+                                    (autonomía ~{result.fuelPlan.startRangeKm.toFixed(0)} km) y el viaje consume{' '}
+                                    {result.fuelPlan.fuelNeeded.toFixed(1)} L. Llegarías con ~
+                                    {(result.fuelPlan.usableStart - result.fuelPlan.fuelNeeded + result.fuelPlan.reserveLiters).toFixed(0)} L.
+                                </p>
+                            ) : (
+                                <p>
+                                    Con tu salida (~{result.fuelPlan.startLiters.toFixed(0)} L) recorres ~
+                                    {result.fuelPlan.startRangeKm.toFixed(0)} km. Necesitas{' '}
+                                    <b>al menos {result.fuelPlan.minStops} parada{result.fuelPlan.minStops > 1 ? 's' : ''}</b> para
+                                    llegar (autonomía con depósito lleno ~{result.fuelPlan.maxRangeKm.toFixed(0)} km).
+                                    {result.nStops === 0 && (
+                                        <span className={styles.warn}>
+                                            {' '}Has elegido <b>sin paradas</b>: te quedarías sin combustible a ~
+                                            {Math.max(0, result.distanceKm - result.fuelPlan.startRangeKm).toFixed(0)} km del destino.
+                                        </span>
+                                    )}
+                                </p>
+                            )}
                         </div>
                     </div>
 
                     <div className={styles.resultsGrid}>
-                        <div className={styles.stopsList}>
-                            <h2 className={styles.stopsTitle}>Repostajes recomendados</h2>
-                            {result.stops.map((s, i) => (
-                                <div key={s.id} className={styles.stopCard}>
-                                    <div className={styles.stopNum}>{i + 1}</div>
-                                    <BrandLogo brand={s.brand} size={34} />
-                                    <div className={styles.stopInfo}>
-                                        <div className={styles.stopName}>{s.name}</div>
-                                        <div className={styles.stopMeta}>
-                                            {s.city} · desvío {s.detourKm.toFixed(1)} km
+                        <div>
+                            {result.nStops > 0 ? (
+                                <>
+                                    <h2 className={styles.stopsTitle}>
+                                        Repostajes recomendados · {priorityLabel(priority)}
+                                    </h2>
+                                    <div className={styles.stopsList}>
+                                        {result.recommended.picks.map((s, i) => {
+                                            const delta = s.price - result.corridorAvg;
+                                            return (
+                                                <div key={s.id} className={styles.stopCard}>
+                                                    <div className={styles.stopNum}>{i + 1}</div>
+                                                    <BrandLogo brand={s.brand} size={34} />
+                                                    <div className={styles.stopInfo}>
+                                                        <div className={styles.stopName}>{s.name}</div>
+                                                        <div className={styles.stopMeta}>
+                                                            {s.city} · desvío {s.detourKm.toFixed(1)} km
+                                                        </div>
+                                                    </div>
+                                                    <div className={styles.stopPrice}>
+                                                        <b>{s.price.toFixed(3)}</b>
+                                                        <span className={delta <= 0 ? styles.deltaGood : styles.deltaBad}>
+                                                            {delta <= 0 ? '▼' : '▲'} {Math.abs(delta).toFixed(3)} vs media
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Comparativa de estrategias */}
+                                    {result.cheapPlan && result.fastPlan && (
+                                        <div className={styles.compare}>
+                                            <h3>Comparativa de estrategias</h3>
+                                            <table>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Estrategia</th>
+                                                        <th>Precio medio</th>
+                                                        <th>Desvío medio</th>
+                                                        <th>Coste</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <CompareRow label="Más barato" plan={result.cheapPlan} />
+                                                    <CompareRow label="Más rápido" plan={result.fastPlan} />
+                                                    <tr className={styles.baselineRow}>
+                                                        <td>Repostar a precio medio</td>
+                                                        <td>{result.corridorAvg.toFixed(3)} €</td>
+                                                        <td>—</td>
+                                                        <td>{result.baselineCost.toFixed(2)} €</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                            <p className={styles.compareNote}>
+                                                Optimizando el precio ahorras ~
+                                                <b> {(result.fastPlan.cost - result.cheapPlan.cost).toFixed(2)} €</b> frente a
+                                                parar en la más cómoda, a cambio de ~
+                                                {(result.cheapPlan.avgDetour - result.fastPlan.avgDetour).toFixed(1)} km más de desvío.
+                                            </p>
                                         </div>
-                                    </div>
-                                    <div className={styles.stopPrice}>
-                                        <b>{s.price.toFixed(3)}</b>
-                                        <span>€/L {FUEL_LABELS[result.fuel]}</span>
-                                    </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className={styles.noStops}>
+                                    <span className="material-symbols-outlined">check_circle</span>
+                                    <p>Sin paradas de repostaje en este viaje.</p>
                                 </div>
-                            ))}
+                            )}
                         </div>
 
                         <div className={styles.mapBox}>
-                            <MapContainer
-                                center={[result.origin.lat, result.origin.lng]}
-                                zoom={7}
-                                style={{ height: '100%', width: '100%' }}
-                                scrollWheelZoom={true}
-                            >
-                                <TileLayer
-                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                                />
+                            <MapContainer center={[result.origin.lat, result.origin.lng]} zoom={7} style={{ height: '100%', width: '100%' }} scrollWheelZoom={true}>
+                                <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
                                 <FitBounds coords={result.coords} />
                                 <Polyline positions={result.coords} pathOptions={{ color: '#2563eb', weight: 5, opacity: 0.8 }} />
-
                                 <Marker position={[result.origin.lat, result.origin.lng]} icon={endpointIcon('A', '#0ea5e9')} />
                                 <Marker position={[result.destination.lat, result.destination.lng]} icon={endpointIcon('B', '#ef4444')} />
-
-                                {result.stops.map((s) => (
-                                    <CircleMarker
-                                        key={s.id}
-                                        center={[s.lat, s.lng]}
-                                        radius={9}
-                                        pathOptions={{ color: '#fff', weight: 3, fillColor: '#34d399', fillOpacity: 1 }}
-                                    >
+                                {result.recommended.picks.map((s) => (
+                                    <CircleMarker key={s.id} center={[s.lat, s.lng]} radius={9} pathOptions={{ color: '#fff', weight: 3, fillColor: '#34d399', fillOpacity: 1 }}>
                                         <Popup>
                                             <strong>{s.name}</strong>
                                             <br />
@@ -337,5 +442,18 @@ const RoutePlanner: React.FC = () => {
         </div>
     );
 };
+
+function priorityLabel(p: Priority): string {
+    return p === 'cheap' ? 'más barato' : p === 'fast' ? 'más rápido' : 'equilibrado';
+}
+
+const CompareRow: React.FC<{ label: string; plan: PlanOption }> = ({ label, plan }) => (
+    <tr>
+        <td>{label}</td>
+        <td>{plan.avgPrice.toFixed(3)} €</td>
+        <td>{plan.avgDetour.toFixed(1)} km</td>
+        <td>{plan.cost.toFixed(2)} €</td>
+    </tr>
+);
 
 export default RoutePlanner;

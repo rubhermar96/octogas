@@ -35,18 +35,17 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
     onSelectStation,
 }) => {
     const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
-    const lastScroll = useRef(0);
     const [controlsHidden, setControlsHidden] = useState(false);
 
-    // Oculta los filtros al bajar y los recupera al subir.
+    // Los filtros se ocultan al bajar y SOLO reaparecen al volver arriba del todo
+    // (evita el "mareo" de que salten al hacer cualquier scroll hacia arriba).
     const handleListScroll = (e: React.UIEvent<HTMLDivElement>) => {
         const st = e.currentTarget.scrollTop;
-        if (st > lastScroll.current && st > 50) {
-            setControlsHidden(true);
-        } else if (st < lastScroll.current - 4) {
+        if (st <= 6) {
             setControlsHidden(false);
+        } else if (st > 60) {
+            setControlsHidden(true);
         }
-        lastScroll.current = st;
     };
 
     const sortedStations = useMemo(() => {

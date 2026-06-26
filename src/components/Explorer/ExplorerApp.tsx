@@ -153,6 +153,15 @@ const ExplorerApp: React.FC = () => {
         return allStations.filter((s) => mapBounds.contains([s.lat, s.lng]));
     }, [allStations, mapBounds, mapCollapsed, mapCenter]);
 
+    // Al mostrar el mapa, forzamos a Leaflet a recalcular su tamaño (evita el mapa
+    // en blanco/negro cuando pasa de oculto a visible, sobre todo en móvil).
+    useEffect(() => {
+        if (!mapCollapsed) {
+            const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+            return () => clearTimeout(t);
+        }
+    }, [mapCollapsed]);
+
     // Listado ancho (2+ columnas) cuando el mapa está colapsado o el panel es ancho.
     const isWide = mapCollapsed || sidebarWidth >= WIDE_THRESHOLD;
 
@@ -175,7 +184,11 @@ const ExplorerApp: React.FC = () => {
                             onSortTypeChange={setSortType}
                             onSelectStation={(id) => {
                                 setSelectedId(id);
-                                if (id && mapCollapsed) setMapCollapsed(false); // al elegir, abre el mapa
+                                // En escritorio, al elegir abrimos el mapa (split). En móvil NO:
+                                // el usuario abre el mapa con el botón "Ver mapa" (evita el salto a pantalla negra).
+                                if (id && mapCollapsed && window.matchMedia('(min-width: 769px)').matches) {
+                                    setMapCollapsed(false);
+                                }
                             }}
                         />
                     </div>
@@ -213,6 +226,7 @@ const ExplorerApp: React.FC = () => {
                             disableGeolocation={disableGeolocation}
                             selectedId={selectedId}
                             onSelectStation={setSelectedId}
+                            active={!mapCollapsed}
                         />
                     </div>
 
