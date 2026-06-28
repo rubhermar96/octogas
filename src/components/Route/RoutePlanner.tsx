@@ -236,6 +236,7 @@ interface PlanCtx {
     startLiters: number;
     startRangeKm: number;
     maxRangeKm: number;
+    arriveTopUpRangeKm: number;
     waypoints: { lat: number; lng: number }[];
     consumption: number;
     capacity: number;
@@ -252,6 +253,7 @@ function buildPlan(
         totalDistanceKm: ctx.totalDistanceKm,
         startRangeKm: ctx.startRangeKm,
         maxRangeKm: ctx.maxRangeKm,
+        arriveTopUpRangeKm: ctx.arriveTopUpRangeKm,
     });
     const picks = allocateRefuels(raw, {
         totalDistanceKm: ctx.totalDistanceKm,
@@ -382,7 +384,7 @@ const RoutePlanner: React.FC = () => {
                 consumption: inp.consumption,
                 capacity: inp.capacity,
                 startPct: inp.startPct,
-                reservePct: inp.arrivePct, // queremos llegar con esta reserva
+                arrivePct: inp.arrivePct, // reserva con la que quieres llegar
             });
 
             const nStops = inp.stopsMode === 'auto' ? fuelPlan.minStops : parseInt(inp.stopsMode, 10);
@@ -392,6 +394,8 @@ const RoutePlanner: React.FC = () => {
                 startLiters: fuelPlan.startLiters,
                 startRangeKm: fuelPlan.startRangeKm,
                 maxRangeKm: fuelPlan.maxRangeKm,
+                // Distancia máxima al destino para la última parada (alcanzar la reserva de llegada).
+                arriveTopUpRangeKm: (inp.capacity * (1 - inp.arrivePct / 100)) / inp.consumption * 100,
                 waypoints: customStops.map((c) => ({ lat: c.lat, lng: c.lng })),
                 consumption: inp.consumption,
                 capacity: inp.capacity,
@@ -608,7 +612,7 @@ const RoutePlanner: React.FC = () => {
                         className={styles.range}
                         type="range"
                         min="0"
-                        max="50"
+                        max="100"
                         step="5"
                         value={arrivePct}
                         onChange={(e) => setArrivePct(parseInt(e.target.value, 10))}
