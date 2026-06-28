@@ -224,30 +224,45 @@ export interface FuelPlan {
     reserveLiters: number;
 }
 
+// Margen de seguridad fijo: combustible que no quieres bajar ENTRE paradas
+// (distinto de la reserva con la que quieres LLEGAR al destino).
+export const SAFETY_PCT = 8;
+
 /** Modelo de depósito: autonomía, paradas mínimas y litros a repostar. */
 export function computeFuelPlan(params: {
     distanceKm: number;
     consumption: number; // L/100km
     capacity: number; // L
     startPct: number; // 0..100
-    reservePct?: number; // % a no bajar (def. 10)
+    arrivePct?: number; // % con el que quieres LLEGAR al destino (def. 10)
+    safetyPct?: number; // % de seguridad entre paradas (def. SAFETY_PCT)
 }): FuelPlan {
-    const reservePct = params.reservePct ?? 10;
+    const arrivePct = params.arrivePct ?? 10;
+    const safetyPct = params.safetyPct ?? SAFETY_PCT;
     const fuelNeeded = (params.distanceKm * params.consumption) / 100;
     const startLiters = (params.capacity * params.startPct) / 100;
-    const reserveLiters = (params.capacity * reservePct) / 100;
-    const usableStart = Math.max(0, startLiters - reserveLiters);
+    const arriveReserve = (params.capacity * arrivePct) / 100;
+    const safetyReserve = (params.capacity * safetyPct) / 100;
+
+    // Autonomía con el margen de seguridad (no la reserva de llegada).
+    const usableStart = Math.max(0, startLiters - safetyReserve);
     const startRangeKm = (usableStart / params.consumption) * 100;
-    const fullUsable = Math.max(0.1, params.capacity * (1 - reservePct / 100));
+    const fullUsable = Math.max(0.1, params.capacity - safetyReserve);
     const maxRangeKm = (fullUsable / params.consumption) * 100;
-    const canMakeItNoStops = fuelNeeded <= usableStart;
+
+    // Llegas sin repostar si, sin parar, terminas con al menos la reserva deseada.
+    const canMakeItNoStops = startLiters - fuelNeeded >= arriveReserve;
 
     let minStops = 0;
     if (!canMakeItNoStops) {
-        const remaining = params.distanceKm - startRangeKm;
-        minStops = Math.max(1, Math.ceil(remaining / maxRangeKm));
+        // Paradas por autonomía (no quedarte tirado)…
+        const rangeStops = fuelNeeded <= usableStart
+            ? 0
+            : Math.max(1, Math.ceil((params.distanceKm - startRangeKm) / maxRangeKm));
+        // …pero si llegas por autonomía aunque sin la reserva deseada, hace falta 1 parada.
+        minStops = Math.max(1, rangeStops);
     }
-    const litersToBuy = Math.max(0, fuelNeeded - usableStart);
+    const litersToBuy = Math.max(0, fuelNeeded - startLiters + arriveReserve);
 
     return {
         fuelNeeded,
@@ -258,7 +273,7 @@ export function computeFuelPlan(params: {
         canMakeItNoStops,
         minStops,
         litersToBuy,
-        reserveLiters,
+        reserveLiters: arriveReserve,
     };
 }
 
@@ -278,11 +293,13 @@ export function allocateRefuels(
         consumption: number;
         capacity: number;
         startLiters: number;
-        arrivePct: number;
+        arrivePct: number; // reserva deseada al LLEGAR al destino
+        safetyPct?: number; // margen entre paradas
     }
 ): RefuelStop[] {
     const sorted = [...stops].sort((a, b) => a.progress - b.progress);
-    const reserveL = (params.capacity * params.arrivePct) / 100;
+    const arriveReserve = (params.capacity * params.arrivePct) / 100;
+    const safetyReserve = (params.capacity * (params.safetyPct ?? SAFETY_PCT)) / 100;
     const perKm = params.consumption / 100;
     let tank = params.startLiters;
     let prev = 0;
@@ -292,9 +309,13 @@ export function allocateRefuels(
         const s = sorted[i];
         const legToHere = (s.progress - prev) * params.totalDistanceKm;
         tank = Math.max(0, tank - legToHere * perKm); // combustible al llegar a la parada
-        const nextProgress = i < sorted.length - 1 ? sorted[i + 1].progress : 1;
+        const isLast = i === sorted.length - 1;
+        const nextProgress = isLast ? 1 : sorted[i + 1].progress;
         const legToNext = (nextProgress - s.progress) * params.totalDistanceKm;
-        const needToNext = legToNext * perKm + reserveL;
+        // En la última parada llenamos para llegar con la reserva deseada;
+        // en las intermedias, solo lo justo para llegar a la siguiente con el margen de seguridad.
+        const targetReserve = isLast ? arriveReserve : safetyReserve;
+        const needToNext = legToNext * perKm + targetReserve;
         const fill = Math.max(0, Math.min(params.capacity, needToNext) - tank);
         tank += fill;
         out.push({ ...s, liters: fill, cost: fill * s.price });
@@ -305,9 +326,9 @@ export function allocateRefuels(
 
 // Pesos relativos de precio vs. tiempo según la prioridad (sobre valores 0..1).
 const PRIORITY_WEIGHTS: Record<Priority, { price: number; time: number }> = {
-    cheap: { price: 1, time: 0.1 },
-    balanced: { price: 0.5, time: 0.5 },
-    fast: { price: 0.1, time: 1 },
+    cheap: { price: 1, time: 0.05 },
+    balanced: { price: 0.6, time: 0.4 },
+    fast: { price: 0.05, time: 1 },
 };
 
 // "Coste" en km de hacer una parada dedicada solo para repostar.
@@ -327,6 +348,9 @@ export interface FuelRange {
     totalDistanceKm: number;
     startRangeKm: number; // km alcanzables con el combustible de salida
     maxRangeKm: number; // km alcanzables con el depósito lleno
+    // Distancia máxima al destino para que la ÚLTIMA parada permita llegar con la
+    // reserva deseada (si quieres llegar muy lleno, debe estar cerca del destino).
+    arriveTopUpRangeKm?: number;
 }
 
 export function pickStops(
@@ -368,10 +392,16 @@ export function pickStops(
     // se reparten en tramos iguales.
     const windowFor = (k: number): [number, number] => {
         if (fuel && fuel.maxRangeKm > 0 && fuel.totalDistanceKm > 0) {
-            const deadlineKm = Math.min(fuel.totalDistanceKm, fuel.startRangeKm + k * fuel.maxRangeKm);
+            const D = fuel.totalDistanceKm;
+            const deadlineKm = Math.min(D, fuel.startRangeKm + k * fuel.maxRangeKm);
             const windowKm = fuel.maxRangeKm * 0.45; // repostar en el último ~45% del tanque
-            const startKm = Math.max(0, deadlineKm - windowKm);
-            return [startKm / fuel.totalDistanceKm, Math.min(1, deadlineKm / fuel.totalDistanceKm)];
+            let loKm = Math.max(0, deadlineKm - windowKm);
+            // En la ÚLTIMA parada, si quieres llegar muy lleno, debe estar cerca del
+            // destino para que el repostaje alcance la reserva de llegada.
+            if (k === stops - 1 && fuel.arriveTopUpRangeKm != null) {
+                loKm = Math.max(loKm, D - fuel.arriveTopUpRangeKm);
+            }
+            return [Math.max(0, loKm / D), Math.min(1, deadlineKm / D)];
         }
         return [k / stops, (k + 1) / stops];
     };
