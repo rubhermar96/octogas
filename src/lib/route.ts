@@ -77,34 +77,42 @@ export async function getRoute(a: GeoPoint, b: GeoPoint, opts: RouteOptions = {}
  * clave) para soportar "evitar peajes" y detectar si la ruta los usa; si falla,
  * cae a OSRM (sin info de peajes).
  */
+// Si Valhalla falla/tarda una vez, dejamos de intentarlo en esta sesión (evita
+// esperas largas en cada cálculo). Se reintenta al recargar la página.
+let valhallaUp = true;
+
 export async function getRouteMulti(points: GeoPoint[], opts: RouteOptions = {}): Promise<RouteResult | null> {
     if (points.length < 2) return null;
-    try {
-        const body = {
-            locations: points.map((p) => ({ lat: p.lat, lon: p.lng })),
-            costing: 'auto',
-            costing_options: { auto: { use_tolls: opts.avoidTolls ? 0 : 1 } },
-            units: 'kilometers',
-        };
-        const res = await fetch('https://valhalla1.openstreetmap.de/route', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-        });
-        if (res.ok) {
-            const data = await res.json();
-            if (data.trip?.legs?.length) {
-                const coords = (data.trip.legs as any[]).flatMap((l) => decodePolyline6(l.shape));
-                return {
-                    coords,
-                    distanceKm: data.trip.summary.length,
-                    durationMin: data.trip.summary.time / 60,
-                    hasToll: !!data.trip.summary.has_toll,
-                };
+    if (valhallaUp) {
+        try {
+            const body = {
+                locations: points.map((p) => ({ lat: p.lat, lon: p.lng })),
+                costing: 'auto',
+                costing_options: { auto: { use_tolls: opts.avoidTolls ? 0 : 1 } },
+                units: 'kilometers',
+            };
+            const res = await fetch('https://valhalla1.openstreetmap.de/route', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+                signal: AbortSignal.timeout(7000),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.trip?.legs?.length) {
+                    const coords = (data.trip.legs as any[]).flatMap((l) => decodePolyline6(l.shape));
+                    return {
+                        coords,
+                        distanceKm: data.trip.summary.length,
+                        durationMin: data.trip.summary.time / 60,
+                        hasToll: !!data.trip.summary.has_toll,
+                    };
+                }
             }
+        } catch {
+            // Timeout o error: marcamos Valhalla como caído y usamos OSRM.
+            valhallaUp = false;
         }
-    } catch {
-        // Si Valhalla falla, usamos OSRM como respaldo.
     }
     return getRouteOSRM(points);
 }
@@ -315,11 +323,18 @@ const NEAR_WAYPOINT_KM = 4;
  * - "equilibrado": mezcla ambos.
  * Precio y tiempo se normalizan a 0..1 para poder combinarlos de forma justa.
  */
+export interface FuelRange {
+    totalDistanceKm: number;
+    startRangeKm: number; // km alcanzables con el combustible de salida
+    maxRangeKm: number; // km alcanzables con el depósito lleno
+}
+
 export function pickStops(
     corridor: CorridorStation[],
     stops: number,
     priority: Priority,
-    waypoints: GeoPoint[] = []
+    waypoints: GeoPoint[] = [],
+    fuel?: FuelRange
 ): CorridorStation[] {
     if (corridor.length === 0 || stops <= 0) return [];
 
@@ -347,13 +362,29 @@ export function pickStops(
         score: w.price * norm(e.price, pMin, pMax) + w.time * norm(e.timeCost, tMin, tMax),
     }));
 
+    // Ventana de progreso [lo, hi] donde puede ir la parada k.
+    // Con datos de autonomía: la parada va donde el depósito está bajo (no antes de
+    // que haga falta), es decir, en el último tramo de cada "tanque". Sin esos datos,
+    // se reparten en tramos iguales.
+    const windowFor = (k: number): [number, number] => {
+        if (fuel && fuel.maxRangeKm > 0 && fuel.totalDistanceKm > 0) {
+            const deadlineKm = Math.min(fuel.totalDistanceKm, fuel.startRangeKm + k * fuel.maxRangeKm);
+            const windowKm = fuel.maxRangeKm * 0.45; // repostar en el último ~45% del tanque
+            const startKm = Math.max(0, deadlineKm - windowKm);
+            return [startKm / fuel.totalDistanceKm, Math.min(1, deadlineKm / fuel.totalDistanceKm)];
+        }
+        return [k / stops, (k + 1) / stops];
+    };
+
     const picks: CorridorStation[] = [];
     for (let k = 0; k < stops; k++) {
-        const lo = k / stops;
-        const hi = (k + 1) / stops;
+        const [lo, hi] = windowFor(k);
         const available = scored.filter((x) => !picks.some((p) => p.id === x.s.id));
-        const inSegment = available.filter((x) => x.s.progress >= lo && x.s.progress < hi);
-        const pool = inSegment.length > 0 ? inSegment : available;
+        let pool = available.filter((x) => x.s.progress >= lo && x.s.progress <= hi);
+        // Si no hay estaciones en la ventana, ampliamos: cualquiera antes del límite;
+        // y si tampoco, cualquiera disponible.
+        if (pool.length === 0) pool = available.filter((x) => x.s.progress <= hi);
+        if (pool.length === 0) pool = available;
         if (pool.length === 0) break;
         const best = pool.reduce((a, b) => (b.score < a.score ? b : a));
         picks.push(best.s);

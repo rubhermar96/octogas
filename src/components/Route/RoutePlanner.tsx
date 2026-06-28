@@ -234,6 +234,8 @@ const WazeIcon = () => (
 interface PlanCtx {
     totalDistanceKm: number;
     startLiters: number;
+    startRangeKm: number;
+    maxRangeKm: number;
     waypoints: { lat: number; lng: number }[];
     consumption: number;
     capacity: number;
@@ -246,7 +248,11 @@ function buildPlan(
     prio: Priority,
     ctx: PlanCtx
 ): PlanOption {
-    const raw = pickStops(corridor, n, prio, ctx.waypoints);
+    const raw = pickStops(corridor, n, prio, ctx.waypoints, {
+        totalDistanceKm: ctx.totalDistanceKm,
+        startRangeKm: ctx.startRangeKm,
+        maxRangeKm: ctx.maxRangeKm,
+    });
     const picks = allocateRefuels(raw, {
         totalDistanceKm: ctx.totalDistanceKm,
         consumption: ctx.consumption,
@@ -384,6 +390,8 @@ const RoutePlanner: React.FC = () => {
             const ctx = {
                 totalDistanceKm: baseRoute.distanceKm,
                 startLiters: fuelPlan.startLiters,
+                startRangeKm: fuelPlan.startRangeKm,
+                maxRangeKm: fuelPlan.maxRangeKm,
                 waypoints: customStops.map((c) => ({ lat: c.lat, lng: c.lng })),
                 consumption: inp.consumption,
                 capacity: inp.capacity,
