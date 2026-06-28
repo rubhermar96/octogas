@@ -204,6 +204,33 @@ async function shareRoute(r: RouteData) {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
 }
 
+// Iconos de las plataformas (SVG inline) para botones compactos solo-icono.
+const GoogleMapsIcon = () => (
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path fill="#EA4335" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+        <circle cx="12" cy="9" r="2.6" fill="#fff" />
+    </svg>
+);
+
+const AppleMapsIcon = () => (
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <rect x="2" y="2" width="20" height="20" rx="5" fill="#5ac85a" />
+        <path d="M17 6.5l-9.5 4.2L11 12.2 12.2 16z" fill="#ff3b30" />
+    </svg>
+);
+
+const WazeIcon = () => (
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path
+            fill="#33ccff"
+            d="M12 3c4.4 0 8 3 8 6.8 0 3.8-3.6 6.8-8 6.8-.6 0-1.2-.05-1.7-.16C9 17.7 7 18.6 5.2 18.6c.9-.9 1.1-2.1.9-3C4.4 14.3 4 12.6 4 9.8 4 6 7.6 3 12 3z"
+        />
+        <circle cx="9.6" cy="9.6" r="1" fill="#0b3d52" />
+        <circle cx="14.4" cy="9.6" r="1" fill="#0b3d52" />
+        <path d="M9.3 12.2c.9 1 4.5 1 5.4 0" stroke="#0b3d52" strokeWidth="1.1" fill="none" strokeLinecap="round" />
+    </svg>
+);
+
 interface PlanCtx {
     totalDistanceKm: number;
     startLiters: number;
@@ -677,26 +704,6 @@ const RoutePlanner: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Exportar / compartir */}
-                    <div className={styles.actions}>
-                        <a className={styles.gmapsBtn} href={googleMapsUrl(result)} target="_blank" rel="noopener noreferrer">
-                            <span className="material-symbols-outlined">map</span>
-                            Google Maps
-                        </a>
-                        <a className={styles.mapBtn} href={appleMapsUrl(result)} target="_blank" rel="noopener noreferrer">
-                            <span className="material-symbols-outlined">map</span>
-                            Apple Maps
-                        </a>
-                        <a className={styles.mapBtn} href={wazeUrl(result)} target="_blank" rel="noopener noreferrer" title="Waze solo navega al destino final">
-                            <span className="material-symbols-outlined">navigation</span>
-                            Waze
-                        </a>
-                        <button type="button" className={styles.shareBtn} onClick={() => shareRoute(result)}>
-                            <span className="material-symbols-outlined">share</span>
-                            Compartir
-                        </button>
-                    </div>
-
                     {/* Análisis del depósito */}
                     <div className={styles.tankBox}>
                         <span className="material-symbols-outlined">local_gas_station</span>
@@ -802,6 +809,44 @@ const RoutePlanner: React.FC = () => {
                             )}
                         </div>
 
+                        <div className={styles.mapColumn}>
+                        <div className={styles.exportBar}>
+                            <a
+                                className={styles.icoBtn}
+                                href={googleMapsUrl(result)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Abrir en Google Maps"
+                            >
+                                <span className={styles.ico} style={{ '--ico': 'url(/icons/googlemaps.svg)', '--icoColor': '#4285F4' } as React.CSSProperties} />
+                            </a>
+                            <a
+                                className={styles.icoBtn}
+                                href={appleMapsUrl(result)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Abrir en Apple Maps"
+                            >
+                                <span className={styles.ico} style={{ '--ico': 'url(/icons/apple.svg)', '--icoColor': 'var(--text)' } as React.CSSProperties} />
+                            </a>
+                            <a
+                                className={styles.icoBtn}
+                                href={wazeUrl(result)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Abrir en Waze (solo destino final)"
+                            >
+                                <span className={styles.ico} style={{ '--ico': 'url(/icons/waze.svg)', '--icoColor': '#33CCFF' } as React.CSSProperties} />
+                            </a>
+                            <button
+                                type="button"
+                                className={styles.icoBtn}
+                                onClick={() => shareRoute(result)}
+                                title="Compartir ruta"
+                            >
+                                <span className={`material-symbols-outlined ${styles.shareIco}`}>ios_share</span>
+                            </button>
+                        </div>
                         <div className={styles.mapBox}>
                             <MapContainer center={[result.origin.lat, result.origin.lng]} zoom={7} style={{ height: '100%', width: '100%' }} scrollWheelZoom={true}>
                                 <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
@@ -826,6 +871,7 @@ const RoutePlanner: React.FC = () => {
                                     </CircleMarker>
                                 ))}
                             </MapContainer>
+                        </div>
                         </div>
                     </div>
                 </div>
