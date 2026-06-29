@@ -78,11 +78,16 @@ const BRAND_COLORS: Record<string, { bg: string; fg: string }> = {
 };
 
 /**
- * Marcas con archivo de logo real disponible en /public/brands/<slug>.svg.
- * Mientras esté vacío, se muestran solo los monogramas de color (sin peticiones 404).
- * Para activar un logo: añade el archivo y su slug aquí, p. ej. "repsol".
+ * Marcas con logo real disponible en /public/brands/<slug>.<ext>.
+ * Mapa slug -> extensión del archivo (webp, avif, svg, png…), para poder mezclar
+ * formatos. Mientras esté vacío, se muestran solo los monogramas de color (sin 404).
+ * Para activar un logo: sube el archivo y añade aquí su slug y extensión,
+ * p. ej. ["repsol", "webp"].
  */
-export const BRANDS_WITH_LOGO = new Set<string>([]);
+export const BRANDS_WITH_LOGO = new Map<string, string>([
+    // ["repsol", "webp"],
+    // ["cepsa", "avif"],
+]);
 
 /** Genera un color estable a partir de un texto (para marcas sin color definido). */
 function hashColor(text: string): { bg: string; fg: string } {
