@@ -10,12 +10,13 @@ interface BrandLogoProps {
 
 /**
  * Insignia de marca: muestra un monograma con el color corporativo.
- * Si la marca tiene un logo real registrado en /public/brands/<slug>.svg lo usa;
- * si falla la carga, cae automáticamente al monograma de color.
+ * Si la marca tiene un logo real registrado en /public/brands/<slug>.<ext>
+ * (webp/avif/svg/png), lo usa; si falla la carga, cae al monograma de color.
  */
 const BrandLogo: React.FC<BrandLogoProps> = ({ brand, size = 40 }) => {
     const slug = slugify(brand);
-    const [useImage, setUseImage] = useState(BRANDS_WITH_LOGO.has(slug));
+    const ext = BRANDS_WITH_LOGO.get(slug);
+    const [useImage, setUseImage] = useState(!!ext);
     const { bg, fg } = brandColors(brand);
     const initials = brandInitials(brand);
 
@@ -26,9 +27,9 @@ const BrandLogo: React.FC<BrandLogoProps> = ({ brand, size = 40 }) => {
             title={brand}
             aria-label={brand}
         >
-            {useImage ? (
+            {useImage && ext ? (
                 <img
-                    src={`/brands/${slug}.svg`}
+                    src={`/brands/${slug}.${ext}`}
                     alt={brand}
                     className={styles.logoImg}
                     onError={() => setUseImage(false)}
