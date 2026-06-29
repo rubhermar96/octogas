@@ -6,6 +6,8 @@ import MainMap from "../../../components/Map/MainMap";
 import MunicipioTop from "../../../components/Municipio/MunicipioTop";
 import AdSlot from "../../../components/AdSlot.astro";
 import { slugify } from "../../../lib/slug";
+import { stationUrl, provinceUrl } from "../../../lib/stationUrl";
+import { titleCase } from "../../../lib/format";
 import type { GasStation } from "../../../types/gasolinera";
 
 interface Sibling {
@@ -70,6 +72,9 @@ const { provinceName, municipalityName, provSlug, stations, siblings } = Astro.p
     siblings: Sibling[];
 };
 
+// Nombre de provincia en formato "Título" (el dato viene en mayúsculas).
+const provLabel = titleCase(provinceName);
+
 // --- Estadísticas para contenido y FAQ ---
 type FuelKey = "sp95" | "sp98" | "diesel" | "glp";
 const min = (key: FuelKey) => {
@@ -116,8 +121,8 @@ const updated = new Date().toLocaleDateString("es-ES", {
     year: "numeric",
 });
 
-const pageTitle = `Gasolineras baratas en ${municipalityName} (${provinceName}) — Precios hoy | OCTO`;
-const pageDescription = `Compara el precio de la gasolina 95 y el diésel en ${stations.length} gasolineras de ${municipalityName}, ${provinceName}. La más barata desde ${fmt(minSp95)} €/L. Datos oficiales actualizados.`;
+const pageTitle = `Gasolineras baratas en ${municipalityName} (${provLabel}) — Precios hoy | OCTO`;
+const pageDescription = `Compara el precio de la gasolina 95 y el diésel en ${stations.length} gasolineras de ${municipalityName}, ${provLabel}. La más barata desde ${fmt(minSp95)} €/L. Datos oficiales actualizados.`;
 
 // --- Datos estructurados (FAQ + Breadcrumb) ---
 const faq = [
@@ -169,7 +174,7 @@ const breadcrumbJsonLd = {
         {
             "@type": "ListItem",
             position: 3,
-            name: `${municipalityName} (${provinceName})`,
+            name: `${municipalityName} (${provLabel})`,
             item: Astro.url.href,
         },
     ],
@@ -185,7 +190,7 @@ const breadcrumbJsonLd = {
             <nav class="breadcrumb" aria-label="Migas de pan">
                 <a href="/">Inicio</a>
                 <span>›</span>
-                <a href="/municipios">Municipios</a>
+                <a href={provinceUrl(provinceName)}>{titleCase(provinceName)}</a>
                 <span>›</span>
                 <span class="current">{municipalityName}</span>
             </nav>
@@ -193,7 +198,7 @@ const breadcrumbJsonLd = {
             <header class="page-header">
                 <h1>Gasolineras baratas en {municipalityName}</h1>
                 <p class="subtitle">
-                    Precios de gasolina y diésel en {municipalityName}, {provinceName}.
+                    Precios de gasolina y diésel en {municipalityName}, {provLabel}.
                     Comparamos {stations.length} estaciones de servicio para que encuentres la
                     más barata. <span class="updated">Actualizado el {updated}.</span>
                 </p>
@@ -242,10 +247,26 @@ const breadcrumbJsonLd = {
                 }
             </section>
 
+            <section class="all-stations">
+                <h2>Todas las gasolineras de {municipalityName}</h2>
+                <div class="station-link-grid">
+                    {
+                        stations.map((s) => (
+                            <a href={stationUrl(s)} class="station-link">
+                                <span class="sl-name">{/^n[ºo°]/i.test(s.brand) || /^\d/.test(s.brand) ? s.address : s.brand}</span>
+                                <span class="sl-meta">
+                                    {s.prices.sp95 != null && <span class="sl-price">{fmt(s.prices.sp95)} €/L</span>}
+                                </span>
+                            </a>
+                        ))
+                    }
+                </div>
+            </section>
+
             {
                 siblings.length > 0 && (
                     <section class="siblings">
-                        <h2>Gasolineras en otros municipios de {provinceName}</h2>
+                        <h2>Gasolineras en otros municipios de {provLabel}</h2>
                         <div class="sibling-grid">
                             {siblings.map((m) => (
                                 <a href={`/gasolineras-baratas/${provSlug}/${m.slug}`} class="sibling-link">
@@ -502,6 +523,45 @@ const breadcrumbJsonLd = {
         padding: 0 1.25rem 1.1rem;
         color: var(--text-muted);
         line-height: 1.6;
+    }
+
+    .all-stations {
+        margin-bottom: 3rem;
+    }
+    .station-link-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 0.6rem;
+    }
+    .station-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 0.7rem;
+        text-decoration: none;
+        color: var(--text);
+        transition: border-color 0.2s, transform 0.2s;
+    }
+    .station-link:hover {
+        border-color: var(--primary);
+        transform: translateY(-1px);
+    }
+    .sl-name {
+        font-size: 0.88rem;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .sl-price {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--primary);
+        flex-shrink: 0;
     }
 
     .siblings {
