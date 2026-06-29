@@ -68,7 +68,9 @@ function photonLabel(p: any): string {
  */
 export async function searchPlaces(query: string, limit = 6): Promise<GeoResult[]> {
     if (query.trim().length < 3) return [];
-    const url = `https://photon.komoot.io/api/?limit=${limit}&lat=40.4&lon=-3.7&q=${encodeURIComponent(query)}`;
+    // Sin sesgo de proximidad: con él, "Santander" devolvía cajeros en Madrid en
+    // vez de la ciudad. Filtramos a España y dejamos el ranking por relevancia.
+    const url = `https://photon.komoot.io/api/?limit=${limit}&q=${encodeURIComponent(query)}`;
     const res = await fetch(url);
     if (!res.ok) return [];
     const data = await res.json();

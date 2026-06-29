@@ -193,6 +193,12 @@
     font-size: 0.85rem;
 }
 
+.toggleRow {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
 .toggle {
     display: inline-flex;
     align-items: center;
