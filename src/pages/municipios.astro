@@ -1,6 +1,26 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import MunicipalitySearch from "../components/Explorer/MunicipalitySearch";
+
+// Ciudades principales (nombre visible + ruta a su página de municipio).
+const mainCities: { name: string; path: string }[] = [
+    { name: "Madrid", path: "/gasolineras-baratas/madrid/madrid" },
+    { name: "Barcelona", path: "/gasolineras-baratas/barcelona/barcelona" },
+    { name: "Valencia", path: "/gasolineras-baratas/valencia-valencia/valencia" },
+    { name: "Sevilla", path: "/gasolineras-baratas/sevilla/sevilla" },
+    { name: "Zaragoza", path: "/gasolineras-baratas/zaragoza/zaragoza" },
+    { name: "Málaga", path: "/gasolineras-baratas/malaga/malaga" },
+    { name: "Murcia", path: "/gasolineras-baratas/murcia/murcia" },
+    { name: "Palma de Mallorca", path: "/gasolineras-baratas/balears-illes/palma-de-mallorca" },
+    { name: "Las Palmas de Gran Canaria", path: "/gasolineras-baratas/palmas-las/palmas-de-gran-canaria-las" },
+    { name: "Córdoba", path: "/gasolineras-baratas/cordoba/cordoba" },
+    { name: "Valladolid", path: "/gasolineras-baratas/valladolid/valladolid" },
+    { name: "Alicante", path: "/gasolineras-baratas/alicante/alicantealacant" },
+    { name: "Cartagena", path: "/gasolineras-baratas/murcia/cartagena" },
+    { name: "Jerez de la Frontera", path: "/gasolineras-baratas/cadiz/jerez-de-la-frontera" },
+    { name: "Bilbao", path: "/gasolineras-baratas/bizkaia/bilbao" },
+    { name: "Granada", path: "/gasolineras-baratas/granada/granada" },
+];
 ---
 
 <Layout
@@ -31,30 +51,14 @@ import MunicipalitySearch from "../components/Explorer/MunicipalitySearch";
             <div class="quick-links">
                 <h2>Ciudades principales</h2>
                 <div class="cities-grid">
-                    <a href="/gasolineras-baratas/madrid/madrid" class="city-card">
-                        <span class="city-name">Madrid</span>
-                        <span class="city-icon material-symbols-outlined">location_city</span>
-                    </a>
-                    <a href="/gasolineras-baratas/barcelona/barcelona" class="city-card">
-                        <span class="city-name">Barcelona</span>
-                        <span class="city-icon material-symbols-outlined">location_city</span>
-                    </a>
-                    <a href="/gasolineras-baratas/valencia-valencia/valencia" class="city-card">
-                        <span class="city-name">Valencia</span>
-                        <span class="city-icon material-symbols-outlined">location_city</span>
-                    </a>
-                    <a href="/gasolineras-baratas/sevilla/sevilla" class="city-card">
-                        <span class="city-name">Sevilla</span>
-                        <span class="city-icon material-symbols-outlined">location_city</span>
-                    </a>
-                    <a href="/gasolineras-baratas/zaragoza/zaragoza" class="city-card">
-                        <span class="city-name">Zaragoza</span>
-                        <span class="city-icon material-symbols-outlined">location_city</span>
-                    </a>
-                    <a href="/gasolineras-baratas/malaga/malaga" class="city-card">
-                        <span class="city-name">Málaga</span>
-                        <span class="city-icon material-symbols-outlined">location_city</span>
-                    </a>
+                    {
+                        mainCities.map((c) => (
+                            <a href={c.path} class="city-card">
+                                <span class="city-name">{c.name}</span>
+                                <span class="city-icon material-symbols-outlined">location_city</span>
+                            </a>
+                        ))
+                    }
                 </div>
             </div>
         </section>

@@ -1,0 +1,78 @@
+.wrap {
+    position: relative;
+}
+
+.input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 0.6rem;
+    padding: 0.7rem 2.2rem 0.7rem 0.85rem;
+    color: var(--text);
+    font-size: 0.9rem;
+    outline: none;
+    width: 100%;
+}
+
+.input:focus {
+    border-color: var(--primary);
+}
+
+.check {
+    position: absolute;
+    right: 0.6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--primary);
+    font-size: 1.1rem;
+    pointer-events: none;
+}
+
+.dropdown {
+    position: absolute;
+    top: calc(100% + 0.3rem);
+    left: 0;
+    right: 0;
+    z-index: 60;
+    list-style: none;
+    margin: 0;
+    padding: 0.3rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.6rem;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.5rem;
+    border-radius: 0.45rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text);
+}
+
+.item:hover {
+    background: var(--bg);
+}
+
+.item .material-symbols-outlined {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.info {
+    padding: 0.6rem 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}

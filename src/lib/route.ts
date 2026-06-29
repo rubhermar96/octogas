@@ -51,20 +51,44 @@ function decodePolyline6(str: string): [number, number][] {
     return coords;
 }
 
-/** Geocodifica una dirección/municipio en España con Nominatim (OpenStreetMap). */
-export async function geocode(query: string): Promise<GeoResult | null> {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=es&q=${encodeURIComponent(
-        query
-    )}`;
-    const res = await fetch(url, { headers: { Accept: 'application/json' } });
-    if (!res.ok) return null;
+/** Construye una etiqueta legible a partir de las propiedades de Photon. */
+function photonLabel(p: any): string {
+    const main =
+        p.name || [p.street, p.housenumber].filter(Boolean).join(' ') || p.city || p.county || '';
+    const parts: string[] = [main];
+    if (p.city && p.city !== main) parts.push(p.city);
+    else if (p.county && p.county !== main) parts.push(p.county);
+    if (p.state) parts.push(p.state);
+    return parts.filter(Boolean).join(', ');
+}
+
+/**
+ * Busca lugares (direcciones, municipios y POIs: restaurantes, hoteles…) con
+ * Photon (OpenStreetMap, sin clave), pensado para autocompletado. Prioriza España.
+ */
+export async function searchPlaces(query: string, limit = 6): Promise<GeoResult[]> {
+    if (query.trim().length < 3) return [];
+    const url = `https://photon.komoot.io/api/?limit=${limit}&lat=40.4&lon=-3.7&q=${encodeURIComponent(query)}`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
     const data = await res.json();
-    if (!Array.isArray(data) || data.length === 0) return null;
-    return {
-        lat: parseFloat(data[0].lat),
-        lng: parseFloat(data[0].lon),
-        label: data[0].display_name as string,
-    };
+    const feats = (data.features || []).filter(
+        (f: any) => f.geometry?.coordinates?.length === 2 && f.properties
+    );
+    // Preferimos resultados en España; si no hay, mostramos todos.
+    const es = feats.filter((f: any) => f.properties.countrycode === 'ES');
+    const use = es.length ? es : feats;
+    return use.map((f: any) => ({
+        lat: f.geometry.coordinates[1],
+        lng: f.geometry.coordinates[0],
+        label: photonLabel(f.properties),
+    }));
+}
+
+/** Geocodifica un texto (devuelve la mejor coincidencia). */
+export async function geocode(query: string): Promise<GeoResult | null> {
+    const r = await searchPlaces(query, 1);
+    return r[0] ?? null;
 }
 
 /** Calcula la ruta en coche entre dos puntos. */

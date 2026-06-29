@@ -19,6 +19,7 @@ import {
 } from '../../lib/route';
 import BrandLogo from '../Explorer/BrandLogo';
 import BrandFilter, { type BrandOption } from '../Explorer/BrandFilter';
+import PlaceInput, { type PlaceValue } from './PlaceInput';
 import styles from './RoutePlanner.module.css';
 
 const ROUTE_FUELS: FuelType[] = [...MAIN_FUELS, 'glp'];
@@ -92,9 +93,9 @@ const fmtDuration = (min: number) => {
 
 // --- Parámetros de la ruta en la URL (para compartir/reabrir el planificador) ---
 interface RouteInputs {
-    origin: string;
-    destination: string;
-    waypoints: string[];
+    origin: PlaceValue;
+    destination: PlaceValue;
+    waypoints: PlaceValue[];
     fuel: FuelType;
     consumption: number;
     capacity: number;
@@ -108,9 +109,10 @@ interface RouteInputs {
 
 function serializeInputs(v: RouteInputs): string {
     const p = new URLSearchParams();
-    p.set('o', v.origin);
-    p.set('d', v.destination);
-    if (v.waypoints.length) p.set('w', v.waypoints.join('~'));
+    p.set('o', v.origin.text);
+    p.set('d', v.destination.text);
+    const wps = v.waypoints.map((w) => w.text).filter(Boolean);
+    if (wps.length) p.set('w', wps.join('~'));
     p.set('f', v.fuel);
     p.set('c', String(v.consumption));
     p.set('cap', String(v.capacity));
@@ -130,9 +132,9 @@ function parseInputs(search: string): RouteInputs | null {
     if (!o || !d) return null;
     const num = (key: string, def: number) => (p.get(key) != null ? Number(p.get(key)) : def);
     return {
-        origin: o,
-        destination: d,
-        waypoints: p.get('w') ? p.get('w')!.split('~') : [],
+        origin: { text: o },
+        destination: { text: d },
+        waypoints: p.get('w') ? p.get('w')!.split('~').map((t) => ({ text: t })) : [],
         fuel: (p.get('f') as FuelType) || 'sp95',
         consumption: num('c', 6.5),
         capacity: num('cap', 50),
@@ -270,9 +272,9 @@ function buildPlan(
 
 const RoutePlanner: React.FC = () => {
     const [allStations, setAllStations] = useState<GasStation[]>([]);
-    const [origin, setOrigin] = useState('');
-    const [destination, setDestination] = useState('');
-    const [waypoints, setWaypoints] = useState<string[]>([]);
+    const [origin, setOrigin] = useState<PlaceValue>({ text: '' });
+    const [destination, setDestination] = useState<PlaceValue>({ text: '' });
+    const [waypoints, setWaypoints] = useState<PlaceValue[]>([]);
     const [fuel, setFuel] = useState<FuelType>('sp95');
     const [consumption, setConsumption] = useState(6.5);
     const [capacity, setCapacity] = useState(50);
@@ -302,9 +304,9 @@ const RoutePlanner: React.FC = () => {
         }
     }, [loading, result]);
 
-    const addWaypoint = () => setWaypoints((w) => [...w, '']);
+    const addWaypoint = () => setWaypoints((w) => [...w, { text: '' }]);
     const removeWaypoint = (i: number) => setWaypoints((w) => w.filter((_, idx) => idx !== i));
-    const updateWaypoint = (i: number, val: string) =>
+    const updateWaypoint = (i: number, val: PlaceValue) =>
         setWaypoints((w) => w.map((x, idx) => (idx === i ? val : x)));
 
     // Marcas disponibles (con conteo) para restringir dónde repostar.
@@ -338,22 +340,27 @@ const RoutePlanner: React.FC = () => {
 
     const runCalculation = async (inp: RouteInputs) => {
         setError(null);
-        if (!inp.origin.trim() || !inp.destination.trim()) {
+        if (!inp.origin.text.trim() || !inp.destination.text.trim()) {
             setError('Indica origen y destino.');
             return;
         }
         setLoading(true);
         setResult(null);
         try {
-            // Geocodificamos origen, destino y las paradas propias (las que no estén vacías).
-            const wpQueries = inp.waypoints.map((w) => w.trim()).filter(Boolean);
+            // Resolvemos cada lugar: si se eligió de la lista usamos sus coordenadas;
+            // si solo se escribió texto, lo geocodificamos.
+            const resolve = async (pv: PlaceValue): Promise<GeoResult | null> => {
+                if (pv.lat != null && pv.lng != null) return { lat: pv.lat, lng: pv.lng, label: pv.text };
+                return pv.text.trim() ? geocode(pv.text) : null;
+            };
+            const wpList = inp.waypoints.filter((w) => w.text.trim());
             const [a, b, ...wpGeo] = await Promise.all([
-                geocode(inp.origin),
-                geocode(inp.destination),
-                ...wpQueries.map((q) => geocode(q)),
+                resolve(inp.origin),
+                resolve(inp.destination),
+                ...wpList.map(resolve),
             ]);
-            if (!a) throw new Error(`No se encontró el origen "${inp.origin}".`);
-            if (!b) throw new Error(`No se encontró el destino "${inp.destination}".`);
+            if (!a) throw new Error(`No se encontró el origen "${inp.origin.text}".`);
+            if (!b) throw new Error(`No se encontró el destino "${inp.destination.text}".`);
             const customStops = wpGeo.filter((g): g is GeoResult => g != null);
             if (wpGeo.length !== customStops.length) {
                 throw new Error('No se encontró alguna de las paradas indicadas.');
@@ -511,11 +518,11 @@ const RoutePlanner: React.FC = () => {
                 <div className={styles.row}>
                     <div className={styles.field}>
                         <label>Origen</label>
-                        <input className={styles.input} placeholder="Ej. Madrid" value={origin} onChange={(e) => setOrigin(e.target.value)} />
+                        <PlaceInput value={origin} onChange={setOrigin} placeholder="Ciudad, dirección, hotel…" />
                     </div>
                     <div className={styles.field}>
                         <label>Destino</label>
-                        <input className={styles.input} placeholder="Ej. Valencia" value={destination} onChange={(e) => setDestination(e.target.value)} />
+                        <PlaceInput value={destination} onChange={setDestination} placeholder="Ciudad, dirección, restaurante…" />
                     </div>
                 </div>
 
@@ -524,12 +531,13 @@ const RoutePlanner: React.FC = () => {
                     {waypoints.map((w, i) => (
                         <div key={i} className={styles.wpRow}>
                             <span className="material-symbols-outlined">place</span>
-                            <input
-                                className={styles.input}
-                                placeholder="Ej. Cuenca (parada para comer)"
-                                value={w}
-                                onChange={(e) => updateWaypoint(i, e.target.value)}
-                            />
+                            <div className={styles.wpInput}>
+                                <PlaceInput
+                                    value={w}
+                                    onChange={(v) => updateWaypoint(i, v)}
+                                    placeholder="Restaurante, hotel, pueblo…"
+                                />
+                            </div>
                             <button type="button" className={styles.wpRemove} onClick={() => removeWaypoint(i)} title="Quitar parada">
                                 <span className="material-symbols-outlined">close</span>
                             </button>
