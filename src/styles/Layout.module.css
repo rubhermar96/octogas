@@ -668,6 +668,19 @@
     transform: translateX(0) !important;
 }
 
+/* En páginas con sidebar (escritorio) el logo del sidebar ya está, así que
+   ocultamos el logo flotante para que no salga duplicado. En móvil el sidebar
+   se oculta, así que dejamos el logo flotante como marca. */
+:global(body.has-sidebar) .headerLeft {
+    display: none;
+}
+
+@media (max-width: 900px) {
+    :global(body.has-sidebar) .headerLeft {
+        display: flex;
+    }
+}
+
 .headerLogo {
     height: 32px;
     width: auto;

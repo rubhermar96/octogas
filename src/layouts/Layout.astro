@@ -99,7 +99,7 @@ const orgJsonLd = {
         />
         <slot name="head" />
     </head>
-    <body class={`custom-scrollbar ${isHome ? 'home-page' : ''}`}>
+    <body class={`custom-scrollbar ${isHome ? 'home-page' : ''} ${!hideSidebar ? 'has-sidebar' : ''}`}>
         <!-- Floating Header -->
         <header class={styles.header} id="main-header">
             {!hideHeaderLogo && (
