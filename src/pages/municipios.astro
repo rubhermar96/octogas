@@ -1,6 +1,23 @@
 ---
+import fs from "node:fs";
+import path from "node:path";
 import Layout from "../layouts/Layout.astro";
 import MunicipalitySearch from "../components/Explorer/MunicipalitySearch";
+import { titleCase } from "../lib/format";
+import { provinceUrl } from "../lib/stationUrl";
+import type { GasStation } from "../types/gasolinera";
+
+// Lista de provincias (con nº de gasolineras) para enlazar a sus páginas.
+const stationsData = JSON.parse(
+    fs.readFileSync(path.resolve("public/data/stations.json"), "utf-8")
+) as GasStation[];
+const provCounts = new Map<string, number>();
+for (const s of stationsData) {
+    if (s.province) provCounts.set(s.province, (provCounts.get(s.province) ?? 0) + 1);
+}
+const provinces = [...provCounts.entries()]
+    .map(([name, count]) => ({ label: titleCase(name), url: provinceUrl(name), count }))
+    .sort((a, b) => a.label.localeCompare(b.label, "es"));
 
 // Ciudades principales (nombre visible + ruta a su página de municipio).
 const mainCities: { name: string; path: string }[] = [
@@ -64,6 +81,20 @@ const mainCities: { name: string; path: string }[] = [
                             <a href={c.path} class="city-card">
                                 <span class="city-name">{c.name}</span>
                                 <span class="city-icon material-symbols-outlined">location_city</span>
+                            </a>
+                        ))
+                    }
+                </div>
+            </div>
+
+            <div class="quick-links">
+                <h2>Gasolineras por provincia</h2>
+                <div class="province-grid">
+                    {
+                        provinces.map((p) => (
+                            <a href={p.url} class="province-link">
+                                <span class="province-name">{p.label}</span>
+                                <span class="province-count">{p.count}</span>
                             </a>
                         ))
                     }
@@ -262,5 +293,47 @@ const mainCities: { name: string; path: string }[] = [
 
     .city-card:hover .city-icon {
         opacity: 1;
+    }
+
+    .province-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 0.6rem;
+    }
+
+    .province-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.7rem 1rem;
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        text-decoration: none;
+        color: var(--text);
+        font-size: 0.9rem;
+        transition: border-color 0.2s, color 0.2s;
+    }
+
+    .province-link:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .province-name {
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .province-count {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        background: var(--bg);
+        padding: 0.1rem 0.45rem;
+        border-radius: 999px;
+        flex-shrink: 0;
     }
 </style>

@@ -1,98 +1,313 @@
 ---
+import fs from "node:fs";
+import path from "node:path";
 import Layout from "../layouts/Layout.astro";
 import ExplorerSelector from "../components/Explorer/ExplorerSelector";
+import { stationUrl } from "../lib/stationUrl";
+import { slugify } from "../lib/slug";
+import { titleCase } from "../lib/format";
+import { BRAND_LOGO_FILES } from "../lib/brandLogos";
+import type { GasStation } from "../types/gasolinera";
 import styles from "../styles/Home.module.css";
+
+// --- Datos en vivo (build) para enriquecer la home ---
+const stations = JSON.parse(
+    fs.readFileSync(path.resolve("public/data/stations.json"), "utf-8")
+) as GasStation[];
+
+const provinces = new Set<string>();
+const munis = new Set<string>();
+const sp95: number[] = [];
+const diesel: number[] = [];
+for (const s of stations) {
+    if (s.province) provinces.add(s.province);
+    if (s.province && s.city) munis.add(`${s.province}|${s.city}`);
+    if (s.prices.sp95 != null) sp95.push(s.prices.sp95);
+    if (s.prices.diesel != null) diesel.push(s.prices.diesel);
+}
+const avg = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+const nf = new Intl.NumberFormat("es-ES", { useGrouping: "always" });
+const fmt = (n: number) => n.toFixed(3);
+
+const totalStations = stations.length;
+const totalProvinces = provinces.size;
+const totalMunis = munis.size;
+const avgSp95 = avg(sp95);
+const avgDiesel = avg(diesel);
+
+const cheapest = stations
+    .filter((s) => s.prices.sp95 != null)
+    .sort((a, b) => a.prices.sp95! - b.prices.sp95!)[0];
+const cheapestGeneric = cheapest && (/^n[ºo°]/i.test(cheapest.brand) || /^\d/.test(cheapest.brand));
+const cheapestLogo = cheapest ? BRAND_LOGO_FILES[slugify(cheapest.brand)] : undefined;
+
+// Logos para el marquee (duplicados para scroll infinito).
+const logoFiles = Object.values(BRAND_LOGO_FILES);
+
+const features = [
+    {
+        icon: "explore",
+        color: "var(--primary)",
+        title: "Explorador de precios",
+        desc: "Todas las gasolineras de España en un mapa interactivo. Filtra por combustible y marca, ordena por precio o cercanía y encuentra la más barata cerca de ti.",
+        href: "/municipios",
+        cta: "Explorar el mapa",
+    },
+    {
+        icon: "balance",
+        color: "var(--secondary)",
+        title: "Comparador",
+        desc: "Pon hasta 4 gasolineras una al lado de otra y compáralas precio a precio: 95, 98, diésel, GLP y más. De un vistazo sabes cuál te conviene.",
+        href: "/comparador",
+        cta: "Abrir comparador",
+    },
+    {
+        icon: "route",
+        color: "var(--accent)",
+        title: "Planificador de viajes",
+        desc: "Calcula tu ruta y descubre dónde repostar más barato por el camino según tu consumo, depósito y peajes. Ahorra en cada viaje.",
+        href: "/rutas",
+        cta: "Planificar ruta",
+    },
+    {
+        icon: "pin_drop",
+        color: "var(--primary)",
+        title: "Fichas por provincia y gasolinera",
+        desc: `Más de ${nf.format(totalStations)} fichas con precios, horario, mapa y gasolineras cercanas. Páginas por provincia y municipio de toda España.`,
+        href: "/municipios",
+        cta: "Ver por provincia",
+    },
+];
+
+const steps = [
+    {
+        icon: "travel_explore",
+        title: "Elige tu zona",
+        desc: "Busca tu municipio o usa tu ubicación en tiempo real para ver las gasolineras de tu alrededor.",
+    },
+    {
+        icon: "savings",
+        title: "Compara precios",
+        desc: "Visualízalas en el mapa, ordénalas por precio y compáralas cara a cara para cada combustible.",
+    },
+    {
+        icon: "local_gas_station",
+        title: "Reposta y ahorra",
+        desc: "Ve a la más barata o planifica tu ruta para repostar al mejor precio durante el viaje.",
+    },
+];
 ---
 
 <Layout
     title="OCTO - Gasolineras baratas en España | Menos gasto, más kilómetros"
-    description="Encuentra las gasolineras más baratas de España. Compara precios de gasolina 95, 98 y diésel en el mapa interactivo con datos oficiales y ahorra en cada repostaje."
+    description="Encuentra las gasolineras más baratas de España. Compara precios de gasolina 95, 98, diésel y GLP en el mapa, comparador y planificador de rutas. Datos oficiales actualizados a diario."
     hideSidebar={true}
 >
     <div class={styles.homeContainer} id="home-container">
-        
-        <!-- Abstract Blurred Background -->
+        <!-- Fondo -->
         <div class={styles.backgroundWrapper}>
             <div class={`${styles.blob} ${styles.blob1}`}></div>
             <div class={`${styles.blob} ${styles.blob2}`}></div>
             <div class={`${styles.blob} ${styles.blob3}`}></div>
         </div>
 
-        <!-- Hero Section -->
+        <!-- ===== HERO ===== -->
         <section class={styles.hero}>
-            <div class={styles.logoBox} id="hero-logo">
-                <img src="/images/logo-octo.png" alt="OCTO Logo" class={styles.logoImage} />
+            <div class={styles.heroLeft}>
+                <div class={styles.logoBox} id="hero-logo">
+                    <img src="/images/logo-octo.png" alt="OCTO Logo" class={styles.logoImage} />
+                </div>
+                <h1 class={styles.slogan}>
+                    Menos gasto, <span class={styles.sloganAccent}>más kilómetros</span>
+                </h1>
+                <p class={styles.heroLead}>
+                    La forma más rápida de encontrar la gasolinera más barata de España.
+                    Explora precios en el mapa, compara estaciones y planifica tu ruta para
+                    repostar siempre al mejor precio.
+                </p>
+
+                <div class={styles.heroStats}>
+                    <span class={styles.statChip}>
+                        <span class="material-symbols-outlined">local_gas_station</span>
+                        <b>{nf.format(totalStations)}</b> gasolineras
+                    </span>
+                    <span class={styles.statChip}>
+                        <span class="material-symbols-outlined">map</span>
+                        <b>{totalProvinces}</b> provincias
+                    </span>
+                    <span class={styles.statChip}>
+                        <span class="material-symbols-outlined">update</span>
+                        Datos oficiales a diario
+                    </span>
+                </div>
+
+                <ExplorerSelector client:only="react" />
             </div>
-            <h1 class={styles.slogan}>
-                Menos gasto, <span class={styles.sloganAccent}>más kilómetros</span>
-            </h1>
-            
-            <a href="#banners" class={styles.scrollIndicator} id="scroll-btn">
+
+            <div class={styles.heroRight}>
+                {
+                    cheapest && (
+                        <a class={styles.heroCard} href={stationUrl(cheapest)}>
+                            <span class={styles.heroCardTag}>
+                                <span class="material-symbols-outlined">trophy</span>
+                                Más barata ahora en España (SP95)
+                            </span>
+                            <div class={styles.heroCardMain}>
+                                <div class={styles.heroCardLogo}>
+                                    {cheapestLogo ? (
+                                        <img src={`/brands/${cheapestLogo}`} alt={cheapest.brand} />
+                                    ) : (
+                                        <span class="material-symbols-outlined">local_gas_station</span>
+                                    )}
+                                </div>
+                                <div>
+                                    <span class={styles.heroCardName}>
+                                        {cheapestGeneric ? "Gasolinera independiente" : cheapest.brand}
+                                    </span>
+                                    <span class={styles.heroCardCity}>
+                                        {cheapest.city} · {titleCase(cheapest.province)}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class={styles.heroCardPriceRow}>
+                                <span class={styles.heroCardPrice}>
+                                    {fmt(cheapest.prices.sp95!)} <small>€/L</small>
+                                </span>
+                                <span class={styles.heroCardCity}>Gasolina 95</span>
+                            </div>
+                            <span class={styles.heroCardLink}>
+                                Ver gasolinera
+                                <span class="material-symbols-outlined">arrow_forward</span>
+                            </span>
+                        </a>
+                    )
+                }
+            </div>
+
+            <a href="#features" class={styles.scrollIndicator} id="scroll-btn">
                 <span>Descubre más</span>
                 <span class={`material-symbols-outlined ${styles.scrollIcon}`}>expand_more</span>
             </a>
         </section>
 
-        <!-- Banners Anchor -->
-        <div id="banners"></div>
+        <!-- ===== MARQUEE DE MARCAS ===== -->
+        <section class={styles.marquee} aria-label="Marcas de gasolineras">
+            <p class={styles.marqueeLabel}>Comparamos los precios de todas las marcas</p>
+            <div class={styles.marqueeTrack}>
+                {
+                    [...logoFiles, ...logoFiles].map((file) => (
+                        <div class={styles.marqueeLogo}>
+                            <img src={`/brands/${file}`} alt="" loading="lazy" />
+                        </div>
+                    ))
+                }
+            </div>
+        </section>
 
-        <!-- Banner 1: Explorador de precios -->
-        <section class={`${styles.banner} observer-banner`}>
-            <div class={styles.bannerContent}>
-                <div class={styles.bannerText}>
-                    <span class={`material-symbols-outlined ${styles.bannerIcon}`}>explore</span>
-                    <h2 class={styles.bannerTitle}>Explorador de precios</h2>
-                    <p class={styles.bannerDescription}>
-                        Encuentra las gasolineras más baratas cerca de ti o en cualquier localidad. 
-                        Visualízalas en nuestro mapa interactivo y compara los precios actualizados 
-                        para maximizar tu ahorro en cada repostaje.
+        <!-- ===== FEATURES ===== -->
+        <section class={styles.section} id="features">
+            <div class={styles.inner}>
+                <div class={`${styles.sectionHead} reveal`}>
+                    <span class={styles.eyebrow}>Todo en un sitio</span>
+                    <h2 class={styles.sectionTitle}>Qué puedes hacer con OCTO</h2>
+                    <p class={styles.sectionSubtitle}>
+                        Cuatro herramientas para gastar menos en combustible, con datos oficiales
+                        del Ministerio actualizados cada día.
                     </p>
-                    <ExplorerSelector client:only="react" />
                 </div>
-                <div class={styles.bannerVisual}>
-                    <span class={`material-symbols-outlined ${styles.visualPlaceholderIcon}`}>map</span>
-                    <div class={styles.visualOverlay}></div>
+
+                <div class={styles.featureGrid}>
+                    {
+                        features.map((f) => (
+                            <a class={`${styles.featureCard} reveal`} href={f.href} style={`--accentColor:${f.color}`}>
+                                <div class={styles.featureIcon}>
+                                    <span class="material-symbols-outlined">{f.icon}</span>
+                                </div>
+                                <h3 class={styles.featureTitle}>{f.title}</h3>
+                                <p class={styles.featureDesc}>{f.desc}</p>
+                                <span class={styles.featureLink}>
+                                    {f.cta}
+                                    <span class="material-symbols-outlined">arrow_forward</span>
+                                </span>
+                            </a>
+                        ))
+                    }
                 </div>
             </div>
         </section>
 
-        <!-- Banner 2: Planificador de viajes -->
-        <section class={`${styles.banner} ${styles.bannerReverse} observer-banner`}>
-            <div class={styles.bannerContent}>
-                <div class={styles.bannerText}>
-                    <span class={`material-symbols-outlined ${styles.bannerIcon}`}>route</span>
-                    <h2 class={styles.bannerTitle}>Planificador de viajes</h2>
-                    <p class={styles.bannerDescription}>
-                        Calcula tu ruta perfecta y descubre dónde repostar por el camino para 
-                        optimizar tus gastos. Te mostramos las mejores opciones de estaciones de 
-                        servicio en tu trayecto para que el viaje sea más económico.
-                    </p>
-                    <a href="/rutas" class={styles.bannerAction}>Planificar ahora</a>
+        <!-- ===== CÓMO FUNCIONA ===== -->
+        <section class={styles.section}>
+            <div class={styles.inner}>
+                <div class={`${styles.sectionHead} reveal`}>
+                    <span class={styles.eyebrow}>Así de fácil</span>
+                    <h2 class={styles.sectionTitle}>Ahorrar te lleva 3 pasos</h2>
                 </div>
-                <div class={styles.bannerVisual}>
-                    <span class={`material-symbols-outlined ${styles.visualPlaceholderIcon}`}>add_road</span>
-                    <div class={styles.visualOverlay}></div>
+                <div class={styles.steps}>
+                    {
+                        steps.map((s, i) => (
+                            <div class={`${styles.step} reveal`}>
+                                <div class={styles.stepNum}>{i + 1}</div>
+                                <h3 class={styles.stepTitle}>{s.title}</h3>
+                                <p class={styles.stepDesc}>{s.desc}</p>
+                            </div>
+                        ))
+                    }
                 </div>
             </div>
         </section>
 
-        <!-- Banner 3: Comparador -->
-        <section class={`${styles.banner} observer-banner`}>
-            <div class={styles.bannerContent}>
-                <div class={styles.bannerText}>
-                    <span class={`material-symbols-outlined ${styles.bannerIcon}`}>balance</span>
-                    <h2 class={styles.bannerTitle}>Comparador</h2>
-                    <p class={styles.bannerDescription}>
-                        Pon hasta 4 gasolineras una al lado de otra y compáralas precio a
-                        precio: gasolina 95, 98, diésel, GLP y más. De un vistazo sabes cuál
-                        te conviene para cada combustible.
-                    </p>
-                    <a href="/comparador" class={styles.bannerAction}>Abrir comparador</a>
+        <!-- ===== COBERTURA / CONFIANZA ===== -->
+        <section class={`${styles.section} ${styles.coverage}`}>
+            <div class={styles.inner}>
+                <div class={`${styles.sectionHead} reveal`}>
+                    <span class={styles.eyebrow}>Cobertura nacional</span>
+                    <h2 class={styles.sectionTitle}>Toda España, datos oficiales</h2>
                 </div>
-                <div class={styles.bannerVisual}>
-                    <span class={`material-symbols-outlined ${styles.visualPlaceholderIcon}`}>balance</span>
-                    <div class={styles.visualOverlay}></div>
+                <div class={styles.statsGrid}>
+                    <div class={`${styles.bigStat} reveal`}>
+                        <span class={styles.bigStatValue}>{nf.format(totalStations)}</span>
+                        <span class={styles.bigStatLabel}>Gasolineras</span>
+                    </div>
+                    <div class={`${styles.bigStat} reveal`}>
+                        <span class={styles.bigStatValue}>{totalProvinces}</span>
+                        <span class={styles.bigStatLabel}>Provincias</span>
+                    </div>
+                    <div class={`${styles.bigStat} reveal`}>
+                        <span class={styles.bigStatValue}>{nf.format(totalMunis)}</span>
+                        <span class={styles.bigStatLabel}>Municipios</span>
+                    </div>
+                    <div class={`${styles.bigStat} reveal`}>
+                        <span class={styles.bigStatValue}>{fmt(avgSp95)}</span>
+                        <span class={styles.bigStatLabel}>Media SP95 (€/L)</span>
+                    </div>
                 </div>
+                <div class={styles.trustRow}>
+                    <span class={styles.trustItem}>
+                        <span class="material-symbols-outlined">verified</span>
+                        Datos del Ministerio (MITECO)
+                    </span>
+                    <span class={styles.trustItem}>
+                        <span class="material-symbols-outlined">update</span>
+                        Actualizados a diario
+                    </span>
+                    <span class={styles.trustItem}>
+                        <span class="material-symbols-outlined">savings</span>
+                        Media diésel {fmt(avgDiesel)} €/L
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== CTA FINAL ===== -->
+        <section class={`${styles.section} ${styles.ctaBand}`}>
+            <div class={`${styles.ctaCard} reveal`}>
+                <h2 class={styles.ctaTitle}>Empieza a ahorrar en cada repostaje</h2>
+                <p class={styles.ctaText}>
+                    Encuentra tu gasolinera más barata ahora mismo. Sin registros, gratis y con
+                    los precios oficiales más recientes.
+                </p>
+                <ExplorerSelector client:only="react" />
             </div>
         </section>
     </div>
@@ -100,44 +315,32 @@ import styles from "../styles/Home.module.css";
 
 <script>
     document.addEventListener("DOMContentLoaded", () => {
-        const homeContainer = document.getElementById('home-container');
-        const banners = document.querySelectorAll('.observer-banner');
-        const header = document.getElementById('main-header');
-        const headerLogo = document.getElementById('header-logo');
-        const heroLogo = document.getElementById('hero-logo');
+        const homeContainer = document.getElementById("home-container");
+        const header = document.getElementById("main-header");
+        const headerLogo = document.getElementById("header-logo");
+        const heroLogo = document.getElementById("hero-logo");
 
-        // --- 1. Banner Scroll Intersection Observer ---
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('is-visible');
-                }
-            });
-        }, {
-            threshold: 0.2, // Trigger when 20% visible
-            rootMargin: "0px 0px -50px 0px"
-        });
+        // Animación de aparición al hacer scroll.
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add("is-visible");
+                        observer.unobserve(entry.target);
+                    }
+                });
+            },
+            { threshold: 0.15, rootMargin: "0px 0px -40px 0px" }
+        );
+        document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
 
-        banners.forEach(banner => observer.observe(banner));
-
-        // --- 2. Header Scroll & Sticky Logo Logic ---
+        // Header flotante + logo mini al hacer scroll.
         if (homeContainer) {
-            homeContainer.addEventListener('scroll', () => {
-                // If we scrolled past 100px, show background on header
-                if (homeContainer.scrollTop > 50) {
-                    header?.setAttribute('data-scrolled', 'true');
-                } else {
-                    header?.setAttribute('data-scrolled', 'false');
-                }
-
-                // Show mini logo when main hero logo is out of view
+            homeContainer.addEventListener("scroll", () => {
+                header?.setAttribute("data-scrolled", homeContainer.scrollTop > 50 ? "true" : "false");
                 if (heroLogo) {
                     const heroRect = heroLogo.getBoundingClientRect();
-                    if (heroRect.bottom < 0) {
-                        headerLogo?.setAttribute('data-visible', 'true');
-                    } else {
-                        headerLogo?.setAttribute('data-visible', 'false');
-                    }
+                    headerLogo?.setAttribute("data-visible", heroRect.bottom < 0 ? "true" : "false");
                 }
             });
         }
@@ -145,20 +348,14 @@ import styles from "../styles/Home.module.css";
 </script>
 
 <style>
-    /* Trigger the animation state defined in CSS Modules via global classes or attributes */
-    :global(.observer-banner.is-visible) {
+    :global(.reveal.is-visible) {
         opacity: 1 !important;
         transform: translateY(0) !important;
     }
-
-    /* Scrolled header logic just for padding if needed, no solid background */
     :global(header[data-scrolled="true"]) {
-        /* No background overrides here anymore, purely floating */
         padding-top: 1rem !important;
         padding-bottom: 1rem !important;
     }
-
-    /* Sticky logo visibility */
     :global([data-visible="true"]) {
         opacity: 1 !important;
         transform: translateX(0) !important;

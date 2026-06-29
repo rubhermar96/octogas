@@ -1,0 +1,634 @@
+---
+import fs from "node:fs";
+import path from "node:path";
+import Layout from "../../../../layouts/Layout.astro";
+import MainMap from "../../../../components/Map/MainMap";
+import AdSlot from "../../../../components/AdSlot.astro";
+import { slugify } from "../../../../lib/slug";
+import { stationSlug, stationUrl, provinceUrl, municipioUrl } from "../../../../lib/stationUrl";
+import { titleCase } from "../../../../lib/format";
+import { getDistance } from "../../../../lib/geo";
+import { FUEL_LABELS, FUEL_ORDER } from "../../../../lib/fuels";
+import { BRAND_LOGO_FILES } from "../../../../lib/brandLogos";
+import type { GasStation, FuelType } from "../../../../types/gasolinera";
+
+export async function getStaticPaths() {
+    const dataPath = path.resolve("public/data/stations.json");
+    const stations = JSON.parse(fs.readFileSync(dataPath, "utf-8")) as GasStation[];
+
+    // Medias por municipio (para comparar el precio de la estación).
+    const muniAgg = new Map<string, { sp95: number[]; diesel: number[]; count: number }>();
+    const muniKey = (s: GasStation) => `${slugify(s.province)}|${slugify(s.city)}`;
+    for (const s of stations) {
+        const k = muniKey(s);
+        let a = muniAgg.get(k);
+        if (!a) {
+            a = { sp95: [], diesel: [], count: 0 };
+            muniAgg.set(k, a);
+        }
+        a.count++;
+        if (s.prices.sp95 != null) a.sp95.push(s.prices.sp95);
+        if (s.prices.diesel != null) a.diesel.push(s.prices.diesel);
+    }
+    const mean = (arr: number[]) => (arr.length ? arr.reduce((x, y) => x + y, 0) / arr.length : null);
+
+    // Rejilla espacial para buscar gasolineras cercanas rápido.
+    const CELL = 0.12; // ~13 km
+    const grid = new Map<string, GasStation[]>();
+    const cellKey = (lat: number, lng: number) => `${Math.round(lat / CELL)}|${Math.round(lng / CELL)}`;
+    for (const s of stations) {
+        const k = cellKey(s.lat, s.lng);
+        let arr = grid.get(k);
+        if (!arr) {
+            arr = [];
+            grid.set(k, arr);
+        }
+        arr.push(s);
+    }
+    const nearbyOf = (s: GasStation): GasStation[] => {
+        const ci = Math.round(s.lat / CELL);
+        const cj = Math.round(s.lng / CELL);
+        const cand: GasStation[] = [];
+        for (let di = -1; di <= 1; di++) {
+            for (let dj = -1; dj <= 1; dj++) {
+                const arr = grid.get(`${ci + di}|${cj + dj}`);
+                if (arr) cand.push(...arr);
+            }
+        }
+        return cand
+            .filter((x) => x.id !== s.id)
+            .map((x) => ({ x, d: getDistance(s.lat, s.lng, x.lat, x.lng) }))
+            .sort((a, b) => a.d - b.d)
+            .slice(0, 6)
+            .map(({ x }) => x);
+    };
+
+    return stations.map((station) => {
+        const agg = muniAgg.get(muniKey(station));
+        return {
+            params: {
+                provincia: slugify(station.province),
+                municipio: slugify(station.city),
+                estacion: stationSlug(station),
+            },
+            props: {
+                station,
+                nearby: nearbyOf(station),
+                muniAvgSp95: mean(agg?.sp95 ?? []),
+                muniAvgDiesel: mean(agg?.diesel ?? []),
+                muniCount: agg?.count ?? 1,
+            },
+        };
+    });
+}
+
+const { station, nearby, muniAvgSp95, muniAvgDiesel, muniCount } = Astro.props as {
+    station: GasStation;
+    nearby: GasStation[];
+    muniAvgSp95: number | null;
+    muniAvgDiesel: number | null;
+    muniCount: number;
+};
+
+const provLabel = titleCase(station.province);
+const provSlug = slugify(station.province);
+const fmt = (n: number | null | undefined) => (n != null ? n.toFixed(3) : "—");
+
+// ¿Tiene marca "de verdad" o es una independiente sin rótulo (p. ej. "Nº 10.935")?
+const genericBrand = /^n[ºo°]/i.test(station.brand) || /^\d/.test(station.brand);
+const brandLabel = genericBrand ? "" : station.brand;
+const logoFile = BRAND_LOGO_FILES[slugify(station.brand)];
+
+const availableFuels = FUEL_ORDER.filter((f) => station.prices[f] != null) as FuelType[];
+
+// Comparación con la media del municipio.
+const cmp = (price: number | null, avg: number | null) => {
+    if (price == null || avg == null || avg === 0) return null;
+    const diffPct = ((price - avg) / avg) * 100;
+    return { diffPct, cheaper: price < avg };
+};
+const sp95Cmp = cmp(station.prices.sp95, muniAvgSp95);
+const dieselCmp = cmp(station.prices.diesel, muniAvgDiesel);
+
+const updated = new Date().toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+});
+
+const h1 = brandLabel ? `Gasolinera ${brandLabel}` : "Gasolinera";
+const titlePlace = `${station.address}, ${station.city}`;
+const pageTitle = `${h1} en ${titlePlace} — Precios de hoy | OCTO`;
+const pageDescription = `Precios actualizados de ${brandLabel || "la gasolinera"} en ${station.address}, ${station.city} (${provLabel}). Gasolina 95 a ${fmt(station.prices.sp95)} €/L y diésel a ${fmt(station.prices.diesel)} €/L. Horario, mapa y gasolineras cercanas.`;
+
+const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`;
+
+// --- Datos estructurados ---
+const gasStationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "GasStation",
+    name: brandLabel ? `${brandLabel} - ${station.city}` : `Gasolinera ${station.address}`,
+    address: {
+        "@type": "PostalAddress",
+        streetAddress: station.address,
+        addressLocality: station.city,
+        addressRegion: provLabel,
+        postalCode: station.postalCode || undefined,
+        addressCountry: "ES",
+    },
+    geo: { "@type": "GeoCoordinates", latitude: station.lat, longitude: station.lng },
+    url: new URL(stationUrl(station), Astro.site).href,
+};
+
+const faq = [
+    {
+        q: `¿Cuánto cuesta la gasolina 95 en ${brandLabel || station.city}?`,
+        a:
+            station.prices.sp95 != null
+                ? `La Gasolina 95 está a ${fmt(station.prices.sp95)} €/L en ${station.address}, ${station.city}${sp95Cmp ? `, un ${Math.abs(sp95Cmp.diffPct).toFixed(1)}% ${sp95Cmp.cheaper ? "más barata" : "más cara"} que la media del municipio` : ""}.`
+                : `Esta estación no tiene precio de Gasolina 95 disponible actualmente.`,
+    },
+    {
+        q: `¿Cuál es el horario de esta gasolinera?`,
+        a: station.schedule ? `El horario es: ${station.schedule}.` : `El horario no está disponible.`,
+    },
+    {
+        q: `¿Cómo llego a esta gasolinera?`,
+        a: `Está en ${station.address}, ${station.postalCode || ""} ${station.city} (${provLabel}). Puedes abrir la ruta en Google Maps desde el botón "Cómo llegar".`,
+    },
+];
+const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faq.map((f) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+};
+const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Inicio", item: new URL("/", Astro.site).href },
+        { "@type": "ListItem", position: 2, name: provLabel, item: new URL(provinceUrl(station.province), Astro.site).href },
+        { "@type": "ListItem", position: 3, name: station.city, item: new URL(municipioUrl(station.province, station.city), Astro.site).href },
+        { "@type": "ListItem", position: 4, name: h1, item: Astro.url.href },
+    ],
+};
+
+const mapStations = [station, ...nearby];
+---
+
+<Layout title={pageTitle} description={pageDescription}>
+    <script type="application/ld+json" set:html={JSON.stringify(gasStationJsonLd)} slot="head" />
+    <script type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} slot="head" />
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd)} slot="head" />
+
+    <div class="page-container">
+        <div class="content-wrapper">
+            <nav class="breadcrumb" aria-label="Migas de pan">
+                <a href="/">Inicio</a>
+                <span>›</span>
+                <a href={provinceUrl(station.province)}>{provLabel}</a>
+                <span>›</span>
+                <a href={municipioUrl(station.province, station.city)}>{station.city}</a>
+                <span>›</span>
+                <span class="current">{brandLabel || station.address}</span>
+            </nav>
+
+            <header class="station-header">
+                <div class="logo-box">
+                    {
+                        logoFile ? (
+                            <img src={`/brands/${logoFile}`} alt={brandLabel || "Gasolinera"} />
+                        ) : (
+                            <span class="material-symbols-outlined">local_gas_station</span>
+                        )
+                    }
+                </div>
+                <div class="head-text">
+                    <h1>{h1} en {station.city}</h1>
+                    <p class="address">
+                        <span class="material-symbols-outlined">location_on</span>
+                        {station.address}{station.postalCode ? `, ${station.postalCode}` : ""} {station.city} ({provLabel})
+                    </p>
+                    <p class="updated">Precios actualizados el {updated}</p>
+                </div>
+                <a class="route-btn" href={mapsUrl} target="_blank" rel="noopener noreferrer">
+                    <span class="material-symbols-outlined">directions</span>
+                    Cómo llegar
+                </a>
+            </header>
+
+            {
+                station.saleType === "R" && (
+                    <p class="restricted">⚠ Venta restringida (cooperativa o flota). Puede no estar abierta al público general.</p>
+                )
+            }
+
+            <section class="prices-section" aria-label="Precios por combustible">
+                <h2>Precios de hoy</h2>
+                <div class="price-grid">
+                    {
+                        availableFuels.map((f) => (
+                            <div class="price-card">
+                                <span class="ptype">{FUEL_LABELS[f]}</span>
+                                <span class="pval">{fmt(station.prices[f])} <small>€/L</small></span>
+                            </div>
+                        ))
+                    }
+                </div>
+
+                {
+                    (sp95Cmp || dieselCmp) && (
+                        <div class="compare-row">
+                            {sp95Cmp && (
+                                <span class={`cmp ${sp95Cmp.cheaper ? "good" : "bad"}`}>
+                                    Gasolina 95: {Math.abs(sp95Cmp.diffPct).toFixed(1)}% {sp95Cmp.cheaper ? "más barata" : "más cara"} que la media de {station.city}
+                                </span>
+                            )}
+                            {dieselCmp && (
+                                <span class={`cmp ${dieselCmp.cheaper ? "good" : "bad"}`}>
+                                    Diésel: {Math.abs(dieselCmp.diffPct).toFixed(1)}% {dieselCmp.cheaper ? "más barato" : "más caro"} que la media de {station.city}
+                                </span>
+                            )}
+                        </div>
+                    )
+                }
+            </section>
+
+            <section class="info-grid">
+                <div class="info-card">
+                    <span class="info-label">Horario</span>
+                    <span class="info-value">{station.schedule || "No disponible"}</span>
+                </div>
+                {
+                    brandLabel && (
+                        <div class="info-card">
+                            <span class="info-label">Marca</span>
+                            <span class="info-value">{brandLabel}</span>
+                        </div>
+                    )
+                }
+                <div class="info-card">
+                    <span class="info-label">Municipio</span>
+                    <a class="info-value link" href={municipioUrl(station.province, station.city)}>
+                        {station.city} ({muniCount} gasolineras)
+                    </a>
+                </div>
+            </section>
+
+            <AdSlot slot="" label="Publicidad" minHeight={120} />
+
+            <section class="map-section">
+                <h2>Ubicación y gasolineras cercanas</h2>
+                <div class="map-wrapper">
+                    <MainMap
+                        client:only="react"
+                        stations={mapStations}
+                        initialCenter={[station.lat, station.lng]}
+                        initialZoom={14}
+                        disableGeolocation={true}
+                        selectedId={station.id}
+                    />
+                </div>
+            </section>
+
+            {
+                nearby.length > 0 && (
+                    <section class="nearby">
+                        <h2>Gasolineras cercanas</h2>
+                        <div class="nearby-grid">
+                            {nearby.map((n) => {
+                                const d = getDistance(station.lat, station.lng, n.lat, n.lng);
+                                const nGeneric = /^n[ºo°]/i.test(n.brand) || /^\d/.test(n.brand);
+                                return (
+                                    <a href={stationUrl(n)} class="nearby-card">
+                                        <span class="nearby-name">{nGeneric ? n.address : n.brand}</span>
+                                        <span class="nearby-addr">{n.city} · {d.toFixed(1)} km</span>
+                                        <span class="nearby-prices">
+                                            {n.prices.sp95 != null && <span>95: {fmt(n.prices.sp95)}</span>}
+                                            {n.prices.diesel != null && <span>Diésel: {fmt(n.prices.diesel)}</span>}
+                                        </span>
+                                    </a>
+                                );
+                            })}
+                        </div>
+                    </section>
+                )
+            }
+
+            <section class="faq">
+                <h2>Preguntas frecuentes</h2>
+                {
+                    faq.map((f) => (
+                        <details class="faq-item">
+                            <summary>{f.q}</summary>
+                            <p>{f.a}</p>
+                        </details>
+                    ))
+                }
+            </section>
+        </div>
+    </div>
+</Layout>
+
+<style>
+    .page-container {
+        padding: 5rem 2rem 3rem;
+        min-height: 100vh;
+        background-color: var(--bg);
+        color: var(--text);
+    }
+    .content-wrapper {
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .breadcrumb a {
+        color: var(--text-muted);
+        text-decoration: none;
+    }
+    .breadcrumb a:hover {
+        color: var(--primary);
+    }
+    .breadcrumb .current {
+        color: var(--text);
+        font-weight: 600;
+    }
+
+    .station-header {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .logo-box {
+        width: 72px;
+        height: 72px;
+        flex-shrink: 0;
+        border-radius: 1rem;
+        background: #fff;
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    .logo-box img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        padding: 4px;
+    }
+    .logo-box .material-symbols-outlined {
+        font-size: 2.4rem;
+        color: #64748b;
+    }
+    .head-text {
+        flex: 1;
+        min-width: 0;
+    }
+    h1 {
+        font-family: var(--font-header);
+        font-size: clamp(1.5rem, 3.5vw, 2.2rem);
+        line-height: 1.1;
+        margin-bottom: 0.5rem;
+    }
+    .address {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        color: var(--text-muted);
+        font-size: 0.95rem;
+    }
+    .address .material-symbols-outlined {
+        font-size: 1.1rem;
+    }
+    .updated {
+        color: var(--primary);
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-top: 0.35rem;
+    }
+    .route-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.7rem 1.2rem;
+        border-radius: 0.75rem;
+        background: var(--secondary);
+        color: #06283b;
+        font-weight: 700;
+        text-decoration: none;
+        flex-shrink: 0;
+    }
+    .route-btn:hover {
+        filter: brightness(1.05);
+    }
+
+    .restricted {
+        background: rgba(251, 146, 60, 0.12);
+        color: var(--accent);
+        border-radius: 0.6rem;
+        padding: 0.6rem 0.9rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+    }
+
+    section h2 {
+        font-family: var(--font-header);
+        font-size: 1.3rem;
+        margin-bottom: 1.25rem;
+    }
+    .prices-section {
+        margin-bottom: 2rem;
+    }
+    .price-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 0.75rem;
+    }
+    .price-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        padding: 0.9rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        align-items: center;
+    }
+    .ptype {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-muted);
+    }
+    .pval {
+        font-family: var(--font-header);
+        font-size: 1.3rem;
+        font-weight: 800;
+        color: var(--primary);
+    }
+    .pval small {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+    .compare-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        margin-top: 1rem;
+    }
+    .cmp {
+        font-size: 0.82rem;
+        font-weight: 700;
+        padding: 0.4rem 0.75rem;
+        border-radius: 999px;
+    }
+    .cmp.good {
+        background: rgba(52, 211, 153, 0.15);
+        color: var(--primary);
+    }
+    .cmp.bad {
+        background: rgba(251, 146, 60, 0.15);
+        color: var(--accent);
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2.5rem;
+    }
+    .info-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        padding: 1rem 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .info-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        font-weight: 700;
+    }
+    .info-value {
+        font-weight: 600;
+        color: var(--text);
+    }
+    .info-value.link {
+        color: var(--secondary);
+        text-decoration: none;
+    }
+    .info-value.link:hover {
+        text-decoration: underline;
+    }
+
+    .map-section {
+        margin-bottom: 2.5rem;
+    }
+    .map-wrapper {
+        height: 420px;
+        border-radius: 1rem;
+        overflow: hidden;
+        border: 1px solid var(--border);
+    }
+
+    .nearby {
+        margin-bottom: 2.5rem;
+    }
+    .nearby-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 0.75rem;
+    }
+    .nearby-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 0.9rem 1rem;
+        text-decoration: none;
+        color: var(--text);
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        transition: border-color 0.2s, transform 0.2s;
+    }
+    .nearby-card:hover {
+        border-color: var(--primary);
+        transform: translateY(-2px);
+    }
+    .nearby-name {
+        font-weight: 700;
+        font-size: 0.92rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .nearby-addr {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+    }
+    .nearby-prices {
+        display: flex;
+        gap: 0.6rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--primary);
+        margin-top: 0.2rem;
+    }
+
+    .faq {
+        margin-bottom: 3rem;
+    }
+    .faq-item {
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        margin-bottom: 0.75rem;
+        background: var(--surface);
+        overflow: hidden;
+    }
+    .faq-item summary {
+        padding: 1rem 1.25rem;
+        font-weight: 700;
+        cursor: pointer;
+        color: var(--text);
+        list-style: none;
+    }
+    .faq-item summary::-webkit-details-marker {
+        display: none;
+    }
+    .faq-item summary::after {
+        content: "+";
+        float: right;
+        color: var(--primary);
+        font-weight: 800;
+    }
+    .faq-item[open] summary::after {
+        content: "−";
+    }
+    .faq-item p {
+        padding: 0 1.25rem 1.1rem;
+        color: var(--text-muted);
+        line-height: 1.6;
+    }
+</style>

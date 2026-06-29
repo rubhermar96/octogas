@@ -1,0 +1,438 @@
+---
+import fs from "node:fs";
+import path from "node:path";
+import Layout from "../../layouts/Layout.astro";
+import AdSlot from "../../components/AdSlot.astro";
+import { slugify } from "../../lib/slug";
+import { stationUrl, municipioUrl } from "../../lib/stationUrl";
+import { titleCase } from "../../lib/format";
+import type { GasStation } from "../../types/gasolinera";
+
+interface Muni {
+    name: string;
+    slug: string;
+    count: number;
+    minSp95: number | null;
+}
+
+export async function getStaticPaths() {
+    const dataPath = path.resolve("public/data/stations.json");
+    const stations = JSON.parse(fs.readFileSync(dataPath, "utf-8")) as GasStation[];
+
+    const groups: Record<string, GasStation[]> = {};
+    for (const s of stations) {
+        if (!s.province) continue;
+        (groups[s.province] ??= []).push(s);
+    }
+
+    return Object.entries(groups).map(([provinceName, list]) => {
+        // Municipios de la provincia con su nº de estaciones y precio mínimo SP95.
+        const byCity: Record<string, GasStation[]> = {};
+        for (const s of list) {
+            if (!s.city) continue;
+            (byCity[s.city] ??= []).push(s);
+        }
+        const munis: Muni[] = Object.entries(byCity)
+            .map(([name, l]) => {
+                const sp95 = l.map((x) => x.prices.sp95).filter((p): p is number => p != null);
+                return {
+                    name,
+                    slug: slugify(name),
+                    count: l.length,
+                    minSp95: sp95.length ? Math.min(...sp95) : null,
+                };
+            })
+            .sort((a, b) => b.count - a.count);
+
+        return {
+            params: { provincia: slugify(provinceName) },
+            props: { provinceName, stations: list, munis },
+        };
+    });
+}
+
+const { provinceName, stations, munis } = Astro.props as {
+    provinceName: string;
+    stations: GasStation[];
+    munis: Muni[];
+};
+
+const provLabel = titleCase(provinceName);
+
+type FuelKey = "sp95" | "sp98" | "diesel" | "glp";
+const min = (key: FuelKey) => {
+    const vals = stations.map((s) => s.prices[key]).filter((p): p is number => p != null);
+    return vals.length ? Math.min(...vals) : null;
+};
+const avg = (key: FuelKey) => {
+    const vals = stations.map((s) => s.prices[key]).filter((p): p is number => p != null);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+};
+const fmt = (n: number | null) => (n != null ? n.toFixed(3) : "—");
+
+const minSp95 = min("sp95");
+const minDiesel = min("diesel");
+const avgSp95 = avg("sp95");
+const avgDiesel = avg("diesel");
+
+const fuelAverages = (
+    [
+        ["sp95", "SP95"],
+        ["sp98", "SP98"],
+        ["diesel", "Diésel"],
+        ["glp", "GLP"],
+    ] as [FuelKey, string][]
+)
+    .map(([key, label]) => ({ key, label, avg: avg(key) }))
+    .filter((x) => x.avg != null);
+
+const cheapestSp95 = stations
+    .filter((s) => s.prices.sp95 != null)
+    .sort((a, b) => a.prices.sp95! - b.prices.sp95!)[0];
+
+const updated = new Date().toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+});
+
+const pageTitle = `Gasolineras baratas en ${provLabel} — Precios de hoy por municipio | OCTO`;
+const pageDescription = `Compara el precio de la gasolina 95 y el diésel en ${stations.length} gasolineras de la provincia de ${provLabel}. La más barata desde ${fmt(minSp95)} €/L. Encuentra tu municipio. Datos oficiales actualizados.`;
+
+const faq = [
+    {
+        q: `¿Cuál es la gasolinera más barata de ${provLabel}?`,
+        a: cheapestSp95
+            ? `Ahora mismo la más barata para Gasolina 95 en la provincia de ${provLabel} es ${cheapestSp95.name} en ${cheapestSp95.city}, a ${fmt(minSp95)} €/L.`
+            : `Consulta el listado de municipios para ver las gasolineras más baratas de ${provLabel}.`,
+    },
+    {
+        q: `¿Cuánto cuesta la gasolina 95 en ${provLabel}?`,
+        a: `El precio medio de la Gasolina 95 en ${provLabel} es de ${fmt(avgSp95)} €/L, con un mínimo de ${fmt(minSp95)} €/L.`,
+    },
+    {
+        q: `¿Cuánto cuesta el diésel en ${provLabel}?`,
+        a: `El precio medio del Gasóleo A (diésel) en ${provLabel} es de ${fmt(avgDiesel)} €/L, con un mínimo de ${fmt(minDiesel)} €/L.`,
+    },
+    {
+        q: `¿Cuántas gasolineras hay en ${provLabel}?`,
+        a: `Hay ${stations.length} estaciones de servicio repartidas en ${munis.length} municipios de la provincia de ${provLabel}.`,
+    },
+];
+
+const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faq.map((f) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+};
+
+const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Inicio", item: new URL("/", Astro.site).href },
+        { "@type": "ListItem", position: 2, name: "Municipios", item: new URL("/municipios", Astro.site).href },
+        { "@type": "ListItem", position: 3, name: provLabel, item: Astro.url.href },
+    ],
+};
+---
+
+<Layout title={pageTitle} description={pageDescription}>
+    <script type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} slot="head" />
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd)} slot="head" />
+
+    <div class="page-container">
+        <div class="content-wrapper">
+            <nav class="breadcrumb" aria-label="Migas de pan">
+                <a href="/">Inicio</a>
+                <span>›</span>
+                <a href="/municipios">Municipios</a>
+                <span>›</span>
+                <span class="current">{provLabel}</span>
+            </nav>
+
+            <header class="page-header">
+                <h1>Gasolineras baratas en {provLabel}</h1>
+                <p class="subtitle">
+                    Precios de gasolina y diésel en {stations.length} estaciones de la provincia de
+                    {provLabel}, repartidas en {munis.length} municipios. Elige tu municipio para ver
+                    el detalle. <span class="updated">Actualizado el {updated}.</span>
+                </p>
+            </header>
+
+            <section class="stats-bar" aria-label="Resumen de precios">
+                <div class="stat">
+                    <span class="stat-label">Estaciones</span>
+                    <span class="stat-value">{stations.length}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Municipios</span>
+                    <span class="stat-value">{munis.length}</span>
+                </div>
+                {
+                    fuelAverages.map((f) => (
+                        <div class="stat">
+                            <span class="stat-label">Media {f.label}</span>
+                            <span class="stat-value muted">{fmt(f.avg)} <small>€/L</small></span>
+                        </div>
+                    ))
+                }
+            </section>
+
+            {
+                cheapestSp95 && (
+                    <a class="cheapest" href={stationUrl(cheapestSp95)}>
+                        <span class="cheapest-tag">Más barata SP95</span>
+                        <span class="cheapest-name">{cheapestSp95.name}</span>
+                        <span class="cheapest-meta">{cheapestSp95.city} · {fmt(minSp95)} €/L</span>
+                    </a>
+                )
+            }
+
+            <AdSlot slot="" label="Publicidad" minHeight={120} />
+
+            <section class="munis">
+                <h2>Municipios de {provLabel}</h2>
+                <div class="muni-grid">
+                    {
+                        munis.map((m) => (
+                            <a href={municipioUrl(provinceName, m.name)} class="muni-link">
+                                <span class="muni-name">{m.name}</span>
+                                <span class="muni-meta">
+                                    {m.minSp95 != null && <span class="muni-price">{fmt(m.minSp95)} €/L</span>}
+                                    <span class="muni-count">{m.count}</span>
+                                </span>
+                            </a>
+                        ))
+                    }
+                </div>
+            </section>
+
+            <section class="faq">
+                <h2>Preguntas frecuentes sobre el combustible en {provLabel}</h2>
+                {
+                    faq.map((f) => (
+                        <details class="faq-item">
+                            <summary>{f.q}</summary>
+                            <p>{f.a}</p>
+                        </details>
+                    ))
+                }
+            </section>
+        </div>
+    </div>
+</Layout>
+
+<style>
+    .page-container {
+        padding: 5rem 2rem 3rem;
+        min-height: 100vh;
+        background-color: var(--bg);
+        color: var(--text);
+    }
+    .content-wrapper {
+        max-width: 1500px;
+        margin: 0 auto;
+    }
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .breadcrumb a {
+        color: var(--text-muted);
+        text-decoration: none;
+    }
+    .breadcrumb a:hover {
+        color: var(--primary);
+    }
+    .breadcrumb .current {
+        color: var(--text);
+        font-weight: 600;
+    }
+    .page-header {
+        margin-bottom: 2rem;
+    }
+    h1 {
+        font-family: var(--font-header);
+        font-size: clamp(1.8rem, 4vw, 2.6rem);
+        margin-bottom: 0.75rem;
+        line-height: 1.1;
+    }
+    .subtitle {
+        color: var(--text-muted);
+        font-size: 1.05rem;
+        line-height: 1.6;
+        max-width: 760px;
+    }
+    .updated {
+        color: var(--primary);
+        font-weight: 600;
+    }
+    .stats-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    .stat {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        padding: 1.1rem 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .stat-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        font-weight: 700;
+    }
+    .stat-value {
+        font-family: var(--font-header);
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--primary);
+    }
+    .stat-value.muted {
+        color: var(--text);
+    }
+    .stat-value small {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+    .cheapest {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        background: linear-gradient(135deg, rgba(52, 211, 153, 0.12), rgba(56, 189, 248, 0.08));
+        border: 1px solid rgba(52, 211, 153, 0.4);
+        border-radius: 1rem;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 2rem;
+        text-decoration: none;
+        color: var(--text);
+        transition: transform 0.2s, border-color 0.2s;
+    }
+    .cheapest:hover {
+        transform: translateY(-2px);
+        border-color: var(--primary);
+    }
+    .cheapest-tag {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--primary);
+        font-weight: 800;
+    }
+    .cheapest-name {
+        font-family: var(--font-header);
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+    .cheapest-meta {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+    }
+    section h2 {
+        font-family: var(--font-header);
+        font-size: 1.4rem;
+        margin-bottom: 1.5rem;
+    }
+    .munis {
+        margin-bottom: 3rem;
+    }
+    .muni-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 0.6rem;
+    }
+    .muni-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.8rem 1rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 0.7rem;
+        text-decoration: none;
+        color: var(--text);
+        font-size: 0.9rem;
+        transition: border-color 0.2s, color 0.2s;
+    }
+    .muni-link:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+    .muni-name {
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .muni-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        flex-shrink: 0;
+    }
+    .muni-price {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--primary);
+    }
+    .muni-count {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        background: var(--bg);
+        padding: 0.1rem 0.45rem;
+        border-radius: 999px;
+    }
+    .faq {
+        margin-bottom: 3rem;
+    }
+    .faq-item {
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        margin-bottom: 0.75rem;
+        background: var(--surface);
+        overflow: hidden;
+    }
+    .faq-item summary {
+        padding: 1rem 1.25rem;
+        font-weight: 700;
+        cursor: pointer;
+        color: var(--text);
+        list-style: none;
+    }
+    .faq-item summary::-webkit-details-marker {
+        display: none;
+    }
+    .faq-item summary::after {
+        content: "+";
+        float: right;
+        color: var(--primary);
+        font-weight: 800;
+    }
+    .faq-item[open] summary::after {
+        content: "−";
+    }
+    .faq-item p {
+        padding: 0 1.25rem 1.1rem;
+        color: var(--text-muted);
+        line-height: 1.6;
+    }
+</style>
