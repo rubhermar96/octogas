@@ -157,6 +157,12 @@ const ExplorerApp: React.FC = () => {
         return allStations.filter((s) => selectedBrands.has(s.brand));
     }, [allStations, selectedBrands]);
 
+    // Además ocultamos las que no tienen el combustible elegido (mapa más claro).
+    const filteredStations = useMemo(
+        () => brandFilteredStations.filter((s) => s.prices[fuelType] != null),
+        [brandFilteredStations, fuelType]
+    );
+
     // Estaciones para el listado:
     // - mapa visible -> las que caben en el área del mapa.
     // - mapa colapsado (ancho 0, sin bounds fiables) -> por proximidad al centro.
@@ -164,10 +170,10 @@ const ExplorerApp: React.FC = () => {
     const visibleStations = useMemo(() => {
         if (mapCollapsed || !mapBounds) {
             const [clat, clng] = mapCenter;
-            return brandFilteredStations.filter((s) => getDistance(clat, clng, s.lat, s.lng) <= RADIUS_KM);
+            return filteredStations.filter((s) => getDistance(clat, clng, s.lat, s.lng) <= RADIUS_KM);
         }
-        return brandFilteredStations.filter((s) => mapBounds.contains([s.lat, s.lng]));
-    }, [brandFilteredStations, mapBounds, mapCollapsed, mapCenter]);
+        return filteredStations.filter((s) => mapBounds.contains([s.lat, s.lng]));
+    }, [filteredStations, mapBounds, mapCollapsed, mapCenter]);
 
     // Al mostrar el mapa, forzamos a Leaflet a recalcular su tamaño (evita el mapa
     // en blanco/negro cuando pasa de oculto a visible, sobre todo en móvil).
@@ -237,7 +243,7 @@ const ExplorerApp: React.FC = () => {
                             </button>
                         )}
                         <MainMap
-                            stations={brandFilteredStations}
+                            stations={filteredStations}
                             initialCenter={initialCenter}
                             initialZoom={initialZoom}
                             onBoundsChange={handleBoundsChange}

@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Polyline, CircleMarker, Marker, Popup, useMap 
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import type { GasStation, FuelType } from '../../types/gasolinera';
-import { MAIN_FUELS, FUEL_LABELS } from '../../lib/fuels';
+import { FUEL_ORDER, FUEL_LABELS } from '../../lib/fuels';
 import {
     geocode,
     getRouteMulti,
@@ -22,7 +22,7 @@ import BrandFilter, { type BrandOption } from '../Explorer/BrandFilter';
 import PlaceInput, { type PlaceValue } from './PlaceInput';
 import styles from './RoutePlanner.module.css';
 
-const ROUTE_FUELS: FuelType[] = [...MAIN_FUELS, 'glp'];
+const ROUTE_FUELS: FuelType[] = FUEL_ORDER;
 
 const CONSUMPTION_PRESETS = [
     { label: 'Compacto', v: 5.5 },
@@ -61,10 +61,11 @@ interface RouteData {
     origin: { lat: number; lng: number; label: string };
     destination: { lat: number; lng: number; label: string };
     customStops: GeoResult[];
-    orderedPoints: { lat: number; lng: number; label: string; type: 'wp' | 'fuel' }[];
+    orderedPoints: { lat: number; lng: number; label: string; type: 'wp' | 'fuel' | 'dest' }[];
     corridorAvg: number;
     fuelPlan: FuelPlan;
     nStops: number;
+    roundTrip: boolean;
     hasToll?: boolean;
     avoidedTolls: boolean;
     recommended: PlanOption;
@@ -104,6 +105,7 @@ interface RouteInputs {
     priority: Priority;
     stopsMode: StopsMode;
     avoidTolls: boolean;
+    roundTrip: boolean;
     brands: string[];
 }
 
@@ -121,6 +123,7 @@ function serializeInputs(v: RouteInputs): string {
     p.set('p', v.priority);
     p.set('st', v.stopsMode);
     if (v.avoidTolls) p.set('t', '1');
+    if (v.roundTrip) p.set('rt', '1');
     if (v.brands.length) p.set('b', v.brands.join('~'));
     return p.toString();
 }
@@ -143,16 +146,19 @@ function parseInputs(search: string): RouteInputs | null {
         priority: (p.get('p') as Priority) || 'cheap',
         stopsMode: (p.get('st') as StopsMode) || 'auto',
         avoidTolls: p.get('t') === '1',
+        roundTrip: p.get('rt') === '1',
         brands: p.get('b') ? p.get('b')!.split('~') : [],
     };
 }
 
 /** Enlace de Google Maps con las paradas (repostajes incluidos) como waypoints. */
 function googleMapsUrl(r: RouteData): string {
+    // En ida y vuelta el destino es el origen (B va como waypoint en orderedPoints).
+    const dest = r.roundTrip ? r.origin : r.destination;
     const base =
         `https://www.google.com/maps/dir/?api=1` +
         `&origin=${r.origin.lat},${r.origin.lng}` +
-        `&destination=${r.destination.lat},${r.destination.lng}` +
+        `&destination=${dest.lat},${dest.lng}` +
         `&travelmode=driving`;
     const wp = r.orderedPoints.map((p) => `${p.lat},${p.lng}`).join('|');
     return wp ? `${base}&waypoints=${encodeURIComponent(wp)}` : base;
@@ -160,7 +166,8 @@ function googleMapsUrl(r: RouteData): string {
 
 /** Apple Maps: encadena las paradas con "to:" (compatibilidad variable). */
 function appleMapsUrl(r: RouteData): string {
-    const dests = [...r.orderedPoints.map((p) => `${p.lat},${p.lng}`), `${r.destination.lat},${r.destination.lng}`];
+    const dest = r.roundTrip ? r.origin : r.destination;
+    const dests = [...r.orderedPoints.map((p) => `${p.lat},${p.lng}`), `${dest.lat},${dest.lng}`];
     return `https://maps.apple.com/?saddr=${r.origin.lat},${r.origin.lng}&daddr=${encodeURIComponent(dests.join(' to:'))}&dirflg=d`;
 }
 
@@ -172,7 +179,9 @@ function wazeUrl(r: RouteData): string {
 /** Texto resumen para compartir (WhatsApp, etc.), con enlace para reabrir en OCTO. */
 function buildShareText(r: RouteData): string {
     const lines: string[] = [];
-    lines.push(`🚗 Ruta OCTO: ${r.origin.label.split(',')[0]} → ${r.destination.label.split(',')[0]}`);
+    lines.push(
+        `🚗 Ruta OCTO: ${r.origin.label.split(',')[0]} → ${r.destination.label.split(',')[0]}${r.roundTrip ? ' (ida y vuelta)' : ''}`
+    );
     lines.push(
         `📏 ${r.distanceKm.toFixed(0)} km · ⏱️ ${fmtDuration(r.durationMin)} · ⛽ ${r.fuelPlan.fuelNeeded.toFixed(0)} L (~${r.tripFuelCost.toFixed(2)} €)`
     );
@@ -283,6 +292,7 @@ const RoutePlanner: React.FC = () => {
     const [priority, setPriority] = useState<Priority>('cheap');
     const [stopsMode, setStopsMode] = useState<StopsMode>('auto');
     const [avoidTolls, setAvoidTolls] = useState(false);
+    const [roundTrip, setRoundTrip] = useState(false);
     const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -330,6 +340,7 @@ const RoutePlanner: React.FC = () => {
         priority,
         stopsMode,
         avoidTolls,
+        roundTrip,
         brands: [...selectedBrands],
     });
 
@@ -367,7 +378,11 @@ const RoutePlanner: React.FC = () => {
             }
 
             // Ruta base: pasa por tus paradas propias (p. ej. donde vas a comer).
-            const baseRoute = await getRouteMulti([a, ...customStops, b], { avoidTolls: inp.avoidTolls });
+            // Ida y vuelta: añadimos el regreso al origen al final.
+            const basePoints = inp.roundTrip
+                ? [a, ...customStops, b, a]
+                : [a, ...customStops, b];
+            const baseRoute = await getRouteMulti(basePoints, { avoidTolls: inp.avoidTolls });
             if (!baseRoute) throw new Error('No se pudo calcular la ruta entre esos puntos.');
 
             const corridorRaw = findCorridorStations(allStations, baseRoute.coords, inp.fuel);
@@ -420,6 +435,7 @@ const RoutePlanner: React.FC = () => {
             const fastPlan = nStops > 0 ? buildPlan(corridor, nStops, 'fast', ctx) : null;
 
             // Puntos intermedios ordenados (paradas tuyas + repostajes) a lo largo de la ruta.
+            // En ida y vuelta, el destino B es un punto de paso (das la vuelta ahí).
             const orderedPoints = [
                 ...customStops.map((c) => ({
                     lat: c.lat,
@@ -435,13 +451,23 @@ const RoutePlanner: React.FC = () => {
                     type: "fuel" as const,
                     progress: s.progress,
                 })),
+                ...(inp.roundTrip
+                    ? [{
+                          lat: b.lat,
+                          lng: b.lng,
+                          label: inp.destination.text.split(",")[0],
+                          type: "dest" as const,
+                          progress: progressOnRoute(baseRoute.coords, b.lat, b.lng),
+                      }]
+                    : []),
             ].sort((x, y) => x.progress - y.progress);
 
-            // Ruta final: pasa también por los repostajes recomendados.
+            // Ruta final: pasa por los repostajes (y, si es ida y vuelta, vuelve al origen).
+            const endPoint = inp.roundTrip ? a : b;
             let finalRoute = baseRoute;
             if (orderedPoints.length > 0) {
                 const routed = await getRouteMulti(
-                    [a, ...orderedPoints.map((p) => ({ lat: p.lat, lng: p.lng })), b],
+                    [a, ...orderedPoints.map((p) => ({ lat: p.lat, lng: p.lng })), endPoint],
                     { avoidTolls: inp.avoidTolls }
                 );
                 if (routed) finalRoute = routed;
@@ -458,6 +484,7 @@ const RoutePlanner: React.FC = () => {
                 corridorAvg,
                 fuelPlan,
                 nStops,
+                roundTrip: inp.roundTrip,
                 hasToll: finalRoute.hasToll ?? baseRoute.hasToll,
                 avoidedTolls: inp.avoidTolls,
                 recommended,
@@ -496,6 +523,7 @@ const RoutePlanner: React.FC = () => {
         setPriority(inp.priority);
         setStopsMode(inp.stopsMode);
         setAvoidTolls(inp.avoidTolls);
+        setRoundTrip(inp.roundTrip);
         setSelectedBrands(new Set(inp.brands));
         runCalculation(inp);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -655,11 +683,18 @@ const RoutePlanner: React.FC = () => {
                     </div>
                 </div>
 
-                <label className={styles.toggle}>
-                    <input type="checkbox" checked={avoidTolls} onChange={(e) => setAvoidTolls(e.target.checked)} />
-                    <span className="material-symbols-outlined">toll</span>
-                    Evitar peajes
-                </label>
+                <div className={styles.toggleRow}>
+                    <label className={styles.toggle}>
+                        <input type="checkbox" checked={roundTrip} onChange={(e) => setRoundTrip(e.target.checked)} />
+                        <span className="material-symbols-outlined">sync_alt</span>
+                        Ida y vuelta
+                    </label>
+                    <label className={styles.toggle}>
+                        <input type="checkbox" checked={avoidTolls} onChange={(e) => setAvoidTolls(e.target.checked)} />
+                        <span className="material-symbols-outlined">toll</span>
+                        Evitar peajes
+                    </label>
+                </div>
 
                 {error && <div className={styles.error}>{error}</div>}
 
