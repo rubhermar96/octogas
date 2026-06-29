@@ -4,6 +4,7 @@ import type { SortType } from './ExplorerApp';
 import { FUEL_LABELS, MAIN_FUELS, OTHER_FUELS, FUEL_ORDER } from '../../lib/fuels';
 import { getDistance } from '../../lib/geo';
 import BrandLogo from './BrandLogo';
+import CompareButton from './CompareButton';
 import BrandFilter, { type BrandOption } from './BrandFilter';
 import styles from './ExplorerSidebar.module.css';
 
@@ -169,7 +170,7 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
                                         <BrandLogo brand={station.brand} size={40} />
                                         <div className={styles.nameBlock}>
                                             <h3 className={styles.stationName}>{station.name}</h3>
-                                            <p className={styles.stationBrand}>{station.brand}</p>
+                                            <CompareButton stationId={station.id} variant="mini" />
                                         </div>
                                     </div>
                                     <div className={styles.priceTag}>

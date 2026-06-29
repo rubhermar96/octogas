@@ -245,15 +245,6 @@
     text-overflow: ellipsis;
 }
 
-.stationBrand {
-    font-size: 0.7rem;
-    color: var(--primary);
-    font-weight: 600;
-    margin: 0.1rem 0 0 0;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-}
-
 .priceTag {
     text-align: right;
     flex-shrink: 0;

@@ -4,9 +4,10 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "npm run gen-brands && astro build",
     "preview": "astro preview",
     "astro": "astro",
+    "gen-brands": "tsx src/scripts/gen-brand-logos.ts",
     "update-data": "tsx src/scripts/update-prices.ts"
   },
   "dependencies": {

@@ -131,9 +131,9 @@ const orgJsonLd = {
             </button>
             <div class={styles.menuNav}>
                 <a href="/" class={styles.menuLink}>Inicio</a>
-                <a href="/explorador" class={styles.menuLink}>Explorador</a>
+                <a href="/municipios" class={styles.menuLink}>Explorador</a>
                 <a href="/rutas" class={styles.menuLink}>Planificar viaje</a>
-                <a href="#" class={styles.menuLink}>Favoritos</a>
+                <a href="/comparador" class={styles.menuLink}>Comparador</a>
             </div>
         </nav>
 
@@ -172,8 +172,8 @@ const orgJsonLd = {
                         >
                     </a>
                     <a
-                        href="/explorador"
-                        class={`${styles.navItem} ${Astro.url.pathname === "/explorador" ? styles.active : ""}`}
+                        href="/municipios"
+                        class={`${styles.navItem} ${(Astro.url.pathname === "/municipios" || Astro.url.pathname === "/explorador") ? styles.active : ""}`}
                     >
                         <span
                             class={`material-symbols-outlined ${styles.navIcon}`}
@@ -193,13 +193,16 @@ const orgJsonLd = {
                         >
                         <span class={styles.navLabel}>Planificar viaje</span>
                     </a>
-                    <div class={styles.navItem}>
+                    <a
+                        href="/comparador"
+                        class={`${styles.navItem} ${Astro.url.pathname === "/comparador" ? styles.active : ""}`}
+                    >
                         <span
                             class={`material-symbols-outlined ${styles.navIcon}`}
-                            >favorite</span
+                            >balance</span
                         >
-                        <span class={styles.navLabel}>Favoritos</span>
-                    </div>
+                        <span class={styles.navLabel}>Comparador</span>
+                    </a>
                 </nav>
             </aside>
             )}

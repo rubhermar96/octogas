@@ -77,18 +77,6 @@ const BRAND_COLORS: Record<string, { bg: string; fg: string }> = {
     Agip: { bg: "#FFCC00", fg: "#1A1A1A" },
 };
 
-/**
- * Marcas con logo real disponible en /public/brands/<slug>.<ext>.
- * Mapa slug -> extensión del archivo (webp, avif, svg, png…), para poder mezclar
- * formatos. Mientras esté vacío, se muestran solo los monogramas de color (sin 404).
- * Para activar un logo: sube el archivo y añade aquí su slug y extensión,
- * p. ej. ["repsol", "webp"].
- */
-export const BRANDS_WITH_LOGO = new Map<string, string>([
-    // ["repsol", "webp"],
-    // ["cepsa", "avif"],
-]);
-
 /** Genera un color estable a partir de un texto (para marcas sin color definido). */
 function hashColor(text: string): { bg: string; fg: string } {
     let hash = 0;
@@ -101,12 +89,4 @@ function hashColor(text: string): { bg: string; fg: string } {
 
 export function brandColors(brand: string): { bg: string; fg: string } {
     return BRAND_COLORS[brand] ?? hashColor(brand);
-}
-
-/** Iniciales/monograma de una marca (1-2 caracteres). */
-export function brandInitials(brand: string): string {
-    const words = brand.replace(/[^\p{L}\p{N}\s]/gu, " ").trim().split(/\s+/).filter(Boolean);
-    if (words.length === 0) return "?";
-    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-    return (words[0][0] + words[1][0]).toUpperCase();
 }

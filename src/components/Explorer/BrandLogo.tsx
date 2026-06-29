@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { brandColors, brandInitials, BRANDS_WITH_LOGO } from '../../lib/brands';
+import { brandColors } from '../../lib/brands';
+import { BRAND_LOGO_FILES } from '../../lib/brandLogos';
 import { slugify } from '../../lib/slug';
 import styles from './BrandLogo.module.css';
 
@@ -9,34 +10,35 @@ interface BrandLogoProps {
 }
 
 /**
- * Insignia de marca: muestra un monograma con el color corporativo.
- * Si la marca tiene un logo real registrado en /public/brands/<slug>.<ext>
- * (webp/avif/svg/png), lo usa; si falla la carga, cae al monograma de color.
+ * Insignia de marca. Si hay un logo real en /public/brands (registrado en
+ * brandLogos.ts, generado desde la carpeta), lo muestra; si no hay logo o falla
+ * la carga, muestra un icono genérico de gasolinera sobre el color de la marca.
  */
 const BrandLogo: React.FC<BrandLogoProps> = ({ brand, size = 40 }) => {
     const slug = slugify(brand);
-    const ext = BRANDS_WITH_LOGO.get(slug);
-    const [useImage, setUseImage] = useState(!!ext);
+    const file = BRAND_LOGO_FILES[slug];
+    const [useImage, setUseImage] = useState(!!file);
     const { bg, fg } = brandColors(brand);
-    const initials = brandInitials(brand);
 
     return (
         <div
             className={styles.badge}
-            style={{ width: size, height: size, backgroundColor: bg, color: fg, fontSize: size * 0.4 }}
+            style={{ width: size, height: size, backgroundColor: useImage ? '#fff' : bg, color: fg }}
             title={brand}
             aria-label={brand}
         >
-            {useImage && ext ? (
+            {useImage && file ? (
                 <img
-                    src={`/brands/${slug}.${ext}`}
+                    src={`/brands/${file}`}
                     alt={brand}
                     className={styles.logoImg}
                     onError={() => setUseImage(false)}
                     loading="lazy"
                 />
             ) : (
-                <span>{initials}</span>
+                <span className="material-symbols-outlined" style={{ fontSize: size * 0.58 }}>
+                    local_gas_station
+                </span>
             )}
         </div>
     );

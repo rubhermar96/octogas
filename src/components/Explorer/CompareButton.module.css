@@ -1,0 +1,73 @@
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1;
+    transition: all 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+    border-color: var(--secondary);
+    color: var(--secondary);
+}
+
+.btn :global(.material-symbols-outlined) {
+    font-size: 1.05rem;
+}
+
+.btn.active {
+    background: var(--secondary);
+    border-color: var(--secondary);
+    color: #fff;
+}
+
+.btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* Variante compacta (solo icono) para el popup del mapa.
+   El popup de Leaflet siempre es blanco -> colores claros fijos (no del tema). */
+.btn.icon {
+    padding: 0.25rem;
+    border-radius: 0.45rem;
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #64748b;
+}
+
+.btn.icon:hover:not(:disabled) {
+    border-color: #0284c7;
+    color: #0284c7;
+}
+
+.btn.icon.active {
+    background: #0284c7;
+    border-color: #0284c7;
+    color: #fff;
+}
+
+.btn.icon :global(.material-symbols-outlined) {
+    font-size: 0.95rem;
+}
+
+/* Variante mini: tipo "Cómo llegar" (pastilla) con icono muy pequeño.
+   Va bajo el nombre de la estación en el listado. */
+.btn.mini {
+    gap: 0.25rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    margin-top: 0.3rem;
+}
+
+.btn.mini :global(.material-symbols-outlined) {
+    font-size: 0.8rem;
+}

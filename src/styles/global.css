@@ -104,3 +104,44 @@ input {
         'GRAD' 0,
         'opsz' 24
 }
+
+/* --- Marcadores del mapa con logo de marca --- */
+/* Reseteamos el recuadro blanco por defecto de leaflet-div-icon. */
+.octo-marker-icon {
+    background: transparent;
+    border: none;
+}
+
+.octo-marker {
+    width: 100%;
+    height: 100%;
+    border-radius: 0.5rem;
+    background: #fff;
+    border: 3px solid var(--bc, #94a3b8);
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.octo-marker img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 2px;
+}
+
+.octo-marker .material-symbols-outlined {
+    font-size: 18px;
+    color: #64748b;
+}
+
+.octo-marker-sel {
+    box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.45), 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+.octo-marker-sel .material-symbols-outlined {
+    font-size: 22px;
+}
