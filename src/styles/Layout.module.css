@@ -22,12 +22,21 @@
 
 .main {
     flex: 1;
+    min-width: 0;
     position: relative;
     background-color: var(--bg);
     /* Permite scroll en páginas de contenido (rutas, municipio, etc.).
        El explorador y la home gestionan su propio alto (100vh / 100%), así que no scrollean de más. */
     overflow-y: auto;
     overflow-x: hidden;
+}
+
+/* En móvil/tablet el sidebar se oculta (la navegación va en el menú flotante)
+   para que el contenido use todo el ancho. */
+@media (max-width: 900px) {
+    .sidebar {
+        display: none;
+    }
 }
 
 /* Sidebar Sections */
