@@ -1,0 +1,476 @@
+.page {
+    max-width: 1500px;
+    margin: 0 auto;
+    /* Hueco superior para no quedar bajo los controles flotantes (tema/menú). */
+    padding: 4.5rem 1.5rem 4rem;
+    width: 100%;
+}
+
+/* --- Cabecera --- */
+.header {
+    margin-bottom: 1.25rem;
+}
+
+.headTitle {
+    min-width: 0;
+}
+
+.title {
+    font-size: 1.6rem;
+    color: var(--text);
+}
+
+.subtitle {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+}
+
+/* --- Barra de herramientas (buscador + vaciar) --- */
+.toolbar {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.toolbarRight {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.count {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.clearBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.85rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+
+.clearBtn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* --- Buscador --- */
+.searchZone {
+    position: relative;
+    flex: 1;
+    min-width: 260px;
+    max-width: 560px;
+}
+
+.searchBox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--surface);
+}
+
+.searchBox > :global(.material-symbols-outlined) {
+    color: var(--text-muted);
+}
+
+.searchBox input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text);
+    padding: 0.7rem 0;
+    font-size: 0.95rem;
+}
+
+.searchBox input:disabled {
+    cursor: not-allowed;
+}
+
+.clearSearch {
+    display: flex;
+    color: var(--text-muted);
+}
+
+.clearSearch :global(.material-symbols-outlined) {
+    font-size: 1.1rem;
+}
+
+.results {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 0.3rem);
+    left: 0;
+    right: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0.3rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+}
+
+.resultItem {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem;
+    border-radius: 0.55rem;
+    text-align: left;
+    color: var(--text);
+}
+
+.resultItem:hover {
+    background: var(--primary-dim);
+}
+
+.resultText {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.resultText strong {
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.resultText small {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.addIcon {
+    color: var(--secondary);
+}
+
+/* --- Estado vacío (ocupa todo el ancho, nivelado con el buscador) --- */
+.empty {
+    width: 100%;
+}
+
+.emptyCard {
+    width: 100%;
+    text-align: center;
+    padding: 3rem 2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1.25rem;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+/* Contenido interno centrado y legible aunque la tarjeta sea ancha. */
+.emptyCard h2,
+.emptyCard p {
+    max-width: 520px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.emptyIcon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--primary-dim);
+}
+
+.emptyIcon :global(.material-symbols-outlined) {
+    font-size: 2rem;
+    color: var(--primary);
+}
+
+.emptyCard h2 {
+    color: var(--text);
+    font-size: 1.35rem;
+    margin-bottom: 0.5rem;
+}
+
+.emptyCard p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.steps {
+    list-style: none;
+    margin: 1.5rem auto;
+    padding: 0;
+    max-width: 440px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.steps li {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.9rem;
+    color: var(--text);
+}
+
+.stepNum {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #06281c;
+    font-weight: 800;
+    font-size: 0.8rem;
+}
+
+.steps li :global(.material-symbols-outlined) {
+    font-size: 1.1rem;
+    vertical-align: -0.2rem;
+    margin: 0 0.1rem;
+    color: var(--secondary);
+}
+
+.emptyActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-top: 1.75rem;
+}
+
+.cta,
+.ctaGhost {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.2rem;
+    border-radius: 0.7rem;
+    font-weight: 700;
+    font-size: 0.92rem;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.cta {
+    background: var(--primary);
+    color: #06281c;
+}
+
+.cta:hover {
+    filter: brightness(1.06);
+}
+
+.ctaGhost {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.ctaGhost:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* --- Tabla comparativa --- */
+.tableWrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: var(--surface);
+}
+
+.table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 480px;
+}
+
+.table th,
+.table td {
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.table tr:last-child th,
+.table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Columna izquierda (etiquetas de fila), pegajosa al hacer scroll horizontal. */
+.rowHead {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--surface);
+    text-align: left !important;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    min-width: 90px;
+}
+
+/* Cabecera de cada estación. */
+.stationHead {
+    position: relative;
+    min-width: 170px;
+    background: var(--bg);
+}
+
+.stationHead .stName {
+    display: block;
+    margin-top: 0.5rem;
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--text);
+}
+
+.stationHead .stMeta {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    max-width: 200px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.winBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    background: var(--primary-dim);
+    color: var(--primary);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.winBadge :global(.material-symbols-outlined) {
+    font-size: 0.95rem;
+}
+
+.remove {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    display: flex;
+    color: var(--text-muted);
+    border-radius: 0.4rem;
+    padding: 0.1rem;
+}
+
+.remove:hover {
+    color: var(--accent);
+    background: var(--primary-dim);
+}
+
+.remove :global(.material-symbols-outlined) {
+    font-size: 1.1rem;
+}
+
+/* Celdas de precio. */
+.cell {
+    font-variant-numeric: tabular-nums;
+}
+
+.cell .price {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.cell .unit {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-left: 0.2rem;
+}
+
+.cell.na .price {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.cheapest {
+    background: var(--primary-dim);
+}
+
+.cheapest .price {
+    color: var(--primary);
+}
+
+.bestTag {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--primary);
+}
+
+.cellInfo {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.routeLink {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--secondary);
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.82rem;
+}
+
+.routeLink :global(.material-symbols-outlined) {
+    font-size: 1.05rem;
+}
+
+@media (max-width: 640px) {
+    .page {
+        padding: 4.5rem 0.75rem 3rem;
+    }
+
+    .title {
+        font-size: 1.25rem;
+    }
+
+    .subtitle {
+        font-size: 0.82rem;
+    }
+}

@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import 'leaflet/dist/leaflet.css';
 import 'react-leaflet-cluster/dist/assets/MarkerCluster.css';
@@ -8,6 +8,9 @@ import styles from './MainMap.module.css';
 import type { GasStation, FuelType } from '../../types/gasolinera';
 import { FUEL_LABELS, FUEL_ORDER } from '../../lib/fuels';
 import BrandLogo from '../Explorer/BrandLogo';
+import CompareButton from '../Explorer/CompareButton';
+import { slugify } from '../../lib/slug';
+import { BRAND_LOGO_FILES } from '../../lib/brandLogos';
 import L from 'leaflet';
 
 // Fix for default marker icon in react-leaflet
@@ -29,6 +32,30 @@ const userLocationIcon = L.divIcon({
     iconSize: [24, 24],
     iconAnchor: [12, 12],
 });
+
+// Marcador con el logo de la marca y un borde de color según el precio.
+// Cacheamos por (logo|color|seleccionado) para no recrear iconos en cada render.
+const iconCache = new Map<string, L.DivIcon>();
+const stationIcon = (brand: string, color: string, selected: boolean): L.DivIcon => {
+    const file = BRAND_LOGO_FILES[slugify(brand)];
+    const key = `${file ?? '_'}|${color}|${selected ? 1 : 0}`;
+    const cached = iconCache.get(key);
+    if (cached) return cached;
+
+    const inner = file
+        ? `<img src="/brands/${file}" alt="" />`
+        : `<span class="material-symbols-outlined">local_gas_station</span>`;
+    const size = selected ? 44 : 34;
+    const icon = L.divIcon({
+        className: 'octo-marker-icon',
+        html: `<div class="octo-marker ${selected ? 'octo-marker-sel' : ''}" style="--bc:${color}">${inner}</div>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+        popupAnchor: [0, -size / 2 + 2],
+    });
+    iconCache.set(key, icon);
+    return icon;
+};
 
 const createClusterCustomIcon = (cluster: any) => {
     const count = cluster.getChildCount();
@@ -151,8 +178,8 @@ const StationPopup: React.FC<{ station: GasStation; fuelType: FuelType }> = ({ s
     return (
         <div className={styles.popupBody}>
             <div className={styles.popupTop}>
-                <BrandLogo brand={station.brand} size={36} />
-                <div>
+                <BrandLogo brand={station.brand} size={38} />
+                <div className={styles.popupTitleBlock}>
                     <h3 className={styles.popupHeader}>{station.name}</h3>
                     <p className={styles.popupAddress}>{station.address}, {station.city}</p>
                 </div>
@@ -166,15 +193,21 @@ const StationPopup: React.FC<{ station: GasStation; fuelType: FuelType }> = ({ s
                 ))}
             </div>
             <div className={styles.popupFooter}>
-                <span>{station.schedule || 'Horario no disponible'}</span>
-                <a
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.popupRoute}
-                >
-                    Cómo llegar
-                </a>
+                <span className={styles.popupSchedule}>
+                    <span className="material-symbols-outlined">schedule</span>
+                    {station.schedule || 'Horario no disponible'}
+                </span>
+                <div className={styles.popupActions}>
+                    <CompareButton stationId={station.id} variant="icon" />
+                    <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.popupRoute}
+                    >
+                        Cómo llegar
+                    </a>
+                </div>
             </div>
         </div>
     );
@@ -194,7 +227,7 @@ const MainMap: React.FC<MainMapProps> = ({
     const [visibleStations, setVisibleStations] = useState<GasStation[]>([]);
     const [bounds, setBounds] = useState<L.LatLngBounds | null>(null);
     const [userPos, setUserPos] = useState<[number, number] | null>(null);
-    const selectedMarkerRef = useRef<L.CircleMarker>(null);
+    const selectedMarkerRef = useRef<L.Marker>(null);
 
     const averagePrice = useMemo(() => {
         const prices = stations
@@ -226,9 +259,12 @@ const MainMap: React.FC<MainMapProps> = ({
         }
     }, [selectedStation, active]);
 
+    // Color del borde según el precio relativo a la media de la zona.
     const getColor = (price: number | null) => {
-        if (!price) return '#94a3b8';
-        return price < averagePrice ? '#34d399' : '#fb923c';
+        if (!price || !averagePrice) return '#94a3b8'; // sin dato
+        if (price <= averagePrice * 0.985) return '#22c55e'; // barata
+        if (price >= averagePrice * 1.015) return '#ef4444'; // cara
+        return '#f59e0b'; // en la media
     };
 
     const handleLocalBoundsChange = (b: L.LatLngBounds, c: L.LatLng) => {
@@ -275,44 +311,33 @@ const MainMap: React.FC<MainMapProps> = ({
                         .map(station => {
                             const price = station.prices[fuelType];
                             return (
-                                <CircleMarker
+                                <Marker
                                     key={station.id}
-                                    center={[station.lat, station.lng]}
-                                    radius={6}
-                                    fillOpacity={0.85}
-                                    pathOptions={{
-                                        color: 'white',
-                                        weight: 1,
-                                        fillColor: getColor(price)
-                                    }}
+                                    position={[station.lat, station.lng]}
+                                    icon={stationIcon(station.brand, getColor(price), false)}
                                     eventHandlers={{ click: () => onSelectStation?.(station.id) }}
                                 >
                                     <Popup className={styles.popupContent}>
                                         <StationPopup station={station} fuelType={fuelType} />
                                     </Popup>
-                                </CircleMarker>
+                                </Marker>
                             );
                         })}
                 </MarkerClusterGroup>
 
                 {/* Estación seleccionada: marcador destacado, siempre visible y por encima */}
                 {selectedStation && (
-                    <CircleMarker
+                    <Marker
                         ref={selectedMarkerRef}
-                        center={[selectedStation.lat, selectedStation.lng]}
-                        radius={11}
-                        fillOpacity={1}
-                        pathOptions={{
-                            color: '#fff',
-                            weight: 3,
-                            fillColor: '#34d399'
-                        }}
+                        position={[selectedStation.lat, selectedStation.lng]}
+                        icon={stationIcon(selectedStation.brand, getColor(selectedStation.prices[fuelType]), true)}
+                        zIndexOffset={1000}
                         eventHandlers={{ click: () => onSelectStation?.(selectedStation.id) }}
                     >
                         <Popup className={styles.popupContent} autoPan={true}>
                             <StationPopup station={selectedStation} fuelType={fuelType} />
                         </Popup>
-                    </CircleMarker>
+                    </Marker>
                 )}
             </MapContainer>
         </div>

@@ -47,7 +47,15 @@ const mainCities: { name: string; path: string }[] = [
             <div class="search-box">
                 <MunicipalitySearch client:only="react" />
             </div>
-            
+
+            <div class="location-cta">
+                <span class="divider-text">o</span>
+                <a href="/explorador?mode=location" class="location-button">
+                    <span class="material-symbols-outlined">my_location</span>
+                    Usar mi ubicación en tiempo real
+                </a>
+            </div>
+
             <div class="quick-links">
                 <h2>Ciudades principales</h2>
                 <div class="cities-grid">
@@ -165,6 +173,41 @@ const mainCities: { name: string; path: string }[] = [
     .search-box {
         width: 100%;
         margin-top: 1rem;
+    }
+
+    .location-cta {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .divider-text {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+    }
+
+    .location-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.85rem 1.5rem;
+        border-radius: 0.75rem;
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+        color: var(--text);
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .location-button:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        transform: translateY(-2px);
     }
 
     .quick-links {
