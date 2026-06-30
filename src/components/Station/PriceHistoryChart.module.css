@@ -1,0 +1,130 @@
+.wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 1rem 1.25rem 1.25rem;
+}
+
+.ranges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.85rem;
+}
+
+.rangeBtn {
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.rangeBtn:hover {
+    color: var(--text);
+    border-color: var(--text-muted);
+}
+
+.rangeBtn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #06281c;
+}
+
+.chartBox {
+    position: relative;
+    width: 100%;
+}
+
+.svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    touch-action: none;
+}
+
+.axisText {
+    font-size: 11px;
+    fill: var(--text-muted);
+    font-family: var(--font-body);
+}
+
+.tooltip {
+    position: absolute;
+    top: 0.25rem;
+    pointer-events: none;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 0.6rem;
+    padding: 0.5rem 0.7rem;
+    font-size: 0.8rem;
+    color: var(--text);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    white-space: nowrap;
+    z-index: 2;
+    min-width: 150px;
+}
+
+.ttDate {
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    text-transform: capitalize;
+}
+
+.ttRow {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    line-height: 1.5;
+}
+
+.ttDot,
+.legendDot {
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 0.85rem;
+    justify-content: center;
+}
+
+.legendItem {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.empty {
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+@media (max-width: 560px) {
+    .wrap {
+        padding: 0.85rem 0.75rem 1rem;
+    }
+    .tooltip {
+        min-width: 130px;
+        font-size: 0.75rem;
+    }
+}
