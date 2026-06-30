@@ -87,6 +87,15 @@ const mainCities: { name: string; path: string }[] = [
                 </div>
             </div>
 
+            <a href="/precios-combustible-espana" class="espana-link">
+                <span class="material-symbols-outlined">trending_up</span>
+                <span>
+                    <strong>Precio medio de la gasolina y el diésel en España</strong>
+                    <small>Mira la media nacional y su evolución</small>
+                </span>
+                <span class="material-symbols-outlined arrow">arrow_forward</span>
+            </a>
+
             <div class="quick-links">
                 <h2>Gasolineras por provincia</h2>
                 <div class="province-grid">
@@ -293,6 +302,40 @@ const mainCities: { name: string; path: string }[] = [
 
     .city-card:hover .city-icon {
         opacity: 1;
+    }
+
+    .espana-link {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.1rem 1.25rem;
+        background: linear-gradient(135deg, rgba(52, 211, 153, 0.12), rgba(56, 189, 248, 0.1));
+        border: 1px solid rgba(52, 211, 153, 0.35);
+        border-radius: 1rem;
+        text-decoration: none;
+        color: var(--text);
+        transition: transform 0.2s, border-color 0.2s;
+    }
+    .espana-link:hover {
+        transform: translateY(-2px);
+        border-color: var(--primary);
+    }
+    .espana-link > .material-symbols-outlined {
+        color: var(--primary);
+        font-size: 1.8rem;
+        flex-shrink: 0;
+    }
+    .espana-link .arrow {
+        margin-left: auto;
+        font-size: 1.3rem;
+    }
+    .espana-link strong {
+        display: block;
+        font-size: 1rem;
+    }
+    .espana-link small {
+        color: var(--text-muted);
+        font-size: 0.85rem;
     }
 
     .province-grid {

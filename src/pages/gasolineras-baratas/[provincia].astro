@@ -6,6 +6,8 @@ import AdSlot from "../../components/AdSlot.astro";
 import { slugify } from "../../lib/slug";
 import { stationUrl, municipioUrl } from "../../lib/stationUrl";
 import { titleCase } from "../../lib/format";
+import PriceHistoryChart from "../../components/Station/PriceHistoryChart";
+import { loadAggHistory, scopeKey } from "../../lib/aggHistory";
 import type { GasStation } from "../../types/gasolinera";
 
 interface Muni {
@@ -58,6 +60,12 @@ const { provinceName, stations, munis } = Astro.props as {
 };
 
 const provLabel = titleCase(provinceName);
+
+const aggHist = (await loadAggHistory()).get(scopeKey("province", slugify(provinceName))) ?? null;
+const chartSeries = [
+    { label: "Gasolina 95", color: "var(--primary)", points: aggHist?.sp95 ?? [] },
+    { label: "Diésel", color: "var(--secondary)", points: aggHist?.diesel ?? [] },
+];
 
 type FuelKey = "sp95" | "sp98" | "diesel" | "glp";
 const min = (key: FuelKey) => {
@@ -192,6 +200,11 @@ const breadcrumbJsonLd = {
                     </a>
                 )
             }
+
+            <section class="chart-section">
+                <h2>Evolución del precio medio en {provLabel}</h2>
+                <PriceHistoryChart client:visible series={chartSeries} />
+            </section>
 
             <AdSlot slot="" label="Publicidad" minHeight={120} />
 
@@ -350,6 +363,9 @@ const breadcrumbJsonLd = {
         font-family: var(--font-header);
         font-size: 1.4rem;
         margin-bottom: 1.5rem;
+    }
+    .chart-section {
+        margin-bottom: 2.5rem;
     }
     .munis {
         margin-bottom: 3rem;
