@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: octogas-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: octogas
+      POSTGRES_PASSWORD: octogas
+      POSTGRES_DB: octogas
+    ports:
+      - "5432:5432"
+    volumes:
+      - octogas-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U octogas -d octogas"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  octogas-pgdata:
