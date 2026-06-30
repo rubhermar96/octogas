@@ -51,11 +51,17 @@ const PriceHistoryChart: React.FC<Props> = ({ series }) => {
     const hasAny = allPoints.length > 0;
     const spanDays = hasAny ? (Date.now() - Math.min(...allPoints.map((p) => p.t))) / DAY : 0;
 
-    // Rango por defecto: el primero que cabe en los datos disponibles.
-    const defaultIdx = RANGES.findIndex((r) => spanDays <= r.days);
-    const [rangeIdx, setRangeIdx] = useState(defaultIdx === -1 ? RANGES.length - 1 : Math.max(1, defaultIdx));
+    // Por defecto 30 días. Los rangos mayores solo se activan cuando hay histórico
+    // suficiente para que tengan sentido (si no, salen deshabilitados).
+    const [rangeIdx, setRangeIdx] = useState(0);
     const [hover, setHover] = useState<{ x: number; t: number } | null>(null);
     const svgRef = useRef<SVGSVGElement>(null);
+
+    const rangeEnabled = (r: (typeof RANGES)[number], i: number) => {
+        if (i === 0) return true; // 30 días siempre
+        if (r.days === Infinity) return spanDays > 365; // "Todo": útil con >1 año
+        return spanDays >= r.days * 0.9;
+    };
 
     const geo = useMemo(() => {
         const now = Date.now();
@@ -139,15 +145,20 @@ const PriceHistoryChart: React.FC<Props> = ({ series }) => {
     return (
         <div className={styles.wrap}>
             <div className={styles.ranges}>
-                {RANGES.map((r, i) => (
-                    <button
-                        key={r.label}
-                        className={`${styles.rangeBtn} ${i === rangeIdx ? styles.active : ""}`}
-                        onClick={() => setRangeIdx(i)}
-                    >
-                        {r.label}
-                    </button>
-                ))}
+                {RANGES.map((r, i) => {
+                    const en = rangeEnabled(r, i);
+                    return (
+                        <button
+                            key={r.label}
+                            className={`${styles.rangeBtn} ${i === rangeIdx ? styles.active : ""}`}
+                            onClick={() => en && setRangeIdx(i)}
+                            disabled={!en}
+                            title={en ? undefined : "Disponible cuando haya más histórico"}
+                        >
+                            {r.label}
+                        </button>
+                    );
+                })}
             </div>
 
             <div className={styles.chartBox}>

@@ -35,6 +35,16 @@
     color: #06281c;
 }
 
+.rangeBtn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.rangeBtn:disabled:hover {
+    color: var(--text-muted);
+    border-color: var(--border);
+}
+
 .chartBox {
     position: relative;
     width: 100%;
