@@ -4,6 +4,8 @@ import {
     text,
     doublePrecision,
     real,
+    integer,
+    date,
     timestamp,
     bigserial,
     primaryKey,
@@ -69,6 +71,30 @@ export const priceObservations = pgTable(
         observedAt: timestamp("observed_at", { withTimezone: true }).notNull().defaultNow(),
     },
     (t) => [index("obs_station_fuel_time").on(t.stationId, t.fuel, t.observedAt)]
+);
+
+/** Ámbito de un agregado: nacional, provincia o municipio. */
+export const scopeEnum = pgEnum("scope_type", ["national", "province", "municipio"]);
+
+/**
+ * Media diaria de precio por ámbito y combustible (rollup). Se calcula en cada
+ * ingesta a partir de los precios actuales. scopeId: '' (nacional),
+ * slug de provincia, o 'provinciaSlug|municipioSlug'.
+ */
+export const dailyPriceAvg = pgTable(
+    "daily_price_avg",
+    {
+        scopeType: scopeEnum("scope_type").notNull(),
+        scopeId: text("scope_id").notNull().default(""),
+        fuel: fuelEnum("fuel").notNull(),
+        day: date("day").notNull(),
+        avgPrice: real("avg_price").notNull(),
+        n: integer("n").notNull(),
+    },
+    (t) => [
+        primaryKey({ columns: [t.scopeType, t.scopeId, t.fuel, t.day] }),
+        index("avg_scope_fuel_day").on(t.scopeType, t.scopeId, t.fuel, t.day),
+    ]
 );
 
 export type FuelKey = (typeof fuelEnum.enumValues)[number];

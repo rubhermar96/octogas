@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { lt, sql } from "drizzle-orm";
 import { db, pool } from "./db/client";
-import { currentPrices, priceObservations, type FuelKey } from "./db/schema";
+import { currentPrices, priceObservations, dailyPriceAvg, type FuelKey } from "./db/schema";
 
 /**
  * Genera histórico SIMULADO (solo desarrollo) para poder ver la gráfica de la
@@ -63,6 +63,43 @@ async function main() {
     console.log(`  Insertando ${rows.length} observaciones…`);
     for (const batch of chunk(rows, 1000)) {
         await db.insert(priceObservations).values(batch);
+    }
+
+    // --- Histórico simulado de medias por ámbito (daily_price_avg) ---
+    const todayStr = new Date().toISOString().slice(0, 10);
+    await db.delete(dailyPriceAvg).where(lt(dailyPriceAvg.day, todayStr));
+    const anchors = await db
+        .select({
+            scopeType: dailyPriceAvg.scopeType,
+            scopeId: dailyPriceAvg.scopeId,
+            fuel: dailyPriceAvg.fuel,
+            avgPrice: dailyPriceAvg.avgPrice,
+            n: dailyPriceAvg.n,
+        })
+        .from(dailyPriceAvg);
+
+    if (anchors.length === 0) {
+        console.warn("  (Sin medias de hoy: ejecuta antes `npm run ingest` para el rollup. Salto el histórico de medias.)");
+    } else {
+        const aggRows: (typeof dailyPriceAvg.$inferInsert)[] = [];
+        for (const a of anchors) {
+            let price = a.avgPrice;
+            for (let w = 1; w <= WEEKS; w++) {
+                price = clamp(price + (Math.random() - 0.5) * 0.02, a.avgPrice * 0.9, a.avgPrice * 1.1);
+                aggRows.push({
+                    scopeType: a.scopeType,
+                    scopeId: a.scopeId,
+                    fuel: a.fuel,
+                    avgPrice: round3(price),
+                    n: a.n,
+                    day: new Date(Date.now() - w * 7 * DAY).toISOString().slice(0, 10),
+                });
+            }
+        }
+        console.log(`  Insertando ${aggRows.length} medias históricas por ámbito…`);
+        for (const batch of chunk(aggRows, 1000)) {
+            await db.insert(dailyPriceAvg).values(batch);
+        }
     }
 
     const [{ count }] = await db

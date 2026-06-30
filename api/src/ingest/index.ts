@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { sql } from "drizzle-orm";
 import { db, pool } from "../db/client";
-import { stations, currentPrices, priceObservations, type FuelKey } from "../db/schema";
+import { stations, currentPrices, priceObservations, dailyPriceAvg, type FuelKey } from "../db/schema";
+import { computeScopeAverages } from "../rollup";
 
 const FUELS: FuelKey[] = [
     "sp95",
@@ -118,6 +119,21 @@ async function main() {
         }
     }
     console.log(`  → ${changed.length} cambios de precio detectados`);
+
+    // Rollup: media de precio del día por ámbito (nacional/provincia/municipio).
+    // Se registra siempre (haya o no cambios de precio individuales).
+    const today = new Date().toISOString().slice(0, 10);
+    const avgs = computeScopeAverages(raw);
+    for (const batch of chunk(avgs, 1000)) {
+        await db
+            .insert(dailyPriceAvg)
+            .values(batch.map((a) => ({ ...a, day: today })))
+            .onConflictDoUpdate({
+                target: [dailyPriceAvg.scopeType, dailyPriceAvg.scopeId, dailyPriceAvg.fuel, dailyPriceAvg.day],
+                set: { avgPrice: sql`excluded.avg_price`, n: sql`excluded.n` },
+            });
+    }
+    console.log(`  ✓ ${avgs.length} medias por ámbito (rollup) del día`);
 
     if (changed.length === 0) {
         console.log("Ingesta completada (sin cambios).");
