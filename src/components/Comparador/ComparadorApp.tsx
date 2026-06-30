@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { GasStation, FuelType } from '../../types/gasolinera';
 import { FUEL_LABELS, FUEL_ORDER } from '../../lib/fuels';
 import { getCompareIds, onCompareChange, addToCompare, removeFromCompare, clearCompare, MAX_COMPARE } from '../../lib/compare';
+import { stationUrl } from '../../lib/stationUrl';
 import BrandLogo from '../Explorer/BrandLogo';
 import styles from './ComparadorApp.module.css';
 
@@ -231,7 +232,7 @@ const ComparadorApp: React.FC = () => {
                                                 <span className="material-symbols-outlined">close</span>
                                             </button>
                                             <BrandLogo brand={s.brand} size={44} />
-                                            <span className={styles.stName}>{s.name}</span>
+                                            <a className={styles.stName} href={stationUrl(s)} title="Ver ficha de la gasolinera">{s.name}</a>
                                             <span className={styles.stMeta}>{s.address}, {s.city}</span>
                                             {wins > 0 && (
                                                 <span className={styles.winBadge}>

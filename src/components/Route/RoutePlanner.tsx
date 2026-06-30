@@ -20,6 +20,7 @@ import {
 import BrandLogo from '../Explorer/BrandLogo';
 import BrandFilter, { type BrandOption } from '../Explorer/BrandFilter';
 import PlaceInput, { type PlaceValue } from './PlaceInput';
+import { stationUrl } from '../../lib/stationUrl';
 import styles from './RoutePlanner.module.css';
 
 const ROUTE_FUELS: FuelType[] = FUEL_ORDER;
@@ -802,7 +803,7 @@ const RoutePlanner: React.FC = () => {
                                                     <div className={styles.stopNum}>{i + 1}</div>
                                                     <BrandLogo brand={s.brand} size={34} />
                                                     <div className={styles.stopInfo}>
-                                                        <div className={styles.stopName}>{s.name}</div>
+                                                        <a className={styles.stopName} href={stationUrl(s)} title="Ver ficha de la gasolinera">{s.name}</a>
                                                         <div className={styles.stopMeta}>
                                                             {s.city} · desvío {s.detourKm.toFixed(1)} km
                                                         </div>

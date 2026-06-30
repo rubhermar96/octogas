@@ -352,11 +352,19 @@
 }
 
 .stopName {
+    display: block;
     font-weight: 700;
     font-size: 0.9rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: var(--text);
+    text-decoration: none;
+}
+
+a.stopName:hover {
+    color: var(--primary);
+    text-decoration: underline;
 }
 
 .stopMeta {

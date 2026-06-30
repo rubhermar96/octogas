@@ -354,6 +354,12 @@
     font-weight: 700;
     font-size: 0.92rem;
     color: var(--text);
+    text-decoration: none;
+}
+
+.stationHead a.stName:hover {
+    color: var(--primary);
+    text-decoration: underline;
 }
 
 .stationHead .stMeta {

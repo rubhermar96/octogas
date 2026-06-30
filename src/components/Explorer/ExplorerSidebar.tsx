@@ -3,6 +3,7 @@ import type { GasStation, FuelType } from '../../types/gasolinera';
 import type { SortType } from './ExplorerApp';
 import { FUEL_LABELS, MAIN_FUELS, OTHER_FUELS, FUEL_ORDER } from '../../lib/fuels';
 import { getDistance } from '../../lib/geo';
+import { stationUrl } from '../../lib/stationUrl';
 import BrandLogo from './BrandLogo';
 import CompareButton from './CompareButton';
 import BrandFilter, { type BrandOption } from './BrandFilter';
@@ -169,7 +170,16 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
                                     <div className={styles.brandRow}>
                                         <BrandLogo brand={station.brand} size={40} />
                                         <div className={styles.nameBlock}>
-                                            <h3 className={styles.stationName}>{station.name}</h3>
+                                            <h3 className={styles.stationName}>
+                                                <a
+                                                    className={styles.nameLink}
+                                                    href={stationUrl(station)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    title="Ver ficha de la gasolinera"
+                                                >
+                                                    {station.name}
+                                                </a>
+                                            </h3>
                                             <CompareButton stationId={station.id} variant="mini" />
                                         </div>
                                     </div>

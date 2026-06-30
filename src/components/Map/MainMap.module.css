@@ -121,6 +121,16 @@
     flex-shrink: 0;
 }
 
+.popupNameLink {
+    color: inherit;
+    text-decoration: none;
+}
+
+.popupNameLink:hover {
+    color: #059669;
+    text-decoration: underline;
+}
+
 .popupRoute {
     color: #0284c7;
     font-weight: 700;
