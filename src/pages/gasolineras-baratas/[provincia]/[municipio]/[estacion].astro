@@ -10,6 +10,8 @@ import { titleCase } from "../../../../lib/format";
 import { getDistance } from "../../../../lib/geo";
 import { FUEL_LABELS, FUEL_ORDER } from "../../../../lib/fuels";
 import { BRAND_LOGO_FILES } from "../../../../lib/brandLogos";
+import { loadPriceHistory, type StationHistory } from "../../../../lib/history";
+import PriceHistoryChart from "../../../../components/Station/PriceHistoryChart";
 import type { GasStation, FuelType } from "../../../../types/gasolinera";
 
 export async function getStaticPaths() {
@@ -63,6 +65,10 @@ export async function getStaticPaths() {
             .map(({ x }) => x);
     };
 
+    // Histórico de precios (una sola consulta a Postgres, cacheada). Si no hay BD,
+    // devuelve vacío y las fichas se generan sin gráfica.
+    const history = await loadPriceHistory();
+
     return stations.map((station) => {
         const agg = muniAgg.get(muniKey(station));
         return {
@@ -77,18 +83,25 @@ export async function getStaticPaths() {
                 muniAvgSp95: mean(agg?.sp95 ?? []),
                 muniAvgDiesel: mean(agg?.diesel ?? []),
                 muniCount: agg?.count ?? 1,
+                history: history.get(station.id) ?? null,
             },
         };
     });
 }
 
-const { station, nearby, muniAvgSp95, muniAvgDiesel, muniCount } = Astro.props as {
+const { station, nearby, muniAvgSp95, muniAvgDiesel, muniCount, history } = Astro.props as {
     station: GasStation;
     nearby: GasStation[];
     muniAvgSp95: number | null;
     muniAvgDiesel: number | null;
     muniCount: number;
+    history: StationHistory | null;
 };
+
+const chartSeries = [
+    { label: "Gasolina 95", color: "var(--primary)", points: history?.sp95 ?? [] },
+    { label: "Diésel", color: "var(--secondary)", points: history?.diesel ?? [] },
+];
 
 const provLabel = titleCase(station.province);
 const provSlug = slugify(station.province);
@@ -256,6 +269,11 @@ const mapStations = [station, ...nearby];
                         </div>
                     )
                 }
+            </section>
+
+            <section class="history-section">
+                <h2>Evolución del precio</h2>
+                <PriceHistoryChart client:visible series={chartSeries} />
             </section>
 
             <section class="info-grid">
@@ -543,6 +561,10 @@ const mapStations = [station, ...nearby];
         text-decoration: underline;
     }
 
+    .history-section {
+        margin-bottom: 2.5rem;
+    }
+
     .map-section {
         margin-bottom: 2.5rem;
     }
@@ -630,5 +652,35 @@ const mapStations = [station, ...nearby];
         padding: 0 1.25rem 1.1rem;
         color: var(--text-muted);
         line-height: 1.6;
+    }
+
+    /* --- Responsive móvil --- */
+    @media (max-width: 600px) {
+        .page-container {
+            padding: 5rem 1rem 2.5rem;
+        }
+        .station-header {
+            gap: 0.85rem 1rem;
+        }
+        .logo-box {
+            width: 56px;
+            height: 56px;
+        }
+        h1 {
+            font-size: 1.4rem;
+        }
+        /* El botón "Cómo llegar" pasa a su propia línea, a ancho completo, para que
+           el título no quede comprimido en una columna estrechísima. */
+        .route-btn {
+            width: 100%;
+            justify-content: center;
+            padding: 0.8rem 1.2rem;
+        }
+        section h2 {
+            font-size: 1.2rem;
+        }
+        .map-wrapper {
+            height: 340px;
+        }
     }
 </style>
