@@ -1,0 +1,270 @@
+---
+import fs from "node:fs";
+import path from "node:path";
+import Layout from "../layouts/Layout.astro";
+import AdSlot from "../components/AdSlot.astro";
+import PriceHistoryChart from "../components/Station/PriceHistoryChart";
+import { loadAggHistory, scopeKey } from "../lib/aggHistory";
+import type { GasStation } from "../types/gasolinera";
+
+const stations = JSON.parse(
+    fs.readFileSync(path.resolve("public/data/stations.json"), "utf-8")
+) as GasStation[];
+
+const provinces = new Set<string>();
+const sp95: number[] = [];
+const diesel: number[] = [];
+for (const s of stations) {
+    if (s.province) provinces.add(s.province);
+    if (s.prices.sp95 != null) sp95.push(s.prices.sp95);
+    if (s.prices.diesel != null) diesel.push(s.prices.diesel);
+}
+const mean = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+const fmt = (n: number) => n.toFixed(3);
+const avgSp95 = mean(sp95);
+const avgDiesel = mean(diesel);
+
+const agg = await loadAggHistory();
+const national = agg.get(scopeKey("national", "")) ?? null;
+const chartSeries = [
+    { label: "Gasolina 95", color: "var(--primary)", points: national?.sp95 ?? [] },
+    { label: "Diésel", color: "var(--secondary)", points: national?.diesel ?? [] },
+];
+
+const updated = new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
+
+const pageTitle = "Precio de la gasolina y el diésel en España hoy — Evolución | OCTO";
+const pageDescription = `Precio medio de la gasolina 95 (${fmt(avgSp95)} €/L) y el diésel (${fmt(avgDiesel)} €/L) en España hoy, con su evolución histórica. Datos oficiales de ${stations.length} gasolineras actualizados a diario.`;
+
+const faq = [
+    {
+        q: "¿Cuál es el precio medio de la gasolina en España hoy?",
+        a: `El precio medio de la Gasolina 95 en España es de ${fmt(avgSp95)} €/L y el del Gasóleo A (diésel) de ${fmt(avgDiesel)} €/L, según los datos oficiales de hoy.`,
+    },
+    {
+        q: "¿Cómo evoluciona el precio del combustible?",
+        a: "En la gráfica puedes ver la evolución del precio medio nacional de la gasolina 95 y el diésel. Registramos los precios a diario para mostrar la tendencia.",
+    },
+    {
+        q: "¿De dónde salen los datos?",
+        a: "De los datos oficiales del Ministerio para la Transición Ecológica (MITECO), actualizados cada día.",
+    },
+];
+const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+};
+---
+
+<Layout title={pageTitle} description={pageDescription}>
+    <script type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} slot="head" />
+
+    <div class="page-container">
+        <div class="content-wrapper">
+            <nav class="breadcrumb" aria-label="Migas de pan">
+                <a href="/">Inicio</a>
+                <span>›</span>
+                <span class="current">Precios en España</span>
+            </nav>
+
+            <header class="page-header">
+                <h1>Precio de la gasolina y el diésel en España</h1>
+                <p class="subtitle">
+                    Precio medio nacional y su evolución, a partir de {stations.length} gasolineras de
+                    {provinces.size} provincias. <span class="updated">Actualizado el {updated}.</span>
+                </p>
+            </header>
+
+            <section class="stats-bar">
+                <div class="stat">
+                    <span class="stat-label">Media Gasolina 95</span>
+                    <span class="stat-value">{fmt(avgSp95)} <small>€/L</small></span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Media Diésel</span>
+                    <span class="stat-value">{fmt(avgDiesel)} <small>€/L</small></span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Gasolineras</span>
+                    <span class="stat-value alt">{stations.length}</span>
+                </div>
+            </section>
+
+            <section class="chart-section">
+                <h2>Evolución del precio medio en España</h2>
+                <PriceHistoryChart client:visible series={chartSeries} />
+            </section>
+
+            <AdSlot slot="" label="Publicidad" minHeight={120} />
+
+            <section class="links">
+                <h2>Mira el precio en tu zona</h2>
+                <p>
+                    Consulta el precio y su evolución por <a href="/municipios">provincia o municipio</a>,
+                    o encuentra la <a href="/municipios">gasolinera más barata cerca de ti</a>.
+                </p>
+            </section>
+
+            <section class="faq">
+                <h2>Preguntas frecuentes</h2>
+                {
+                    faq.map((f) => (
+                        <details class="faq-item">
+                            <summary>{f.q}</summary>
+                            <p>{f.a}</p>
+                        </details>
+                    ))
+                }
+            </section>
+        </div>
+    </div>
+</Layout>
+
+<style>
+    .page-container {
+        padding: 5rem 2rem 3rem;
+        min-height: 100vh;
+        background-color: var(--bg);
+        color: var(--text);
+    }
+    .content-wrapper {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .breadcrumb a {
+        color: var(--text-muted);
+        text-decoration: none;
+    }
+    .breadcrumb a:hover {
+        color: var(--primary);
+    }
+    .breadcrumb .current {
+        color: var(--text);
+        font-weight: 600;
+    }
+    .page-header {
+        margin-bottom: 2rem;
+    }
+    h1 {
+        font-family: var(--font-header);
+        font-size: clamp(1.8rem, 4vw, 2.6rem);
+        margin-bottom: 0.75rem;
+        line-height: 1.1;
+    }
+    .subtitle {
+        color: var(--text-muted);
+        font-size: 1.05rem;
+        line-height: 1.6;
+        max-width: 760px;
+    }
+    .updated {
+        color: var(--primary);
+        font-weight: 600;
+    }
+    .stats-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2.5rem;
+    }
+    .stat {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        padding: 1.1rem 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .stat-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        font-weight: 700;
+    }
+    .stat-value {
+        font-family: var(--font-header);
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--primary);
+    }
+    .stat-value.alt {
+        color: var(--text);
+    }
+    .stat-value small {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+    section h2 {
+        font-family: var(--font-header);
+        font-size: 1.4rem;
+        margin-bottom: 1.25rem;
+    }
+    .chart-section {
+        margin-bottom: 2.5rem;
+    }
+    .links {
+        margin-bottom: 2.5rem;
+        color: var(--text-muted);
+        line-height: 1.7;
+    }
+    .links a {
+        color: var(--secondary);
+        font-weight: 600;
+    }
+    .faq {
+        margin-bottom: 3rem;
+    }
+    .faq-item {
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        margin-bottom: 0.75rem;
+        background: var(--surface);
+        overflow: hidden;
+    }
+    .faq-item summary {
+        padding: 1rem 1.25rem;
+        font-weight: 700;
+        cursor: pointer;
+        color: var(--text);
+        list-style: none;
+    }
+    .faq-item summary::-webkit-details-marker {
+        display: none;
+    }
+    .faq-item summary::after {
+        content: "+";
+        float: right;
+        color: var(--primary);
+        font-weight: 800;
+    }
+    .faq-item[open] summary::after {
+        content: "−";
+    }
+    .faq-item p {
+        padding: 0 1.25rem 1.1rem;
+        color: var(--text-muted);
+        line-height: 1.6;
+    }
+
+    @media (max-width: 600px) {
+        .page-container {
+            padding: 5rem 1rem 2.5rem;
+        }
+        section h2 {
+            font-size: 1.2rem;
+        }
+    }
+</style>
