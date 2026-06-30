@@ -76,6 +76,12 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+}
+
+.info:hover .name {
+    color: var(--primary);
 }
 
 .name {

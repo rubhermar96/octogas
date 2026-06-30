@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { GasStation, FuelType } from '../../types/gasolinera';
 import { FUEL_LABELS } from '../../lib/fuels';
+import { stationUrl } from '../../lib/stationUrl';
 import BrandLogo from '../Explorer/BrandLogo';
 import styles from './MunicipioTop.module.css';
 
@@ -48,12 +49,12 @@ const MunicipioTop: React.FC<Props> = ({ stations, explorerUrl }) => {
                     <li key={s.id} className={styles.row}>
                         <span className={styles.rank}>{i + 1}</span>
                         <BrandLogo brand={s.brand} size={36} />
-                        <div className={styles.info}>
+                        <a className={styles.info} href={stationUrl(s)} title="Ver ficha de la gasolinera">
                             <span className={styles.name}>{s.name}</span>
                             <span className={styles.addr}>
                                 {s.address}, {s.city}
                             </span>
-                        </div>
+                        </a>
                         <div className={styles.priceCol}>
                             <span className={styles.price}>{(s.prices[fuel] as number).toFixed(3)}</span>
                             <span className={styles.unit}>€/L</span>

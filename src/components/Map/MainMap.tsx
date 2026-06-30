@@ -10,6 +10,7 @@ import { FUEL_LABELS, FUEL_ORDER } from '../../lib/fuels';
 import BrandLogo from '../Explorer/BrandLogo';
 import CompareButton from '../Explorer/CompareButton';
 import { slugify } from '../../lib/slug';
+import { stationUrl } from '../../lib/stationUrl';
 import { BRAND_LOGO_FILES } from '../../lib/brandLogos';
 import L from 'leaflet';
 
@@ -180,7 +181,9 @@ const StationPopup: React.FC<{ station: GasStation; fuelType: FuelType }> = ({ s
             <div className={styles.popupTop}>
                 <BrandLogo brand={station.brand} size={38} />
                 <div className={styles.popupTitleBlock}>
-                    <h3 className={styles.popupHeader}>{station.name}</h3>
+                    <h3 className={styles.popupHeader}>
+                        <a className={styles.popupNameLink} href={stationUrl(station)}>{station.name}</a>
+                    </h3>
                     <p className={styles.popupAddress}>{station.address}, {station.city}</p>
                 </div>
             </div>
