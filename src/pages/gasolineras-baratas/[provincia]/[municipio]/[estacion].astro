@@ -4,6 +4,7 @@ import path from "node:path";
 import Layout from "../../../../layouts/Layout.astro";
 import MainMap from "../../../../components/Map/MainMap";
 import AdSlot from "../../../../components/AdSlot.astro";
+import Footer from "../../../../components/Footer.astro";
 import { slugify } from "../../../../lib/slug";
 import { stationSlug, stationUrl, provinceUrl, municipioUrl } from "../../../../lib/stationUrl";
 import { titleCase } from "../../../../lib/format";
@@ -97,11 +98,6 @@ const { station, nearby, muniAvgSp95, muniAvgDiesel, muniCount, history } = Astr
     muniCount: number;
     history: StationHistory | null;
 };
-
-const chartSeries = [
-    { label: "Gasolina 95", color: "var(--primary)", points: history?.sp95 ?? [] },
-    { label: "Diésel", color: "var(--secondary)", points: history?.diesel ?? [] },
-];
 
 const provLabel = titleCase(station.province);
 const provSlug = slugify(station.province);
@@ -273,7 +269,7 @@ const mapStations = [station, ...nearby];
 
             <section class="history-section">
                 <h2>Evolución del precio</h2>
-                <PriceHistoryChart client:visible series={chartSeries} />
+                <PriceHistoryChart client:visible history={history ?? {}} />
             </section>
 
             <section class="info-grid">
@@ -350,6 +346,8 @@ const mapStations = [station, ...nearby];
             </section>
         </div>
     </div>
+
+    <Footer />
 </Layout>
 
 <style>

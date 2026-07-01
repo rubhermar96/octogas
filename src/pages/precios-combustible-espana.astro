@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Layout from "../layouts/Layout.astro";
 import AdSlot from "../components/AdSlot.astro";
+import Footer from "../components/Footer.astro";
 import PriceHistoryChart from "../components/Station/PriceHistoryChart";
 import { loadAggHistory, scopeKey } from "../lib/aggHistory";
 import type { GasStation } from "../types/gasolinera";
@@ -25,11 +26,7 @@ const avgSp95 = mean(sp95);
 const avgDiesel = mean(diesel);
 
 const agg = await loadAggHistory();
-const national = agg.get(scopeKey("national", "")) ?? null;
-const chartSeries = [
-    { label: "Gasolina 95", color: "var(--primary)", points: national?.sp95 ?? [] },
-    { label: "Diésel", color: "var(--secondary)", points: national?.diesel ?? [] },
-];
+const national = agg.get(scopeKey("national", "")) ?? {};
 
 const updated = new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
 
@@ -93,7 +90,7 @@ const faqJsonLd = {
 
             <section class="chart-section">
                 <h2>Evolución del precio medio en España</h2>
-                <PriceHistoryChart client:visible series={chartSeries} />
+                <PriceHistoryChart client:visible history={national} />
             </section>
 
             <AdSlot slot="" label="Publicidad" minHeight={120} />
@@ -119,6 +116,8 @@ const faqJsonLd = {
             </section>
         </div>
     </div>
+
+    <Footer />
 </Layout>
 
 <style>

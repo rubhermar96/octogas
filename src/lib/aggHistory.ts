@@ -1,15 +1,14 @@
 import "dotenv/config";
 import pg from "pg";
+import type { FuelType } from "../types/gasolinera";
 
 export interface AggPoint {
     t: number;
     price: number;
 }
 
-export interface ScopeHistory {
-    sp95: AggPoint[];
-    diesel: AggPoint[];
-}
+/** Medias diarias por combustible de un ámbito (solo los que tienen datos). */
+export type ScopeHistory = Partial<Record<FuelType, AggPoint[]>>;
 
 export type AggMap = Map<string, ScopeHistory>;
 
@@ -21,8 +20,9 @@ export function scopeKey(scopeType: "national" | "province" | "municipio", scope
 let cache: Promise<AggMap> | null = null;
 
 /**
- * Carga TODAS las medias diarias por ámbito (sp95/diesel) en una consulta y las
- * agrupa por ámbito. Cacheada para el build. Degrada con elegancia sin BD.
+ * Carga TODAS las medias diarias (todos los combustibles) por ámbito en una
+ * consulta y las agrupa por ámbito. Cacheada para el build. Degrada con
+ * elegancia sin BD.
  */
 export function loadAggHistory(): Promise<AggMap> {
     if (!cache) cache = doLoad();
@@ -39,16 +39,18 @@ async function doLoad(): Promise<AggMap> {
 
     const pool = new pg.Pool({ connectionString: url, max: 4 });
     try {
+        // day::text evita el parseo de fecha de `pg` (que interpreta DATE en la
+        // zona horaria local del proceso); con el texto YYYY-MM-DD, `new Date(...)`
+        // lo interpreta como medianoche UTC de forma consistente para cualquiera.
         const { rows } = await pool.query<{
             scope_type: "national" | "province" | "municipio";
             scope_id: string;
-            fuel: string;
+            fuel: FuelType;
             avg_price: number;
-            day: string | Date;
+            day: string;
         }>(
-            `select scope_type, scope_id, fuel, avg_price, day
+            `select scope_type, scope_id, fuel, avg_price, day::text as day
                from daily_price_avg
-              where fuel in ('sp95','diesel')
               order by scope_type, scope_id, fuel, day`
         );
 
@@ -56,12 +58,10 @@ async function doLoad(): Promise<AggMap> {
             const key = scopeKey(r.scope_type, r.scope_id);
             let h = map.get(key);
             if (!h) {
-                h = { sp95: [], diesel: [] };
+                h = {};
                 map.set(key, h);
             }
-            const point: AggPoint = { t: new Date(r.day).getTime(), price: r.avg_price };
-            if (r.fuel === "sp95") h.sp95.push(point);
-            else if (r.fuel === "diesel") h.diesel.push(point);
+            (h[r.fuel] ??= []).push({ t: new Date(r.day).getTime(), price: r.avg_price });
         }
 
         console.log(`[agg] ${rows.length} medias diarias cargadas para ${map.size} ámbitos.`);

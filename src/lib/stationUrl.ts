@@ -1,18 +1,28 @@
-import type { GasStation } from '../types/gasolinera';
 import { slugify } from './slug';
+
+/** Campos mínimos necesarios para construir la URL de una gasolinera (admite
+ *  tanto un GasStation completo como un subconjunto ligero, p. ej. en tops). */
+export interface StationLike {
+    id: string;
+    name?: string;
+    brand: string;
+    address: string;
+    city: string;
+    province: string;
+}
 
 /**
  * Slug estable y único de una ficha de gasolinera.
  * Combina marca/nombre + dirección (keywords) + id (garantiza unicidad dentro
  * del municipio aunque coincidan marca y calle).
  */
-export function stationSlug(s: GasStation): string {
+export function stationSlug(s: StationLike): string {
     const base = slugify(`${s.brand || s.name || 'gasolinera'} ${s.address || ''}`);
     return `${base}-${s.id}`.replace(/-+/g, '-');
 }
 
 /** Ruta canónica de la ficha de una gasolinera. */
-export function stationUrl(s: GasStation): string {
+export function stationUrl(s: StationLike): string {
     return `/gasolineras-baratas/${slugify(s.province)}/${slugify(s.city)}/${stationSlug(s)}`;
 }
 

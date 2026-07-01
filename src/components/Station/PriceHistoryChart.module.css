@@ -5,6 +5,62 @@
     padding: 1rem 1.25rem 1.25rem;
 }
 
+/* Selector de combustible: misma jerarquía visual para todos, sin favoritos. */
+.fuelRow {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.fuelSelector {
+    display: flex;
+    flex-wrap: wrap;
+    background-color: var(--bg);
+    padding: 0.25rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    gap: 0.15rem;
+}
+
+.fuelOption {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    border-radius: 0.375rem;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.fuelOption:hover {
+    color: var(--text);
+}
+
+.fuelOption.active {
+    background-color: var(--primary);
+    color: #06281c;
+}
+
+.fuelSelect {
+    background-color: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.4rem 0.5rem;
+    cursor: pointer;
+}
+
+.fuelSelectActive {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
 .ranges {
     display: flex;
     flex-wrap: wrap;
@@ -94,29 +150,11 @@
     line-height: 1.5;
 }
 
-.ttDot,
-.legendDot {
+.ttDot {
     width: 9px;
     height: 9px;
     border-radius: 2px;
     flex-shrink: 0;
-}
-
-.legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-top: 0.85rem;
-    justify-content: center;
-}
-
-.legendItem {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--text-muted);
 }
 
 .empty {

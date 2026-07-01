@@ -1,0 +1,125 @@
+---
+const year = new Date().getFullYear();
+---
+
+<footer class="footer">
+    <div class="footerInner">
+        <div class="footerBrand">
+            <a href="/" class="footerLogo">
+                <img src="/images/logo-octo.png" alt="OCTO" />
+            </a>
+            <p>
+                Menos gasto, más kilómetros. Comparador de precios de gasolina y diésel en España,
+                con datos oficiales del Ministerio actualizados a diario.
+            </p>
+        </div>
+
+        <nav class="footerCol" aria-label="Plataforma">
+            <h3>Plataforma</h3>
+            <a href="/municipios">Explorador de precios</a>
+            <a href="/comparador">Comparador</a>
+            <a href="/rutas">Planificar viaje</a>
+            <a href="/precios-combustible-espana">Precios en España</a>
+        </nav>
+
+        <nav class="footerCol" aria-label="Legal">
+            <h3>Legal</h3>
+            <a href="/privacidad">Privacidad y cookies</a>
+            <a href="/aviso-legal">Aviso legal</a>
+            <a href="/contacto">Contacto</a>
+        </nav>
+    </div>
+
+    <div class="footerBottom">
+        <span>© {year} OCTO. Todos los derechos reservados.</span>
+        <span>Datos: Ministerio para la Transición Ecológica (MITECO)</span>
+    </div>
+</footer>
+
+<style>
+    .footer {
+        position: relative;
+        z-index: 10;
+        border-top: 1px solid var(--border);
+        background: var(--surface);
+        padding: 3rem 2rem 1.5rem;
+    }
+
+    .footerInner {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1.4fr 1fr 1fr;
+        gap: 2.5rem;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .footerBrand {
+        max-width: 360px;
+    }
+
+    .footerLogo img {
+        height: 32px;
+        width: auto;
+        margin-bottom: 0.85rem;
+    }
+
+    .footerBrand p {
+        color: var(--text-muted);
+        font-size: 0.88rem;
+        line-height: 1.6;
+    }
+
+    .footerCol {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+    }
+
+    .footerCol h3 {
+        font-family: var(--font-header);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text);
+        margin-bottom: 0.4rem;
+    }
+
+    .footerCol a {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: color 0.2s;
+        width: fit-content;
+    }
+
+    .footerCol a:hover {
+        color: var(--primary);
+    }
+
+    .footerBottom {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding-top: 1.25rem;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 0.5rem;
+        color: var(--text-muted);
+        font-size: 0.78rem;
+    }
+
+    @media (max-width: 700px) {
+        .footerInner {
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+        .footerBrand {
+            max-width: none;
+        }
+        .footerBottom {
+            flex-direction: column;
+        }
+    }
+</style>

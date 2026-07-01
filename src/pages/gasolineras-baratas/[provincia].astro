@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Layout from "../../layouts/Layout.astro";
 import AdSlot from "../../components/AdSlot.astro";
+import Footer from "../../components/Footer.astro";
 import { slugify } from "../../lib/slug";
 import { stationUrl, municipioUrl } from "../../lib/stationUrl";
 import { titleCase } from "../../lib/format";
@@ -61,11 +62,7 @@ const { provinceName, stations, munis } = Astro.props as {
 
 const provLabel = titleCase(provinceName);
 
-const aggHist = (await loadAggHistory()).get(scopeKey("province", slugify(provinceName))) ?? null;
-const chartSeries = [
-    { label: "Gasolina 95", color: "var(--primary)", points: aggHist?.sp95 ?? [] },
-    { label: "Diésel", color: "var(--secondary)", points: aggHist?.diesel ?? [] },
-];
+const aggHist = (await loadAggHistory()).get(scopeKey("province", slugify(provinceName))) ?? {};
 
 type FuelKey = "sp95" | "sp98" | "diesel" | "glp";
 const min = (key: FuelKey) => {
@@ -203,7 +200,7 @@ const breadcrumbJsonLd = {
 
             <section class="chart-section">
                 <h2>Evolución del precio medio en {provLabel}</h2>
-                <PriceHistoryChart client:visible series={chartSeries} />
+                <PriceHistoryChart client:visible history={aggHist} />
             </section>
 
             <AdSlot slot="" label="Publicidad" minHeight={120} />
@@ -238,6 +235,8 @@ const breadcrumbJsonLd = {
             </section>
         </div>
     </div>
+
+    <Footer />
 </Layout>
 
 <style>

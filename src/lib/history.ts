@@ -1,27 +1,23 @@
 import "dotenv/config";
 import pg from "pg";
+import type { FuelType } from "../types/gasolinera";
 
 export interface PricePoint {
     t: number; // timestamp (ms)
     price: number;
 }
 
-/** Histórico por combustible de una gasolinera (solo los que graficamos). */
-export interface StationHistory {
-    sp95: PricePoint[];
-    diesel: PricePoint[];
-}
+/** Histórico por combustible de una gasolinera (solo los que tienen datos). */
+export type StationHistory = Partial<Record<FuelType, PricePoint[]>>;
 
 export type HistoryMap = Map<string, StationHistory>;
-
-/** Combustibles que se grafican en la ficha (los más relevantes). */
-const CHART_FUELS = ["sp95", "diesel"] as const;
 
 let cache: Promise<HistoryMap> | null = null;
 
 /**
- * Carga el histórico reciente de TODAS las gasolineras en UNA sola consulta y lo
- * agrupa por estación. Se cachea para que el build lo lea una vez.
+ * Carga el histórico reciente de TODOS los combustibles de TODAS las
+ * gasolineras en UNA sola consulta y lo agrupa por estación. Se cachea para
+ * que el build lo lea una vez.
  *
  * Degrada con elegancia: si no hay DATABASE_URL o la BD no responde, devuelve un
  * mapa vacío y el build sigue (fichas sin gráfica) sin romperse.
@@ -44,27 +40,24 @@ async function doLoad(days: number): Promise<HistoryMap> {
         const since = new Date(Date.now() - days * 86_400_000);
         const { rows } = await pool.query<{
             station_id: string;
-            fuel: string;
+            fuel: FuelType;
             price: number;
             observed_at: Date;
         }>(
             `select station_id, fuel, price, observed_at
                from price_observations
               where observed_at >= $1
-                and fuel = any($2)
               order by station_id, fuel, observed_at`,
-            [since, CHART_FUELS as unknown as string[]]
+            [since]
         );
 
         for (const r of rows) {
             let h = map.get(r.station_id);
             if (!h) {
-                h = { sp95: [], diesel: [] };
+                h = {};
                 map.set(r.station_id, h);
             }
-            const point: PricePoint = { t: new Date(r.observed_at).getTime(), price: r.price };
-            if (r.fuel === "sp95") h.sp95.push(point);
-            else if (r.fuel === "diesel") h.diesel.push(point);
+            (h[r.fuel] ??= []).push({ t: new Date(r.observed_at).getTime(), price: r.price });
         }
 
         console.log(`[history] ${rows.length} observaciones cargadas para ${map.size} gasolineras.`);

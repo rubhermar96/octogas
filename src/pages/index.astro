@@ -3,11 +3,11 @@ import fs from "node:fs";
 import path from "node:path";
 import Layout from "../layouts/Layout.astro";
 import ExplorerSelector from "../components/Explorer/ExplorerSelector";
-import { stationUrl } from "../lib/stationUrl";
-import { slugify } from "../lib/slug";
-import { titleCase } from "../lib/format";
+import NationalTopFuels, { type TopStation } from "../components/Home/NationalTopFuels";
+import Footer from "../components/Footer.astro";
 import { BRAND_LOGO_FILES } from "../lib/brandLogos";
-import type { GasStation } from "../types/gasolinera";
+import { FUEL_ORDER } from "../lib/fuels";
+import type { GasStation, FuelType } from "../types/gasolinera";
 import styles from "../styles/Home.module.css";
 
 // --- Datos en vivo (build) para enriquecer la home ---
@@ -34,12 +34,30 @@ const totalProvinces = provinces.size;
 const totalMunis = munis.size;
 const avgSp95 = avg(sp95);
 const avgDiesel = avg(diesel);
+const minSp95 = sp95.length ? Math.min(...sp95) : 0;
+// Ahorro real (dato calculado, no inventado): diferencia entre la media y la más barata.
+const maxSavingSp95 = Math.max(0, avgSp95 - minSp95);
 
-const cheapest = stations
-    .filter((s) => s.prices.sp95 != null)
-    .sort((a, b) => a.prices.sp95! - b.prices.sp95!)[0];
-const cheapestGeneric = cheapest && (/^n[ºo°]/i.test(cheapest.brand) || /^\d/.test(cheapest.brand));
-const cheapestLogo = cheapest ? BRAND_LOGO_FILES[slugify(cheapest.brand)] : undefined;
+// --- Top 10 más baratas por combustible (España) ---
+// Solo ofrecemos un combustible si hay suficientes estaciones para que un "top 10"
+// tenga sentido real (evita un top degenerado con 1-2 gasolineras de hidrógeno, etc.).
+const MIN_STATIONS_FOR_TOP = 20;
+const topByFuel: Partial<Record<FuelType, TopStation[]>> = {};
+for (const fuel of FUEL_ORDER) {
+    const priced = stations.filter((s) => s.prices[fuel] != null);
+    if (priced.length < MIN_STATIONS_FOR_TOP) continue;
+    topByFuel[fuel] = [...priced]
+        .sort((a, b) => a.prices[fuel]! - b.prices[fuel]!)
+        .slice(0, 10)
+        .map((s) => ({
+            id: s.id,
+            brand: s.brand,
+            address: s.address,
+            city: s.city,
+            province: s.province,
+            price: s.prices[fuel]!,
+        }));
+}
 
 // Logos para el marquee (duplicados para scroll infinito).
 const logoFiles = Object.values(BRAND_LOGO_FILES);
@@ -50,14 +68,17 @@ const features = [
         color: "var(--primary)",
         title: "Explorador de precios",
         desc: "Todas las gasolineras de España en un mapa interactivo. Filtra por combustible y marca, ordena por precio o cercanía y encuentra la más barata cerca de ti.",
+        badge: `${nf.format(totalStations)} gasolineras en el mapa`,
         href: "/municipios",
         cta: "Explorar el mapa",
+        size: "big",
     },
     {
         icon: "balance",
         color: "var(--secondary)",
         title: "Comparador",
-        desc: "Pon hasta 4 gasolineras una al lado de otra y compáralas precio a precio: 95, 98, diésel, GLP y más. De un vistazo sabes cuál te conviene.",
+        desc: "Pon hasta 4 gasolineras una al lado de otra y compáralas precio a precio: 95, 98, diésel, GLP y más.",
+        badge: maxSavingSp95 > 0.01 ? `Ahorra hasta ${maxSavingSp95.toFixed(2)} €/L` : undefined,
         href: "/comparador",
         cta: "Abrir comparador",
     },
@@ -65,7 +86,8 @@ const features = [
         icon: "route",
         color: "var(--accent)",
         title: "Planificador de viajes",
-        desc: "Calcula tu ruta y descubre dónde repostar más barato por el camino según tu consumo, depósito y peajes. Ahorra en cada viaje.",
+        desc: "Calcula tu ruta y descubre dónde repostar más barato por el camino según tu consumo, depósito y peajes.",
+        badge: undefined,
         href: "/rutas",
         cta: "Planificar ruta",
     },
@@ -73,9 +95,11 @@ const features = [
         icon: "pin_drop",
         color: "var(--primary)",
         title: "Fichas por provincia y gasolinera",
-        desc: `Más de ${nf.format(totalStations)} fichas con precios, horario, mapa y gasolineras cercanas. Páginas por provincia y municipio de toda España.`,
+        desc: `Más de ${nf.format(totalStations)} fichas con precios, horario, mapa, evolución histórica y gasolineras cercanas. Páginas por provincia y municipio de toda España.`,
+        badge: `${totalProvinces} provincias · ${nf.format(totalMunis)} municipios`,
         href: "/municipios",
         cta: "Ver por provincia",
+        size: "wide",
     },
 ];
 
@@ -104,17 +128,25 @@ const steps = [
     hideSidebar={true}
 >
     <div class={styles.homeContainer} id="home-container">
-        <!-- Fondo -->
-        <div class={styles.backgroundWrapper}>
-            <div class={`${styles.blob} ${styles.blob1}`}></div>
-            <div class={`${styles.blob} ${styles.blob2}`}></div>
-            <div class={`${styles.blob} ${styles.blob3}`}></div>
-        </div>
-
         <!-- ===== HERO ===== -->
         <section class={styles.hero}>
-            <div class={styles.heroLeft}>
-                <div class={styles.logoBox} id="hero-logo">
+            <video
+                class={styles.heroVideo}
+                autoplay
+                muted
+                loop
+                playsinline
+                preload="auto"
+                aria-hidden="true"
+            >
+                {/* En pantallas estrechas (móvil) no hay fuente que coincida -> el
+                    navegador no descarga los ~9MB del vídeo, solo se ve el velo oscuro. */}
+                <source src="/videos/hero-road.mp4" type="video/mp4" media="(min-width: 700px)" />
+            </video>
+            <div class={styles.heroVideoOverlay}></div>
+
+            <div class={styles.heroCenter} id="hero-logo">
+                <div class={styles.logoBox}>
                     <img src="/images/logo-octo.png" alt="OCTO Logo" class={styles.logoImage} />
                 </div>
                 <h1 class={styles.slogan}>
@@ -141,50 +173,12 @@ const steps = [
                     </span>
                 </div>
 
-                <ExplorerSelector client:only="react" />
+                <div class={styles.heroSelectorWrap}>
+                    <ExplorerSelector client:only="react" />
+                </div>
             </div>
 
-            <div class={styles.heroRight}>
-                {
-                    cheapest && (
-                        <a class={styles.heroCard} href={stationUrl(cheapest)}>
-                            <span class={styles.heroCardTag}>
-                                <span class="material-symbols-outlined">trophy</span>
-                                Más barata ahora en España (SP95)
-                            </span>
-                            <div class={styles.heroCardMain}>
-                                <div class={styles.heroCardLogo}>
-                                    {cheapestLogo ? (
-                                        <img src={`/brands/${cheapestLogo}`} alt={cheapest.brand} />
-                                    ) : (
-                                        <span class="material-symbols-outlined">local_gas_station</span>
-                                    )}
-                                </div>
-                                <div>
-                                    <span class={styles.heroCardName}>
-                                        {cheapestGeneric ? "Gasolinera independiente" : cheapest.brand}
-                                    </span>
-                                    <span class={styles.heroCardCity}>
-                                        {cheapest.city} · {titleCase(cheapest.province)}
-                                    </span>
-                                </div>
-                            </div>
-                            <div class={styles.heroCardPriceRow}>
-                                <span class={styles.heroCardPrice}>
-                                    {fmt(cheapest.prices.sp95!)} <small>€/L</small>
-                                </span>
-                                <span class={styles.heroCardCity}>Gasolina 95</span>
-                            </div>
-                            <span class={styles.heroCardLink}>
-                                Ver gasolinera
-                                <span class="material-symbols-outlined">arrow_forward</span>
-                            </span>
-                        </a>
-                    )
-                }
-            </div>
-
-            <a href="#features" class={styles.scrollIndicator} id="scroll-btn">
+            <a href="#top10" class={styles.scrollIndicator} id="scroll-btn">
                 <span>Descubre más</span>
                 <span class={`material-symbols-outlined ${styles.scrollIcon}`}>expand_more</span>
             </a>
@@ -204,7 +198,32 @@ const steps = [
             </div>
         </section>
 
-        <!-- ===== FEATURES ===== -->
+        <!-- ===== TOP 10 MÁS BARATAS (multi-combustible) ===== -->
+        <section class={styles.section} id="top10">
+            <div class={styles.inner}>
+                <div class={styles.topFuelsLayout}>
+                    <div class={`${styles.topFuelsText} reveal`}>
+                        <span class={styles.eyebrow}>Datos en directo</span>
+                        <h2 class={styles.sectionTitle}>
+                            Las gasolineras más baratas de España, ahora mismo
+                        </h2>
+                        <p class={styles.sectionSubtitle}>
+                            Elige el combustible y mira el top 10 nacional al instante: gasolina,
+                            diésel, GLP y más. Datos oficiales actualizados a diario.
+                        </p>
+                        <a class={styles.topFuelsCta} href="/municipios">
+                            <span class="material-symbols-outlined">search</span>
+                            Buscar en tu zona
+                        </a>
+                    </div>
+                    <div class={`${styles.topFuelsWidget} reveal`}>
+                        <NationalTopFuels client:visible topByFuel={topByFuel} />
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== FEATURES (bento) ===== -->
         <section class={styles.section} id="features">
             <div class={styles.inner}>
                 <div class={`${styles.sectionHead} reveal`}>
@@ -219,16 +238,28 @@ const steps = [
                 <div class={styles.featureGrid}>
                     {
                         features.map((f) => (
-                            <a class={`${styles.featureCard} reveal`} href={f.href} style={`--accentColor:${f.color}`}>
+                            <a
+                                class={`${styles.featureCard} ${f.size === "big" ? styles.cardBig : ""} ${f.size === "wide" ? styles.cardWide : ""} reveal`}
+                                href={f.href}
+                                style={`--accentColor:${f.color}`}
+                            >
+                                {f.size === "big" && (
+                                    <span class={styles.pinCluster} aria-hidden="true">
+                                        <i style="--d:0s" /><i style="--d:.6s" /><i style="--d:1.2s" />
+                                    </span>
+                                )}
                                 <div class={styles.featureIcon}>
                                     <span class="material-symbols-outlined">{f.icon}</span>
                                 </div>
-                                <h3 class={styles.featureTitle}>{f.title}</h3>
-                                <p class={styles.featureDesc}>{f.desc}</p>
-                                <span class={styles.featureLink}>
-                                    {f.cta}
-                                    <span class="material-symbols-outlined">arrow_forward</span>
-                                </span>
+                                <div class={styles.featureBody}>
+                                    <h3 class={styles.featureTitle}>{f.title}</h3>
+                                    <p class={styles.featureDesc}>{f.desc}</p>
+                                    {f.badge && <span class={styles.featureBadge}>{f.badge}</span>}
+                                    <span class={styles.featureLink}>
+                                        {f.cta}
+                                        <span class="material-symbols-outlined">arrow_forward</span>
+                                    </span>
+                                </div>
                             </a>
                         ))
                     }
@@ -310,6 +341,8 @@ const steps = [
                 <ExplorerSelector client:only="react" />
             </div>
         </section>
+
+        <Footer />
     </div>
 </Layout>
 
