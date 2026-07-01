@@ -1,12 +1,13 @@
 import "dotenv/config";
 import { lt, sql } from "drizzle-orm";
 import { db, pool } from "./db/client";
-import { currentPrices, priceObservations, dailyPriceAvg, type FuelKey } from "./db/schema";
+import { currentPrices, priceObservations, dailyPriceAvg, fuelEnum, type FuelKey } from "./db/schema";
 
 /**
  * Genera histórico SIMULADO (solo desarrollo) para poder ver la gráfica de la
  * ficha con datos. Crea ~17 puntos semanales (últimos ~120 días) por estación
- * para SP95 y diésel, con un paseo aleatorio alrededor del precio actual.
+ * y combustible (todos, no solo SP95/diésel), con un paseo aleatorio alrededor
+ * del precio actual.
  *
  * Idempotente: borra primero las observaciones de días anteriores a hoy (deja la
  * del día actual, que es la real de la ingesta). Para limpiar del todo:
@@ -15,7 +16,7 @@ import { currentPrices, priceObservations, dailyPriceAvg, type FuelKey } from ".
  * NO usar en producción.
  */
 const DAY = 86_400_000;
-const SEED_FUELS: FuelKey[] = ["sp95", "diesel"];
+const SEED_FUELS: FuelKey[] = [...fuelEnum.enumValues];
 const WEEKS = 17;
 
 const round3 = (n: number) => Math.round(n * 1000) / 1000;

@@ -10,63 +10,11 @@
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* ===== Fondo con blobs ===== */
-.backgroundWrapper {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    overflow: hidden;
-    background-color: var(--bg);
-    transition: background-color 0.3s ease;
-}
-
-.blob {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(90px);
-    opacity: 0.45;
-    animation: floatBlob 22s infinite ease-in-out alternate;
-}
-
-.blob1 {
-    top: -15%;
-    left: -10%;
-    width: 45vw;
-    height: 45vw;
-    background-color: var(--primary);
-}
-
-.blob2 {
-    top: 30%;
-    right: -15%;
-    width: 50vw;
-    height: 50vw;
-    background-color: var(--secondary);
-    opacity: 0.25;
-    animation-delay: -7s;
-}
-
-.blob3 {
-    bottom: -20%;
-    left: 30%;
-    width: 40vw;
-    height: 40vw;
-    background-color: var(--accent);
-    opacity: 0.18;
-    animation-delay: -12s;
-}
-
-@keyframes floatBlob {
-    0% { transform: translate(0, 0) scale(1); }
-    50% { transform: translate(6%, 8%) scale(1.1); }
-    100% { transform: translate(-8%, 4%) scale(0.92); }
-}
-
 .section {
     position: relative;
     z-index: 10;
     padding: 5rem 2rem;
+    scroll-margin-top: 5rem;
 }
 
 .inner {
@@ -103,24 +51,57 @@
     line-height: 1.6;
 }
 
-/* ===== Hero ===== */
+/* ===== Hero (centrado, sin tarjeta de datos) ===== */
 .hero {
     position: relative;
     z-index: 10;
     min-height: 100vh;
-    display: grid;
-    grid-template-columns: 1.1fr 0.9fr;
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 3rem;
-    max-width: 1200px;
-    margin: 0 auto;
+    justify-content: center;
+    overflow: hidden;
     padding: 7rem 2rem 4rem;
 }
 
-.heroLeft {
+/* Vídeo de fondo del hero, a todo el ancho, con velo oscuro para legibilidad
+   (fijo, independiente del tema claro/oscuro: el vídeo siempre necesita el
+   mismo contraste). */
+.heroVideo {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.heroVideoOverlay {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: rgba(6, 8, 10, 0.6);
+}
+
+.heroCenter {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
+    text-align: center;
+    max-width: 720px;
+}
+
+/* El selector (botones "Usar mi ubicación" / "Buscar por municipio") va sobre
+   el vídeo: forzamos aquí las variables de tema a versiones claras para que
+   sea legible pase lo que pase con el tema claro/oscuro del resto de la web. */
+.heroSelectorWrap {
+    --text: #fff;
+    --text-muted: rgba(255, 255, 255, 0.75);
+    --border: rgba(255, 255, 255, 0.35);
+    --surface: rgba(255, 255, 255, 0.14);
+    width: 100%;
 }
 
 .logoBox {
@@ -142,6 +123,8 @@
     line-height: 1.05;
     margin-bottom: 1.25rem;
     text-wrap: balance;
+    /* Texto siempre claro: el hero tiene vídeo de fondo, independiente del tema. */
+    color: #fff;
 }
 
 .sloganAccent {
@@ -151,15 +134,16 @@
 
 .heroLead {
     font-size: 1.15rem;
-    color: var(--text-muted);
+    color: rgba(255, 255, 255, 0.85);
     line-height: 1.6;
-    margin-bottom: 1.75rem;
-    max-width: 520px;
+    margin: 0 auto 1.75rem;
+    max-width: 560px;
 }
 
 .heroStats {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 0.6rem;
     margin-bottom: 2rem;
 }
@@ -169,12 +153,13 @@
     align-items: center;
     gap: 0.4rem;
     padding: 0.45rem 0.85rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
     border-radius: 999px;
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--text);
+    color: #fff;
+    backdrop-filter: blur(6px);
 }
 
 .statChip :global(.material-symbols-outlined) {
@@ -186,142 +171,18 @@
     color: var(--primary);
 }
 
-/* Tarjeta visual del hero: la más barata ahora mismo (datos reales). */
-.heroRight {
-    display: flex;
-    justify-content: center;
-}
-
-.heroCard {
-    width: 100%;
-    max-width: 380px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 1.5rem;
-    padding: 1.5rem;
-    box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.35);
-    position: relative;
-    overflow: hidden;
-}
-
-.heroCard::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--primary), var(--secondary));
-}
-
-.heroCardTag {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.72rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--primary);
-    margin-bottom: 1rem;
-}
-
-.heroCardTag :global(.material-symbols-outlined) {
-    font-size: 1rem;
-}
-
-.heroCardMain {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-    margin-bottom: 1rem;
-}
-
-.heroCardLogo {
-    width: 56px;
-    height: 56px;
-    flex-shrink: 0;
-    border-radius: 0.85rem;
-    background: #fff;
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-}
-
-.heroCardLogo img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    padding: 4px;
-}
-
-.heroCardLogo :global(.material-symbols-outlined) {
-    font-size: 1.8rem;
-    color: #64748b;
-}
-
-.heroCardName {
-    display: block;
-    font-weight: 700;
-    font-size: 1.05rem;
-    line-height: 1.2;
-}
-
-.heroCardCity {
-    display: block;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-}
-
-.heroCardPriceRow {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    padding: 1rem 0;
-    border-top: 1px dashed var(--border);
-    border-bottom: 1px dashed var(--border);
-    margin-bottom: 1rem;
-}
-
-.heroCardPrice {
-    font-family: var(--font-header);
-    font-size: 2rem;
-    font-weight: 800;
-    color: var(--primary);
-}
-
-.heroCardPrice small {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-muted);
-}
-
-.heroCardLink {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    color: var(--secondary);
-    font-weight: 700;
-    text-decoration: none;
-    font-size: 0.9rem;
-}
-
-.heroCardLink:hover {
-    gap: 0.6rem;
-}
-
 .scrollIndicator {
-    position: absolute;
-    bottom: 1.5rem;
-    left: 50%;
-    transform: translateX(-50%);
+    /* En flujo normal (no absoluto): nunca se solapa con el contenido de arriba,
+       sea cual sea su altura (antes se solapaba con el botón "Buscar por
+       municipio" cuando el contenido crecía más de lo previsto). */
+    position: relative;
+    z-index: 1;
+    margin-top: 2.5rem;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.25rem;
-    color: var(--text-muted);
+    color: rgba(255, 255, 255, 0.75);
     font-size: 0.85rem;
     font-weight: 600;
     text-decoration: none;
@@ -413,11 +274,49 @@
     100% { transform: translateX(-50%); }
 }
 
-/* ===== Features ===== */
+/* ===== Top 10 más baratas (multi-combustible) ===== */
+.topFuelsLayout {
+    display: grid;
+    grid-template-columns: 0.85fr 1.15fr;
+    gap: 3rem;
+    align-items: center;
+}
+
+.topFuelsText {
+    min-width: 0;
+}
+
+.topFuelsWidget {
+    min-width: 0;
+}
+
+.topFuelsCta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.75rem;
+    padding: 0.8rem 1.4rem;
+    background: var(--primary);
+    color: #06281c;
+    font-weight: 800;
+    border-radius: 0.75rem;
+    text-decoration: none;
+    box-shadow: 0 0 20px rgba(52, 211, 153, 0.25);
+}
+
+.topFuelsCta:hover {
+    filter: brightness(1.05);
+}
+
+/* ===== Features (bento grid) ===== */
 .featureGrid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
+    grid-template-columns: 1.25fr 1fr;
+    grid-template-areas:
+        "big topright"
+        "big botright"
+        "wide wide";
+    gap: 1.25rem;
 }
 
 .featureCard {
@@ -434,6 +333,11 @@
     overflow: hidden;
     transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
+
+.featureCard:nth-child(1) { grid-area: big; }
+.featureCard:nth-child(2) { grid-area: topright; }
+.featureCard:nth-child(3) { grid-area: botright; }
+.featureCard:nth-child(4) { grid-area: wide; }
 
 .featureCard:hover {
     transform: translateY(-4px);
@@ -458,6 +362,14 @@
     opacity: 0.16;
 }
 
+.featureBody {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    flex: 1;
+    min-width: 0;
+}
+
 .featureIcon {
     width: 56px;
     height: 56px;
@@ -468,6 +380,7 @@
     background: color-mix(in srgb, var(--accentColor, var(--primary)) 14%, transparent);
     color: var(--accentColor, var(--primary));
     margin-bottom: 1.25rem;
+    flex-shrink: 0;
 }
 
 .featureIcon :global(.material-symbols-outlined) {
@@ -483,8 +396,20 @@
 .featureDesc {
     color: var(--text-muted);
     line-height: 1.55;
-    margin-bottom: 1.25rem;
-    flex: 1;
+    margin-bottom: 1rem;
+}
+
+.featureBadge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accentColor, var(--primary)) 16%, transparent);
+    color: var(--accentColor, var(--primary));
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
 }
 
 .featureLink {
@@ -493,10 +418,67 @@
     gap: 0.4rem;
     font-weight: 700;
     color: var(--accentColor, var(--primary));
+    margin-top: auto;
 }
 
 .featureCard:hover .featureLink {
     gap: 0.7rem;
+}
+
+/* Tarjeta grande (flagship): icono mayor + racimo de puntos decorativos. */
+.cardBig {
+    justify-content: center;
+}
+
+.cardBig .featureIcon {
+    width: 68px;
+    height: 68px;
+}
+
+.cardBig .featureIcon :global(.material-symbols-outlined) {
+    font-size: 2.2rem;
+}
+
+.cardBig .featureTitle {
+    font-size: 1.6rem;
+}
+
+.pinCluster {
+    position: absolute;
+    top: 1.75rem;
+    right: 2rem;
+    display: flex;
+    gap: 0.4rem;
+}
+
+.pinCluster i {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accentColor, var(--primary));
+    display: block;
+    animation: pinPulse 2.4s ease-in-out infinite;
+    animation-delay: var(--d, 0s);
+}
+
+@keyframes pinPulse {
+    0%, 100% { opacity: 0.35; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.3); }
+}
+
+/* Tarjeta ancha (banner inferior): icono a la izquierda, texto a la derecha. */
+.cardWide {
+    flex-direction: row;
+    align-items: center;
+    gap: 1.75rem;
+}
+
+.cardWide .featureIcon {
+    margin-bottom: 0;
+}
+
+.cardWide .featureDesc {
+    margin-bottom: 0.5rem;
 }
 
 /* ===== Cómo funciona ===== */
@@ -648,27 +630,45 @@
 
 /* ===== Responsive ===== */
 @media (max-width: 900px) {
-    .hero {
+    .topFuelsLayout {
         grid-template-columns: 1fr;
+        gap: 2rem;
         text-align: center;
-        padding-top: 6rem;
     }
-    .heroLeft {
+    .topFuelsText {
+        display: flex;
+        flex-direction: column;
         align-items: center;
-    }
-    .heroStats {
-        justify-content: center;
-    }
-    .heroRight {
-        order: -1;
     }
     .featureGrid {
         grid-template-columns: 1fr;
+        grid-template-areas:
+            "big"
+            "topright"
+            "botright"
+            "wide";
+    }
+    .cardWide {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .cardWide .featureIcon {
+        margin-bottom: 1.25rem;
     }
     .steps {
         grid-template-columns: 1fr;
     }
     .statsGrid {
         grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* En móvil no cargamos el vídeo (pesa varios MB): fondo oscuro sólido en su lugar. */
+@media (max-width: 700px) {
+    .heroVideo {
+        display: none;
+    }
+    .heroVideoOverlay {
+        background: #0a0c0f;
     }
 }

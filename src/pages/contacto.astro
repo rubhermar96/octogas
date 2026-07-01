@@ -1,0 +1,103 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Footer from "../components/Footer.astro";
+---
+
+<Layout
+    title="Contacto | OCTO"
+    description="Ponte en contacto con el equipo de OCTO."
+    hideSidebar={true}
+>
+    <div class="contact">
+        <a href="/" class="back">← Volver al inicio</a>
+        <h1>Contacto</h1>
+        <p class="lead">
+            ¿Has visto un precio que no cuadra, una gasolinera que falta o tienes una sugerencia?
+            Escríbenos, leemos todos los mensajes.
+        </p>
+
+        <a class="emailCard" href="mailto:hola@octogas.es">
+            <span class="material-symbols-outlined">mail</span>
+            <span>
+                <strong>hola@octogas.es</strong>
+                <small>Te respondemos lo antes posible</small>
+            </span>
+            <span class="material-symbols-outlined arrow">arrow_forward</span>
+        </a>
+
+        <p class="note">
+            Los precios de las gasolineras proceden de los datos abiertos del Ministerio para la
+            Transición Ecológica (MITECO) y se actualizan a diario; si detectas un precio
+            desactualizado, lo habitual es que aún no se haya reflejado en la fuente oficial.
+        </p>
+    </div>
+
+    <Footer />
+</Layout>
+
+<style>
+    .contact {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 5rem 2rem 4rem;
+        color: var(--text);
+    }
+    .back {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.875rem;
+    }
+    .back:hover {
+        color: var(--primary);
+    }
+    h1 {
+        font-family: var(--font-header);
+        font-size: 2rem;
+        margin: 1rem 0 1rem;
+    }
+    .lead {
+        color: var(--text-muted);
+        line-height: 1.7;
+        font-size: 1.05rem;
+        margin-bottom: 2rem;
+    }
+    .emailCard {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        text-decoration: none;
+        color: var(--text);
+        transition: border-color 0.2s, transform 0.2s;
+    }
+    .emailCard:hover {
+        border-color: var(--primary);
+        transform: translateY(-2px);
+    }
+    .emailCard > .material-symbols-outlined {
+        font-size: 1.6rem;
+        color: var(--primary);
+        flex-shrink: 0;
+    }
+    .emailCard strong {
+        display: block;
+        font-size: 1.05rem;
+    }
+    .emailCard small {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+    .emailCard .arrow {
+        margin-left: auto;
+        color: var(--text-muted);
+    }
+    .note {
+        margin-top: 2rem;
+        color: var(--text-muted);
+        font-size: 0.88rem;
+        line-height: 1.6;
+    }
+</style>

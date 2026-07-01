@@ -1,0 +1,120 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Footer from "../components/Footer.astro";
+---
+
+<Layout
+    title="Aviso legal | OCTO"
+    description="Aviso legal de OCTO: condiciones de uso, propiedad intelectual y limitación de responsabilidad."
+    hideSidebar={true}
+    noindex={true}
+>
+    <div class="legal">
+        <a href="/" class="back">← Volver al inicio</a>
+        <h1>Aviso legal</h1>
+
+        <p class="note">
+            ⚠️ Plantilla pendiente de revisión legal. Sustituye los datos identificativos y el
+            texto por los definitivos (idealmente revisados por un profesional) antes de publicar.
+        </p>
+
+        <h2>1. Datos identificativos</h2>
+        <p>
+            El presente sitio web (en adelante, "OCTO" o "el Sitio") es operado por [Nombre /
+            Razón social pendiente], con domicilio en [Dirección pendiente] y correo de contacto
+            <a href="mailto:hola@octogas.es">hola@octogas.es</a>.
+        </p>
+
+        <h2>2. Objeto</h2>
+        <p>
+            OCTO ofrece un servicio informativo de comparación de precios de carburante en
+            España, así como herramientas de planificación de rutas y comparación de
+            gasolineras. El acceso y uso del Sitio atribuye la condición de usuario y la
+            aceptación de las condiciones recogidas en este aviso legal.
+        </p>
+
+        <h2>3. Condiciones de uso</h2>
+        <p>
+            El usuario se compromete a hacer un uso adecuado y lícito del Sitio, así como de los
+            contenidos e información que en él se ofrecen, absteniéndose de utilizarlos para fines
+            ilícitos o lesivos para OCTO o terceros.
+        </p>
+
+        <h2>4. Propiedad intelectual</h2>
+        <p>
+            El diseño, la marca, el código y los textos propios del Sitio son titularidad de
+            OCTO, salvo que se indique lo contrario. Los datos de precios y ubicación de
+            gasolineras proceden de fuentes oficiales (ver siguiente apartado) y se citan conforme
+            a su naturaleza de datos abiertos.
+        </p>
+
+        <h2>5. Origen de los datos y exclusión de responsabilidad</h2>
+        <p>
+            Los precios y datos de las estaciones de servicio proceden del catálogo de datos
+            abiertos del Ministerio para la Transición Ecológica y el Reto Demográfico (MITECO).
+            OCTO no garantiza la exactitud, vigencia ni disponibilidad permanente de estos datos,
+            ya que dependen de la actualización de la fuente oficial y de terceros (servicios de
+            mapas y cálculo de rutas). Antes de repostar, comprueba el precio en la propia
+            estación.
+        </p>
+
+        <h2>6. Enlaces a terceros</h2>
+        <p>
+            El Sitio puede incluir enlaces a sitios de terceros (por ejemplo, mapas o servicios de
+            navegación). OCTO no se hace responsable del contenido ni de las políticas de
+            privacidad de dichos sitios.
+        </p>
+
+        <h2>7. Legislación aplicable</h2>
+        <p>
+            Las presentes condiciones se rigen por la legislación española. Para cualquier
+            controversia derivada del uso del Sitio, las partes se someten a los juzgados y
+            tribunales que correspondan conforme a derecho.
+        </p>
+    </div>
+
+    <Footer />
+</Layout>
+
+<style>
+    .legal {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 5rem 2rem 4rem;
+        color: var(--text);
+        line-height: 1.7;
+    }
+    .back {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.875rem;
+    }
+    .back:hover {
+        color: var(--primary);
+    }
+    .legal h1 {
+        font-family: var(--font-header);
+        font-size: 2rem;
+        margin: 1rem 0 1.5rem;
+    }
+    .legal h2 {
+        font-family: var(--font-header);
+        font-size: 1.2rem;
+        margin: 2rem 0 0.75rem;
+    }
+    .legal p {
+        color: var(--text-muted);
+        margin-bottom: 1rem;
+    }
+    .legal a {
+        color: var(--secondary);
+    }
+    .note {
+        background: rgba(251, 146, 60, 0.12);
+        border: 1px solid rgba(251, 146, 60, 0.3);
+        color: var(--accent) !important;
+        padding: 1rem 1.25rem;
+        border-radius: 0.75rem;
+        font-size: 0.9rem;
+    }
+</style>

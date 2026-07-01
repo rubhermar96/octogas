@@ -1,5 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import Footer from "../components/Footer.astro";
 ---
 
 <Layout
@@ -51,9 +52,12 @@ import Layout from "../layouts/Layout.astro";
         <h2>5. Tus derechos</h2>
         <p>
             Puedes revocar el consentimiento de cookies en cualquier momento borrando los datos
-            del Sitio en tu navegador. Para ejercer tus derechos conforme al RGPD, contáctanos.
+            del Sitio en tu navegador. Para ejercer tus derechos conforme al RGPD,
+            <a href="/contacto">contáctanos</a>.
         </p>
     </div>
+
+    <Footer />
 </Layout>
 
 <style>
@@ -85,6 +89,9 @@ import Layout from "../layouts/Layout.astro";
     .legal p {
         color: var(--text-muted);
         margin-bottom: 1rem;
+    }
+    .legal a {
+        color: var(--secondary);
     }
     .note {
         background: rgba(251, 146, 60, 0.12);

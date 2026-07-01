@@ -1,4 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
+import type { FuelType } from "../../types/gasolinera";
+import { FUEL_LABELS, MAIN_FUELS, OTHER_FUELS, FUEL_ORDER } from "../../lib/fuels";
 import styles from "./PriceHistoryChart.module.css";
 
 export interface ChartPoint {
@@ -6,14 +8,9 @@ export interface ChartPoint {
     price: number;
 }
 
-export interface ChartSeries {
-    label: string;
-    color: string; // admite var(--...) para combinar con el tema
-    points: ChartPoint[];
-}
-
 interface Props {
-    series: ChartSeries[];
+    /** Histórico por combustible; solo se ofrecen al usuario los que tienen datos. */
+    history: Partial<Record<FuelType, ChartPoint[]>>;
 }
 
 const DAY = 86_400_000;
@@ -29,10 +26,13 @@ const H = 300;
 const M = { l: 52, r: 16, t: 18, b: 34 };
 const innerW = W - M.l - M.r;
 const innerH = H - M.t - M.b;
+const LINE_COLOR = "var(--primary)";
 
 const fmtPrice = (p: number) => p.toFixed(3);
-const dateShort = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short" });
-const dateLong = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" });
+// timeZone fijo a UTC: el día mostrado no depende de la zona horaria del visitante
+// (las medias diarias son fechas de calendario, no instantes puntuales).
+const dateShort = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", timeZone: "UTC" });
+const dateLong = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
 /** Precio de la serie en el instante t (se mantiene el último valor conocido). */
 function valueAt(points: ChartPoint[], t: number): number | null {
@@ -46,10 +46,24 @@ function valueAt(points: ChartPoint[], t: number): number | null {
     return v;
 }
 
-const PriceHistoryChart: React.FC<Props> = ({ series }) => {
-    const allPoints = series.flatMap((s) => s.points);
-    const hasAny = allPoints.length > 0;
-    const spanDays = hasAny ? (Date.now() - Math.min(...allPoints.map((p) => p.t))) / DAY : 0;
+const PriceHistoryChart: React.FC<Props> = ({ history }) => {
+    // Solo ofrecemos combustibles con datos reales (ningún favoritismo: el que más
+    // historial tenga sale seleccionado por defecto, sea cual sea).
+    const available = useMemo(() => FUEL_ORDER.filter((f) => (history[f]?.length ?? 0) > 0), [history]);
+    const defaultFuel = useMemo(
+        () => available.reduce<FuelType | null>((best, f) => {
+            if (!best) return f;
+            return (history[f]?.length ?? 0) > (history[best]?.length ?? 0) ? f : best;
+        }, null),
+        [available, history]
+    );
+
+    const [selectedFuel, setSelectedFuel] = useState<FuelType | null>(defaultFuel);
+    const fuel = selectedFuel && available.includes(selectedFuel) ? selectedFuel : defaultFuel;
+    const points = (fuel && history[fuel]) || [];
+
+    const hasAny = points.length > 0;
+    const spanDays = hasAny ? (Date.now() - Math.min(...points.map((p) => p.t))) / DAY : 0;
 
     // Por defecto 30 días. Los rangos mayores solo se activan cuando hay histórico
     // suficiente para que tengan sentido (si no, salen deshabilitados).
@@ -64,26 +78,21 @@ const PriceHistoryChart: React.FC<Props> = ({ series }) => {
     };
 
     const geo = useMemo(() => {
+        if (points.length === 0) return null;
         const now = Date.now();
         const days = RANGES[rangeIdx].days;
-        const start = days === Infinity ? Math.min(...(hasAny ? allPoints.map((p) => p.t) : [now])) : now - days * DAY;
+        const start = days === Infinity ? Math.min(...points.map((p) => p.t)) : now - days * DAY;
 
-        // Serie recortada al rango, con "arrastre" del último valor previo al inicio.
-        const clipped = series.map((s) => {
-            const inRange = s.points.filter((p) => p.t >= start);
-            const before = s.points.filter((p) => p.t < start);
-            const pts: ChartPoint[] = [];
-            if (before.length) pts.push({ t: start, price: before[before.length - 1].price });
-            pts.push(...inRange);
-            return { ...s, pts };
-        });
+        // Recorte al rango, con "arrastre" del último valor previo al inicio.
+        const inRange = points.filter((p) => p.t >= start);
+        const before = points.filter((p) => p.t < start);
+        const pts: ChartPoint[] = [];
+        if (before.length) pts.push({ t: start, price: before[before.length - 1].price });
+        pts.push(...inRange);
+        if (pts.length === 0) return null;
 
-        const visible = clipped.filter((s) => s.pts.length > 0);
-        const prices = visible.flatMap((s) => s.pts.map((p) => p.price));
-        if (prices.length === 0) return null;
-
-        let minP = Math.min(...prices);
-        let maxP = Math.max(...prices);
+        let minP = Math.min(...pts.map((p) => p.price));
+        let maxP = Math.max(...pts.map((p) => p.price));
         if (minP === maxP) {
             minP -= 0.05;
             maxP += 0.05;
@@ -99,16 +108,12 @@ const PriceHistoryChart: React.FC<Props> = ({ series }) => {
         const y = (p: number) => M.t + (1 - (p - minP) / (maxP - minP)) * innerH;
         const invX = (px: number) => minT + ((px - M.l) / innerW) * (maxT - minT);
 
-        const stepPath = (pts: ChartPoint[]) => {
-            if (!pts.length) return "";
-            let d = `M ${x(pts[0].t).toFixed(1)} ${y(pts[0].price).toFixed(1)}`;
-            for (let i = 1; i < pts.length; i++) {
-                d += ` L ${x(pts[i].t).toFixed(1)} ${y(pts[i - 1].price).toFixed(1)}`;
-                d += ` L ${x(pts[i].t).toFixed(1)} ${y(pts[i].price).toFixed(1)}`;
-            }
-            d += ` L ${x(maxT).toFixed(1)} ${y(pts[pts.length - 1].price).toFixed(1)}`;
-            return d;
-        };
+        let d = `M ${x(pts[0].t).toFixed(1)} ${y(pts[0].price).toFixed(1)}`;
+        for (let i = 1; i < pts.length; i++) {
+            d += ` L ${x(pts[i].t).toFixed(1)} ${y(pts[i - 1].price).toFixed(1)}`;
+            d += ` L ${x(pts[i].t).toFixed(1)} ${y(pts[i].price).toFixed(1)}`;
+        }
+        d += ` L ${x(maxT).toFixed(1)} ${y(pts[pts.length - 1].price).toFixed(1)}`;
 
         const yTicks = [minP, (minP + maxP) / 2, maxP].map((p) => ({ p, y: y(p) }));
         const xTickCount = 5;
@@ -117,8 +122,8 @@ const PriceHistoryChart: React.FC<Props> = ({ series }) => {
             return { t, x: x(t) };
         });
 
-        return { x, y, invX, minT, maxT, minP, maxP, visible, clipped, stepPath, yTicks, xTicks };
-    }, [rangeIdx, series, hasAny]);
+        return { x, y, invX, pts, path: d, yTicks, xTicks };
+    }, [rangeIdx, points]);
 
     const onMove = (e: React.PointerEvent) => {
         if (!geo || !svgRef.current) return;
@@ -131,7 +136,7 @@ const PriceHistoryChart: React.FC<Props> = ({ series }) => {
         setHover({ x: px, t: geo.invX(px) });
     };
 
-    if (!hasAny || !geo) {
+    if (!fuel || !hasAny || !geo) {
         return (
             <p className={styles.empty}>
                 Aún no hay suficiente histórico para mostrar la evolución. Lo registramos a diario y
@@ -140,10 +145,44 @@ const PriceHistoryChart: React.FC<Props> = ({ series }) => {
         );
     }
 
+    const mainAvailable = MAIN_FUELS.filter((f) => available.includes(f));
+    const otherAvailable = OTHER_FUELS.filter((f) => available.includes(f));
     const hoverDate = hover ? dateLong.format(new Date(hover.t)) : "";
+    const hoverValue = hover ? valueAt(geo.pts, hover.t) : null;
 
     return (
         <div className={styles.wrap}>
+            {(mainAvailable.length > 0 || otherAvailable.length > 0) && (
+                <div className={styles.fuelRow}>
+                    <div className={styles.fuelSelector}>
+                        {mainAvailable.map((f) => (
+                            <button
+                                key={f}
+                                className={`${styles.fuelOption} ${fuel === f ? styles.active : ""}`}
+                                onClick={() => setSelectedFuel(f)}
+                            >
+                                {FUEL_LABELS[f]}
+                            </button>
+                        ))}
+                    </div>
+                    {otherAvailable.length > 0 && (
+                        <select
+                            className={`${styles.fuelSelect} ${otherAvailable.includes(fuel) ? styles.fuelSelectActive : ""}`}
+                            value={otherAvailable.includes(fuel) ? fuel : ""}
+                            onChange={(e) => e.target.value && setSelectedFuel(e.target.value as FuelType)}
+                            title="Otros carburantes"
+                        >
+                            <option value="">Otros…</option>
+                            {otherAvailable.map((f) => (
+                                <option key={f} value={f}>
+                                    {FUEL_LABELS[f]}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                </div>
+            )}
+
             <div className={styles.ranges}>
                 {RANGES.map((r, i) => {
                     const en = rangeEnabled(r, i);
@@ -170,7 +209,7 @@ const PriceHistoryChart: React.FC<Props> = ({ series }) => {
                     onPointerMove={onMove}
                     onPointerLeave={() => setHover(null)}
                     role="img"
-                    aria-label="Evolución del precio del combustible"
+                    aria-label={`Evolución del precio: ${FUEL_LABELS[fuel]}`}
                 >
                     {/* Cuadrícula + etiquetas Y */}
                     {geo.yTicks.map((tk, i) => (
@@ -197,20 +236,16 @@ const PriceHistoryChart: React.FC<Props> = ({ series }) => {
                         </g>
                     ))}
 
-                    {/* Líneas */}
-                    {geo.visible.map((s, i) => (
-                        <path key={i} d={geo.stepPath(s.pts)} fill="none" stroke={s.color} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
-                    ))}
+                    {/* Línea */}
+                    <path d={geo.path} fill="none" stroke={LINE_COLOR} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
 
-                    {/* Guía + puntos del hover */}
+                    {/* Guía + punto del hover */}
                     {hover && (
                         <g>
                             <line x1={hover.x} y1={M.t} x2={hover.x} y2={H - M.b} stroke="var(--text-muted)" strokeWidth={1} strokeDasharray="3 3" />
-                            {geo.visible.map((s, i) => {
-                                const v = valueAt(s.pts, hover.t);
-                                if (v == null) return null;
-                                return <circle key={i} cx={hover.x} cy={geo.y(v)} r={4} fill={s.color} stroke="var(--surface)" strokeWidth={2} />;
-                            })}
+                            {hoverValue != null && (
+                                <circle cx={hover.x} cy={geo.y(hoverValue)} r={4} fill={LINE_COLOR} stroke="var(--surface)" strokeWidth={2} />
+                            )}
                         </g>
                     )}
                 </svg>
@@ -222,26 +257,12 @@ const PriceHistoryChart: React.FC<Props> = ({ series }) => {
                         style={{ left: `${(hover.x / W) * 100}%`, transform: `translateX(${hover.x > W * 0.6 ? "-100%" : "0"})` }}
                     >
                         <div className={styles.ttDate}>{hoverDate}</div>
-                        {geo.visible.map((s, i) => {
-                            const v = valueAt(s.pts, hover.t);
-                            return (
-                                <div key={i} className={styles.ttRow}>
-                                    <span className={styles.ttDot} style={{ background: s.color }} />
-                                    {s.label}: <b>{v != null ? `${fmtPrice(v)} €/L` : "—"}</b>
-                                </div>
-                            );
-                        })}
+                        <div className={styles.ttRow}>
+                            <span className={styles.ttDot} style={{ background: LINE_COLOR }} />
+                            {FUEL_LABELS[fuel]}: <b>{hoverValue != null ? `${fmtPrice(hoverValue)} €/L` : "—"}</b>
+                        </div>
                     </div>
                 )}
-            </div>
-
-            <div className={styles.legend}>
-                {series.map((s, i) => (
-                    <span key={i} className={styles.legendItem}>
-                        <span className={styles.legendDot} style={{ background: s.color }} />
-                        {s.label}
-                    </span>
-                ))}
             </div>
         </div>
     );

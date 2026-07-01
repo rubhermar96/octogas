@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Layout from "../layouts/Layout.astro";
 import MunicipalitySearch from "../components/Explorer/MunicipalitySearch";
+import Footer from "../components/Footer.astro";
 import { titleCase } from "../lib/format";
 import { provinceUrl } from "../lib/stationUrl";
 import type { GasStation } from "../types/gasolinera";
@@ -111,6 +112,8 @@ const mainCities: { name: string; path: string }[] = [
             </div>
         </section>
     </main>
+
+    <Footer />
 </Layout>
 
 <style>

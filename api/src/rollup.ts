@@ -1,8 +1,8 @@
 import { slugify } from "./lib/slug";
-import type { FuelKey } from "./db/schema";
+import { fuelEnum, type FuelKey } from "./db/schema";
 
-/** Combustibles para los que calculamos medias agregadas (los que se grafican). */
-export const ROLLUP_FUELS: FuelKey[] = ["sp95", "diesel"];
+/** Combustibles para los que calculamos medias agregadas: todos (sin favoritos). */
+export const ROLLUP_FUELS: FuelKey[] = [...fuelEnum.enumValues];
 
 export type ScopeType = "national" | "province" | "municipio";
 
@@ -26,8 +26,8 @@ export function municipioScopeId(province: string, city: string): string {
 }
 
 /**
- * Media de precio (sp95/diesel) por ámbito nacional, provincia y municipio a
- * partir de los precios actuales de las gasolineras.
+ * Media de precio de cada combustible por ámbito nacional, provincia y
+ * municipio a partir de los precios actuales de las gasolineras.
  */
 export function computeScopeAverages(raw: RawLike[]): ScopeAvg[] {
     const acc = new Map<string, { sum: number; n: number; scopeType: ScopeType; scopeId: string; fuel: FuelKey }>();

@@ -1,6 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import ComparadorApp from "../components/Comparador/ComparadorApp";
+import Footer from "../components/Footer.astro";
 ---
 
 <Layout
@@ -8,4 +9,5 @@ import ComparadorApp from "../components/Comparador/ComparadorApp";
     description="Compara hasta 4 gasolineras una al lado de otra: gasolina 95, 98, diésel, GLP y más. Descubre cuál es la más barata para cada combustible con OCTO."
 >
     <ComparadorApp client:only="react" />
+    <Footer />
 </Layout>
