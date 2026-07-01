@@ -8,6 +8,7 @@
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
     "ingest": "tsx src/ingest/index.ts",
+    "replay": "tsx src/ingest/replay.ts",
     "seed": "tsx src/seed-history.ts",
     "typecheck": "tsc --noEmit",
     "db:push": "drizzle-kit push",
