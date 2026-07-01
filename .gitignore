@@ -7,6 +7,10 @@ dist/
 public/data/
 src/data/
 
+# snapshots diarios de precios (varios MB cada uno; se reproducen con
+# `api: npm run replay` sobre la BD de destino, no hace falta versionarlos)
+data-archive/*.json
+
 # dependencies
 node_modules/
 
