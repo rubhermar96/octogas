@@ -83,6 +83,17 @@
     background: rgba(6, 8, 10, 0.6);
 }
 
+/* Con "reducir movimiento" activado, ocultamos el vídeo (queda el velo oscuro
+   sólido, igual que en móvil). */
+@media (prefers-reduced-motion: reduce) {
+    .heroVideo {
+        display: none;
+    }
+    .heroVideoOverlay {
+        background: #0a0c0f;
+    }
+}
+
 .heroCenter {
     position: relative;
     z-index: 1;

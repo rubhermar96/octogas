@@ -1,9 +1,16 @@
+/* ============================================================
+   EXPERIMENTO DE DISEÑO (rama design-experiment-square-contrast):
+   ángulos rectos en todo, alto contraste blanco/negro, colores del
+   logo reservados para acentos, tarjetas = mismo fondo que la página
+   con borde de contraste (en vez de un tono de superficie distinto).
+   Para volver al diseño anterior: git checkout main.
+   ============================================================ */
 :root {
     /* Fuentes */
     --font-header: 'Unbounded', system-ui, sans-serif;
     --font-body: 'Geist Sans', system-ui, sans-serif;
 
-    /* Colores */
+    /* Colores (se reservan para acentos: CTAs, iconos, hover, highlights) */
     --primary: #34d399;
     /* Mint Green - Ahorro */
     --secondary: #38bdf8;
@@ -13,11 +20,13 @@
     --brand: #6c2800;
     /* Deep Brown - Logo */
 
-    /* Neutros para Modo Oscuro (Default) */
-    --bg: #09090b;
-    --surface: #18181b;
-    --text: #f4f4f5;
-    --border: #27272a;
+    /* Neutros para Modo Oscuro (Default): negro puro, sin tono de superficie
+       distinto (surface = bg); el borde de alto contraste es lo que separa
+       visualmente una tarjeta del fondo. */
+    --bg: #000000;
+    --surface: #000000;
+    --text: #ffffff;
+    --border: rgba(255, 255, 255, 0.7);
 
     /* Helpers adapted for existing layout */
     --primary-dim: rgba(52, 211, 153, 0.1);
@@ -27,13 +36,18 @@
 }
 
 [data-theme="light"] {
-    --bg: #f8fafc;
+    --bg: #ffffff;
     --surface: #ffffff;
-    --text: #0f172a;
-    --border: #e2e8f0;
+    --text: #000000;
+    --border: rgba(0, 0, 0, 0.7);
 
     --text-muted: #64748b;
     --slate-800: #e2e8f0;
+}
+
+/* Ángulos de 90 grados en todos los componentes (sin esquinas redondeadas). */
+*, *::before, *::after {
+    border-radius: 0 !important;
 }
 
 body {
@@ -43,6 +57,19 @@ body {
     margin: 0;
     overflow: hidden;
     /* Maintain layout behavior */
+}
+
+/* Accesibilidad: si el usuario tiene configurado "reducir movimiento",
+   desactivamos animaciones y transiciones decorativas en toda la web. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 h1,

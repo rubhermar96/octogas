@@ -62,6 +62,10 @@ const ExplorerApp: React.FC = () => {
         const searchProv = params.get('prov');
         const searchCity = params.get('city');
 
+        // En escritorio el mapa se ve desde el principio en todos los casos;
+        // en móvil, solo el listado (el mapa se abre con "Ver mapa").
+        const isDesktop = window.matchMedia('(min-width: 769px)').matches;
+
         if (mode === 'location') {
             if ('geolocation' in navigator) {
                 setDisableGeolocation(false);
@@ -69,7 +73,7 @@ const ExplorerApp: React.FC = () => {
                 setInitialZoom(6);
                 setDisableGeolocation(true);
             }
-            setMapCollapsed(false); // en modo ubicación el mapa es protagonista
+            setMapCollapsed(false); // en modo ubicación el mapa es protagonista, también en móvil
             setIsInitialized(true);
         } else if (mode === 'municipality' && searchProv && searchCity) {
             const prov = searchProv.toLowerCase();
@@ -85,11 +89,11 @@ const ExplorerApp: React.FC = () => {
                 setInitialZoom(13);
             }
             setDisableGeolocation(true);
-            setMapCollapsed(true); // por municipio: listado a pantalla completa, mapa desplegable
+            setMapCollapsed(!isDesktop);
             setIsInitialized(true);
         } else {
             setDisableGeolocation(true);
-            setMapCollapsed(true);
+            setMapCollapsed(!isDesktop);
             setIsInitialized(true);
         }
     }, [allStations]);
@@ -238,7 +242,7 @@ const ExplorerApp: React.FC = () => {
                                 onClick={() => setMapCollapsed(true)}
                                 title="Ocultar mapa y ampliar listado"
                             >
-                                <span className="material-symbols-outlined">left_panel_close</span>
+                                <span className="material-symbols-outlined" aria-hidden="true">left_panel_close</span>
                                 Ocultar mapa
                             </button>
                         )}
@@ -261,7 +265,7 @@ const ExplorerApp: React.FC = () => {
                             onClick={() => setMapCollapsed(false)}
                             title="Mostrar mapa"
                         >
-                            <span className="material-symbols-outlined">map</span>
+                            <span className="material-symbols-outlined" aria-hidden="true">map</span>
                             <span className={styles.showMapLabel}>Ver mapa</span>
                         </button>
                     )}

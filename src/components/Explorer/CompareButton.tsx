@@ -38,9 +38,10 @@ const CompareButton: React.FC<CompareButtonProps> = ({ stationId, variant = 'car
             onClick={handleClick}
             disabled={full}
             title={full ? `Máximo ${MAX_COMPARE} gasolineras` : label}
+            aria-label={inCompare ? 'Quitar del comparador' : 'Añadir al comparador'}
             aria-pressed={inCompare}
         >
-            <span className="material-symbols-outlined">
+            <span className="material-symbols-outlined" aria-hidden="true">
                 {inCompare ? 'check' : 'balance'}
             </span>
             {variant === 'card' && <span>{label}</span>}

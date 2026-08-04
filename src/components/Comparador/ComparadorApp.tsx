@@ -3,10 +3,11 @@ import type { GasStation, FuelType } from '../../types/gasolinera';
 import { FUEL_LABELS, FUEL_ORDER } from '../../lib/fuels';
 import { getCompareIds, onCompareChange, addToCompare, removeFromCompare, clearCompare, MAX_COMPARE } from '../../lib/compare';
 import { stationUrl } from '../../lib/stationUrl';
+import { displayCity } from '../../lib/placeName';
 import BrandLogo from '../Explorer/BrandLogo';
 import styles from './ComparadorApp.module.css';
 
-const formatPrice = (price: number | null) => (price != null ? price.toFixed(3) : '--');
+const formatPrice = (price: number | null | undefined) => (price != null ? price.toFixed(3) : '--');
 
 const ComparadorApp: React.FC = () => {
     const [allStations, setAllStations] = useState<GasStation[]>([]);
@@ -61,7 +62,7 @@ const ComparadorApp: React.FC = () => {
         const out: GasStation[] = [];
         for (const s of allStations) {
             if (selected.has(s.id)) continue;
-            const hay = `${s.name} ${s.brand} ${s.address} ${s.city} ${s.province}`.toLowerCase();
+            const hay = `${s.name} ${s.brand} ${s.address} ${s.city} ${displayCity(s.city)} ${s.province}`.toLowerCase();
             if (tokens.every((t) => hay.includes(t))) {
                 out.push(s);
                 if (out.length >= 12) break;
@@ -91,12 +92,16 @@ const ComparadorApp: React.FC = () => {
     }, [fuelRows, stations]);
 
     // Cuántos combustibles "gana" cada estación (precio más barato del grupo).
+    // Solo cuenta si al menos 2 estaciones tienen ese combustible: si es la
+    // única con ese precio no hay comparación real, no "gana" nada.
     const winsById = useMemo(() => {
         const map = new Map<string, number>();
         for (const f of fuelRows) {
             const min = cheapestByFuel[f];
             if (min == null) continue;
-            for (const s of stations) {
+            const withPrice = stations.filter((s) => s.prices[f] != null);
+            if (withPrice.length < 2) continue;
+            for (const s of withPrice) {
                 if (s.prices[f] === min) map.set(s.id, (map.get(s.id) ?? 0) + 1);
             }
         }
@@ -123,7 +128,7 @@ const ComparadorApp: React.FC = () => {
             <div className={styles.toolbar}>
                 <div className={styles.searchZone}>
                     <div className={styles.searchBox}>
-                    <span className="material-symbols-outlined">search</span>
+                    <span className="material-symbols-outlined" aria-hidden="true">search</span>
                     <input
                         type="text"
                         placeholder={
@@ -136,8 +141,8 @@ const ComparadorApp: React.FC = () => {
                         disabled={!canAdd}
                     />
                     {query && (
-                        <button className={styles.clearSearch} onClick={() => setQuery('')} title="Limpiar">
-                            <span className="material-symbols-outlined">close</span>
+                        <button className={styles.clearSearch} onClick={() => setQuery('')} title="Limpiar" aria-label="Limpiar búsqueda">
+                            <span className="material-symbols-outlined" aria-hidden="true">close</span>
                         </button>
                     )}
                 </div>
@@ -149,9 +154,9 @@ const ComparadorApp: React.FC = () => {
                                     <BrandLogo brand={s.brand} size={32} />
                                     <span className={styles.resultText}>
                                         <strong>{s.name}</strong>
-                                        <small>{s.address}, {s.city}</small>
+                                        <small>{s.address}, {displayCity(s.city)}</small>
                                     </span>
-                                    <span className={`material-symbols-outlined ${styles.addIcon}`}>add_circle</span>
+                                    <span className={`material-symbols-outlined ${styles.addIcon}`} aria-hidden="true">add_circle</span>
                                 </button>
                             </li>
                         ))}
@@ -162,7 +167,7 @@ const ComparadorApp: React.FC = () => {
                     <div className={styles.toolbarRight}>
                         <span className={styles.count}>{stations.length} / {MAX_COMPARE}</span>
                         <button className={styles.clearBtn} onClick={clearCompare} title="Vaciar comparador">
-                            <span className="material-symbols-outlined">delete_sweep</span>
+                            <span className="material-symbols-outlined" aria-hidden="true">delete_sweep</span>
                             Vaciar
                         </button>
                     </div>
@@ -174,7 +179,7 @@ const ComparadorApp: React.FC = () => {
                 <div className={styles.empty}>
                     <div className={styles.emptyCard}>
                         <div className={styles.emptyIcon}>
-                            <span className="material-symbols-outlined">balance</span>
+                            <span className="material-symbols-outlined" aria-hidden="true">balance</span>
                         </div>
                         <h2>Compara gasolineras lado a lado</h2>
                         <p>
@@ -190,7 +195,7 @@ const ComparadorApp: React.FC = () => {
                             <li>
                                 <span className={styles.stepNum}>2</span>
                                 Pulsa
-                                <span className="material-symbols-outlined inline">balance</span>
+                                <span className="material-symbols-outlined inline" aria-hidden="true">balance</span>
                                 Comparar en las gasolineras que te interesen
                             </li>
                             <li>
@@ -201,11 +206,11 @@ const ComparadorApp: React.FC = () => {
 
                         <div className={styles.emptyActions}>
                             <a className={styles.cta} href="/municipios">
-                                <span className="material-symbols-outlined">search</span>
+                                <span className="material-symbols-outlined" aria-hidden="true">search</span>
                                 Buscar por municipio
                             </a>
                             <a className={styles.ctaGhost} href="/explorador?mode=location">
-                                <span className="material-symbols-outlined">my_location</span>
+                                <span className="material-symbols-outlined" aria-hidden="true">my_location</span>
                                 Usar mi ubicación
                             </a>
                         </div>
@@ -227,16 +232,16 @@ const ComparadorApp: React.FC = () => {
                                             <button
                                                 className={styles.remove}
                                                 onClick={() => removeFromCompare(s.id)}
-                                                title="Quitar del comparador"
+                                                title="Quitar del comparador" aria-label="Quitar del comparador"
                                             >
-                                                <span className="material-symbols-outlined">close</span>
+                                                <span className="material-symbols-outlined" aria-hidden="true">close</span>
                                             </button>
                                             <BrandLogo brand={s.brand} size={44} />
                                             <a className={styles.stName} href={stationUrl(s)} title="Ver ficha de la gasolinera">{s.name}</a>
-                                            <span className={styles.stMeta}>{s.address}, {s.city}</span>
+                                            <span className={styles.stMeta}>{s.address}, {displayCity(s.city)}</span>
                                             {wins > 0 && (
                                                 <span className={styles.winBadge}>
-                                                    <span className="material-symbols-outlined">trophy</span>
+                                                    <span className="material-symbols-outlined" aria-hidden="true">trophy</span>
                                                     {wins === 1 ? 'Más barata en 1 carburante' : `Más barata en ${wins} carburantes`}
                                                 </span>
                                             )}
@@ -251,7 +256,8 @@ const ComparadorApp: React.FC = () => {
                                     <th className={styles.rowHead}>{FUEL_LABELS[f]}</th>
                                     {stations.map((s) => {
                                         const p = s.prices[f];
-                                        const isCheapest = p != null && p === cheapestByFuel[f] && stations.length > 1;
+                                        const pricedCount = stations.filter((st) => st.prices[f] != null).length;
+                                        const isCheapest = p != null && p === cheapestByFuel[f] && pricedCount > 1;
                                         return (
                                             <td
                                                 key={s.id}
@@ -285,7 +291,7 @@ const ComparadorApp: React.FC = () => {
                                             target="_blank"
                                             rel="noopener noreferrer"
                                         >
-                                            <span className="material-symbols-outlined">directions</span>
+                                            <span className="material-symbols-outlined" aria-hidden="true">directions</span>
                                             Cómo llegar
                                         </a>
                                     </td>
