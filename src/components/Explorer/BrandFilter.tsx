@@ -47,9 +47,9 @@ const BrandFilter: React.FC<BrandFilterProps> = ({ options, selected, onChange }
     return (
         <div className={styles.wrapper} ref={wrapperRef}>
             <button type="button" className={styles.trigger} onClick={() => setOpen((o) => !o)}>
-                <span className="material-symbols-outlined">local_gas_station</span>
+                <span className="material-symbols-outlined" aria-hidden="true">local_gas_station</span>
                 <span className={styles.summary}>{summary}</span>
-                <span className={`material-symbols-outlined ${styles.chevron}`}>expand_more</span>
+                <span className={`material-symbols-outlined ${styles.chevron}`} aria-hidden="true">expand_more</span>
             </button>
 
             {open && (

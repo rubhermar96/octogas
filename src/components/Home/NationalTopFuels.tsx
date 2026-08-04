@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import type { FuelType } from "../../types/gasolinera";
 import { FUEL_LABELS, MAIN_FUELS, OTHER_FUELS, FUEL_ORDER } from "../../lib/fuels";
 import { stationUrl } from "../../lib/stationUrl";
-import { titleCase } from "../../lib/format";
+import { displayProvince, displayCity } from "../../lib/placeName";
 import BrandLogo from "../Explorer/BrandLogo";
 import styles from "./NationalTopFuels.module.css";
 
@@ -73,7 +73,7 @@ const NationalTopFuels: React.FC<Props> = ({ topByFuel }) => {
                         <a className={styles.info} href={stationUrl(s)} title="Ver ficha de la gasolinera">
                             <span className={styles.name}>{isGenericBrand(s.brand) ? "Gasolinera independiente" : s.brand}</span>
                             <span className={styles.addr}>
-                                {s.city} · {titleCase(s.province)}
+                                {displayCity(s.city)} · {displayProvince(s.province)}
                             </span>
                         </a>
                         <div className={styles.priceCol}>

@@ -167,6 +167,36 @@
     border-radius: 10px;
 }
 
+.showFiltersBtn {
+    position: sticky;
+    top: 0.75rem;
+    left: 1.5rem;
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0.75rem 0 0 1.5rem;
+    padding: 0.5rem 0.85rem;
+    background-color: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.showFiltersBtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.showFiltersBtn .material-symbols-outlined {
+    font-size: 1.05rem;
+}
+
 .resultsCount {
     padding: 0.75rem 1.5rem;
     font-size: 0.75rem;

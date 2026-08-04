@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { displayProvince, displayCity } from '../../lib/placeName';
 import styles from './MunicipalitySearch.module.css';
 
 interface LocationItem {
@@ -30,8 +31,8 @@ const MunicipalitySearch: React.FC = () => {
         const q = searchTerm.toLowerCase().trim();
 
         const score = (loc: LocationItem): number => {
-            const city = loc.city.toLowerCase();
-            const prov = loc.province.toLowerCase();
+            const city = displayCity(loc.city).toLowerCase();
+            const prov = displayProvince(loc.province).toLowerCase();
             if (city === q) return 0;
             if (city.startsWith(q)) return 1;
             if (city.includes(q)) return 2;
@@ -67,7 +68,7 @@ const MunicipalitySearch: React.FC = () => {
     return (
         <div className={styles.searchWrapper} ref={wrapperRef}>
             <div className={styles.inputContainer}>
-                <span className={`material-symbols-outlined ${styles.searchIcon}`}>search</span>
+                <span className={`material-symbols-outlined ${styles.searchIcon}`} aria-hidden="true">search</span>
                 <input
                     type="text"
                     className={styles.searchInput}
@@ -82,12 +83,13 @@ const MunicipalitySearch: React.FC = () => {
                 {searchTerm && (
                     <button
                         className={styles.clearButton}
+                        aria-label="Limpiar búsqueda"
                         onClick={() => {
                             setSearchTerm('');
                             setIsOpen(true);
                         }}
                     >
-                        <span className="material-symbols-outlined">close</span>
+                        <span className="material-symbols-outlined" aria-hidden="true">close</span>
                     </button>
                 )}
             </div>
@@ -101,10 +103,10 @@ const MunicipalitySearch: React.FC = () => {
                                 className={styles.dropdownItem}
                                 onClick={() => handleSelect(loc)}
                             >
-                                <span className="material-symbols-outlined">location_on</span>
+                                <span className="material-symbols-outlined" aria-hidden="true">location_on</span>
                                 <div className={styles.itemText}>
-                                    <span className={styles.itemCity}>{loc.city}</span>
-                                    <span className={styles.itemProvince}>{loc.province}</span>
+                                    <span className={styles.itemCity}>{displayCity(loc.city)}</span>
+                                    <span className={styles.itemProvince}>{displayProvince(loc.province)}</span>
                                 </div>
                             </li>
                         ))

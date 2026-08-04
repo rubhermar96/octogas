@@ -90,11 +90,13 @@
     letter-spacing: 0.05em;
 }
 
-/* Botón para ocultar el mapa (esquina del mapa) */
+/* Botón para ocultar el mapa (esquina del mapa; a la derecha para no
+   solaparse con los controles de zoom de Leaflet, que van arriba a la izquierda,
+   y bajo el header flotante -tema/menú-, que ocupa esa misma esquina) */
 .hideMapBtn {
     position: absolute;
-    top: 1rem;
-    left: 1rem;
+    top: 5.5rem;
+    right: 1rem;
     z-index: 35;
     display: flex;
     align-items: center;
@@ -160,7 +162,7 @@
     }
 
     .hideMapBtn {
-        top: 0.75rem;
-        left: 0.75rem;
+        top: 5rem;
+        right: 0.75rem;
     }
 }

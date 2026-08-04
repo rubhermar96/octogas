@@ -11,7 +11,7 @@ const ExplorerSelector: React.FC = () => {
                         window.location.href = '/explorador?mode=location';
                     }}
                 >
-                    <span className="material-symbols-outlined">my_location</span>
+                    <span className="material-symbols-outlined" aria-hidden="true">my_location</span>
                     Usar mi ubicación
                 </button>
                 <a 
@@ -19,7 +19,7 @@ const ExplorerSelector: React.FC = () => {
                     href="/municipios"
                     style={{ textDecoration: 'none' }}
                 >
-                    <span className="material-symbols-outlined">search</span>
+                    <span className="material-symbols-outlined" aria-hidden="true">search</span>
                     Buscar por municipio
                 </a>
             </div>

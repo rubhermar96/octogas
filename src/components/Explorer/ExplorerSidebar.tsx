@@ -4,6 +4,7 @@ import type { SortType } from './ExplorerApp';
 import { FUEL_LABELS, MAIN_FUELS, OTHER_FUELS, FUEL_ORDER } from '../../lib/fuels';
 import { getDistance } from '../../lib/geo';
 import { stationUrl } from '../../lib/stationUrl';
+import { displayCity } from '../../lib/placeName';
 import BrandLogo from './BrandLogo';
 import CompareButton from './CompareButton';
 import BrandFilter, { type BrandOption } from './BrandFilter';
@@ -24,10 +25,15 @@ interface ExplorerSidebarProps {
     onSelectStation: (id: string | null) => void;
 }
 
-const formatPrice = (price: number | null) => (price ? price.toFixed(3) : '--');
+const formatPrice = (price: number | null | undefined) => (price ? price.toFixed(3) : '--');
 
 // Tope de tarjetas renderizadas a la vez (rendimiento del DOM).
 const MAX_RENDER = 150;
+
+// Al ordenar por precio, diferencias menores a esto (€/L) se consideran "el
+// mismo precio" y desempatan por cercanía, para no anteponer una gasolinera
+// bastante más lejana por un par de céntimos.
+const PRICE_TIE_TOLERANCE = 0.02;
 
 const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
     stations,
@@ -45,16 +51,19 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
 }) => {
     const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
     const [controlsHidden, setControlsHidden] = useState(false);
+    const lastScrollTop = useRef(0);
 
-    // Los filtros se ocultan al bajar y SOLO reaparecen al volver arriba del todo
-    // (evita el "mareo" de que salten al hacer cualquier scroll hacia arriba).
+    // Los filtros se ocultan al bajar (más sitio para la lista) y SOLO vuelven
+    // a aparecer si el usuario pulsa el botón "Filtros" (no al volver a subir,
+    // para que no salten solos mientras se hace scroll). Se compara con la
+    // posición anterior (no con un valor absoluto): así, al mostrar los filtros
+    // con el botón estando ya desplazados hacia abajo, no se ocultan de nuevo
+    // solos por seguir "por debajo" del umbral sin haber vuelto a bajar.
     const handleListScroll = (e: React.UIEvent<HTMLDivElement>) => {
         const st = e.currentTarget.scrollTop;
-        if (st <= 6) {
-            setControlsHidden(false);
-        } else if (st > 60) {
-            setControlsHidden(true);
-        }
+        const scrollingDown = st > lastScrollTop.current;
+        if (scrollingDown && st > 60) setControlsHidden(true);
+        lastScrollTop.current = st;
     };
 
     const sortedStations = useMemo(() => {
@@ -69,7 +78,11 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
             }
             const priceA = a.prices[fuelType] || Infinity;
             const priceB = b.prices[fuelType] || Infinity;
-            return priceA - priceB;
+            // Precios prácticamente iguales (dentro de la tolerancia): gana la más cercana.
+            const bucketA = Math.round(priceA / PRICE_TIE_TOLERANCE);
+            const bucketB = Math.round(priceB / PRICE_TIE_TOLERANCE);
+            if (bucketA !== bucketB) return priceA - priceB;
+            return a.distanceToCenter - b.distanceToCenter;
         });
     }, [stations, center, sortType, fuelType]);
 
@@ -84,14 +97,14 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
         <aside className={styles.sidebar}>
             <div className={styles.header}>
                 <a href="/" className={styles.brand} title="Volver al inicio">
-                    <img src="/images/logo-octo.png" alt="OCTO" className={styles.brandLogo} />
+                    <img src="/images/logo-octo.webp" alt="OCTO" className={styles.brandLogo} width={540} height={201} />
                     <span className={styles.title}>Estaciones</span>
                 </a>
             </div>
 
             <div className={`${styles.controls} ${controlsHidden ? styles.controlsHidden : ''}`}>
-                <div className={styles.controlGroup}>
-                    <label className={styles.label}>Combustible Principal</label>
+                <div className={styles.controlGroup} role="group" aria-labelledby="explorer-fuel-label">
+                    <span className={styles.label} id="explorer-fuel-label">Combustible Principal</span>
                     <div className={styles.fuelRow}>
                         <div className={styles.fuelSelector}>
                             {MAIN_FUELS.map((f) => (
@@ -120,8 +133,8 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
                     </div>
                 </div>
 
-                <div className={styles.controlGroup}>
-                    <label className={styles.label}>Marcas</label>
+                <div className={styles.controlGroup} role="group" aria-labelledby="explorer-brands-label">
+                    <span className={styles.label} id="explorer-brands-label">Marcas</span>
                     <BrandFilter
                         options={brandOptions}
                         selected={selectedBrands}
@@ -129,21 +142,21 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
                     />
                 </div>
 
-                <div className={styles.controlGroup}>
-                    <label className={styles.label}>Ordenar por</label>
+                <div className={styles.controlGroup} role="group" aria-labelledby="explorer-sort-label">
+                    <span className={styles.label} id="explorer-sort-label">Ordenar por</span>
                     <div className={styles.sortSelector}>
                         <button
                             className={`${styles.sortOption} ${sortType === 'distance' ? styles.selected : ''}`}
                             onClick={() => onSortTypeChange('distance')}
                         >
-                            <span className="material-symbols-outlined">near_me</span>
+                            <span className="material-symbols-outlined" aria-hidden="true">near_me</span>
                             Cercanía
                         </button>
                         <button
                             className={`${styles.sortOption} ${sortType === 'price' ? styles.selected : ''}`}
                             onClick={() => onSortTypeChange('price')}
                         >
-                            <span className="material-symbols-outlined">payments</span>
+                            <span className="material-symbols-outlined" aria-hidden="true">payments</span>
                             Precio
                         </button>
                     </div>
@@ -151,6 +164,12 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
             </div>
 
             <div className={styles.listContainer} onScroll={handleListScroll}>
+                {controlsHidden && (
+                    <button className={styles.showFiltersBtn} onClick={() => setControlsHidden(false)}>
+                        <span className="material-symbols-outlined" aria-hidden="true">tune</span>
+                        Filtros
+                    </button>
+                )}
                 <div className={`${styles.stationList} ${wide ? styles.stationListWide : ''}`}>
                     {sortedStations.slice(0, MAX_RENDER).map((station) => {
                         const isSelected = station.id === selectedId;
@@ -190,8 +209,8 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
                                 </div>
 
                                 <p className={styles.stationAddress}>
-                                    <span className="material-symbols-outlined">location_on</span>
-                                    {station.address}, {station.city}
+                                    <span className="material-symbols-outlined" aria-hidden="true">location_on</span>
+                                    {station.address}, {displayCity(station.city)}
                                     {station.postalCode ? ` (${station.postalCode})` : ''}
                                 </p>
 
@@ -209,7 +228,7 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
 
                                 <div className={styles.cardFooter}>
                                     <span className={styles.metaItem}>
-                                        <span className="material-symbols-outlined">schedule</span>
+                                        <span className="material-symbols-outlined" aria-hidden="true">schedule</span>
                                         {station.schedule || 'Horario no disponible'}
                                     </span>
                                     <div className={styles.footerRight}>
@@ -224,7 +243,7 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
                                             onClick={(e) => e.stopPropagation()}
                                             title="Cómo llegar"
                                         >
-                                            <span className="material-symbols-outlined">directions</span>
+                                            <span className="material-symbols-outlined" aria-hidden="true">directions</span>
                                             Cómo llegar
                                         </a>
                                     </div>
@@ -239,7 +258,7 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
 
                     {sortedStations.length === 0 && (
                         <div className={styles.emptyState}>
-                            <span className="material-symbols-outlined">location_off</span>
+                            <span className="material-symbols-outlined" aria-hidden="true">location_off</span>
                             <p>No se encontraron gasolineras en esta zona.</p>
                             <span>Aleja el mapa para buscar en un área mayor.</span>
                         </div>

@@ -346,6 +346,14 @@
     position: relative;
     min-width: 170px;
     background: var(--bg);
+    /* Arriba (no middle) para que los logos queden a la misma altura aunque
+       el nombre de alguna estación ocupe más líneas que el de otras. */
+    vertical-align: top !important;
+}
+
+/* El badge de BrandLogo es un div de bloque: text-align no lo centra, hace falta margin auto. */
+.stationHead > div {
+    margin: 0 auto;
 }
 
 .stationHead .stName {
