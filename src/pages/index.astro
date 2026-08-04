@@ -147,7 +147,7 @@ const steps = [
 
             <div class={styles.heroCenter} id="hero-logo">
                 <div class={styles.logoBox}>
-                    <img src="/images/logo-octo.png" alt="OCTO Logo" class={styles.logoImage} />
+                    <img src="/images/logo-octo.webp" alt="OCTO Logo" class={styles.logoImage} width="540" height="201" fetchpriority="high" />
                 </div>
                 <h1 class={styles.slogan}>
                     Menos gasto, <span class={styles.sloganAccent}>más kilómetros</span>
@@ -160,15 +160,15 @@ const steps = [
 
                 <div class={styles.heroStats}>
                     <span class={styles.statChip}>
-                        <span class="material-symbols-outlined">local_gas_station</span>
+                        <span class="material-symbols-outlined" aria-hidden="true">local_gas_station</span>
                         <b>{nf.format(totalStations)}</b> gasolineras
                     </span>
                     <span class={styles.statChip}>
-                        <span class="material-symbols-outlined">map</span>
+                        <span class="material-symbols-outlined" aria-hidden="true">map</span>
                         <b>{totalProvinces}</b> provincias
                     </span>
                     <span class={styles.statChip}>
-                        <span class="material-symbols-outlined">update</span>
+                        <span class="material-symbols-outlined" aria-hidden="true">update</span>
                         Datos oficiales a diario
                     </span>
                 </div>
@@ -180,7 +180,7 @@ const steps = [
 
             <a href="#top10" class={styles.scrollIndicator} id="scroll-btn">
                 <span>Descubre más</span>
-                <span class={`material-symbols-outlined ${styles.scrollIcon}`}>expand_more</span>
+                <span class={`material-symbols-outlined ${styles.scrollIcon}`} aria-hidden="true">expand_more</span>
             </a>
         </section>
 
@@ -212,7 +212,7 @@ const steps = [
                             diésel, GLP y más. Datos oficiales actualizados a diario.
                         </p>
                         <a class={styles.topFuelsCta} href="/municipios">
-                            <span class="material-symbols-outlined">search</span>
+                            <span class="material-symbols-outlined" aria-hidden="true">search</span>
                             Buscar en tu zona
                         </a>
                     </div>
@@ -249,7 +249,7 @@ const steps = [
                                     </span>
                                 )}
                                 <div class={styles.featureIcon}>
-                                    <span class="material-symbols-outlined">{f.icon}</span>
+                                    <span class="material-symbols-outlined" aria-hidden="true">{f.icon}</span>
                                 </div>
                                 <div class={styles.featureBody}>
                                     <h3 class={styles.featureTitle}>{f.title}</h3>
@@ -257,7 +257,7 @@ const steps = [
                                     {f.badge && <span class={styles.featureBadge}>{f.badge}</span>}
                                     <span class={styles.featureLink}>
                                         {f.cta}
-                                        <span class="material-symbols-outlined">arrow_forward</span>
+                                        <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
                                     </span>
                                 </div>
                             </a>
@@ -315,15 +315,15 @@ const steps = [
                 </div>
                 <div class={styles.trustRow}>
                     <span class={styles.trustItem}>
-                        <span class="material-symbols-outlined">verified</span>
+                        <span class="material-symbols-outlined" aria-hidden="true">verified</span>
                         Datos del Ministerio (MITECO)
                     </span>
                     <span class={styles.trustItem}>
-                        <span class="material-symbols-outlined">update</span>
+                        <span class="material-symbols-outlined" aria-hidden="true">update</span>
                         Actualizados a diario
                     </span>
                     <span class={styles.trustItem}>
-                        <span class="material-symbols-outlined">savings</span>
+                        <span class="material-symbols-outlined" aria-hidden="true">savings</span>
                         Media diésel {fmt(avgDiesel)} €/L
                     </span>
                 </div>

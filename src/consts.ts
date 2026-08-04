@@ -15,6 +15,14 @@ export const SITE = {
 /**
  * ID de editor de Google AdSense (formato ca-pub-XXXXXXXXXXXXXXXX).
  * Se lee de la variable de entorno PUBLIC_ADSENSE_ID. Mientras esté vacío,
- * los anuncios no se cargan (placeholders en su lugar).
+ * los anuncios no se cargan y los huecos de anuncio no ocupan espacio.
  */
 export const ADSENSE_ID: string = import.meta.env.PUBLIC_ADSENSE_ID ?? '';
+
+/**
+ * Código de verificación de Google Search Console: solo el valor del atributo
+ * `content` de la etiqueta <meta name="google-site-verification">. Se lee de
+ * PUBLIC_GOOGLE_SITE_VERIFICATION. Mientras esté vacío, no se inserta la etiqueta.
+ */
+export const GOOGLE_SITE_VERIFICATION: string =
+    import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION ?? '';
