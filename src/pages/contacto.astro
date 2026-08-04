@@ -1,34 +1,73 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Footer from "../components/Footer.astro";
+import { ADSENSE_ID } from "../consts";
+
+// Mientras no haya publicidad activa (PUBLIC_ADSENSE_ID vacío), se oculta todo lo
+// relacionado con publicidad/colaboraciones; reaparece solo al activar AdSense.
+const adsActive = Boolean(ADSENSE_ID);
 ---
 
 <Layout
     title="Contacto | OCTO"
-    description="Ponte en contacto con el equipo de OCTO."
+    description="¿Tienes una idea para mejorar OCTO? Escríbenos a contactaocto@gmail.com."
     hideSidebar={true}
 >
     <div class="contact">
         <a href="/" class="back">← Volver al inicio</a>
-        <h1>Contacto</h1>
+        <h1>Hablemos</h1>
         <p class="lead">
-            ¿Has visto un precio que no cuadra, una gasolinera que falta o tienes una sugerencia?
-            Escríbenos, leemos todos los mensajes.
+            OCTO está en constante mejora. Nos ayuda muchísimo saber qué echas de menos, qué te
+            gustaría que hiciéramos distinto o qué no funciona como esperas.
         </p>
 
-        <a class="emailCard" href="mailto:hola@octogas.es">
-            <span class="material-symbols-outlined">mail</span>
+        <div class="reasons">
+            <a
+                class="reasonCard"
+                href="mailto:contactaocto@gmail.com?subject=Mejora%20o%20sugerencia%20para%20OCTO"
+            >
+                <span class="material-symbols-outlined icon" aria-hidden="true">lightbulb</span>
+                <span class="reasonText">
+                    <strong>Mejoras y sugerencias</strong>
+                    <small>
+                        Una función que te gustaría, algo que no funciona como esperas, un dato que
+                        falla o cualquier idea para hacer OCTO mejor. Leemos todo.
+                    </small>
+                </span>
+                <span class="material-symbols-outlined arrow" aria-hidden="true">arrow_forward</span>
+            </a>
+
+            {adsActive && (
+                <a
+                    class="reasonCard"
+                    href="mailto:contactaocto@gmail.com?subject=Publicidad%20y%20colaboraciones%20en%20OCTO"
+                >
+                    <span class="material-symbols-outlined icon" aria-hidden="true">campaign</span>
+                    <span class="reasonText">
+                        <strong>Publicidad y colaboraciones</strong>
+                        <small>
+                            ¿Quieres anunciarte, patrocinar una sección o proponer una colaboración?
+                            Cuéntanos tu idea y te preparamos una propuesta.
+                        </small>
+                    </span>
+                    <span class="material-symbols-outlined arrow" aria-hidden="true">arrow_forward</span>
+                </a>
+            )}
+        </div>
+
+        <a class="emailCard" href="mailto:contactaocto@gmail.com">
+            <span class="material-symbols-outlined" aria-hidden="true">mail</span>
             <span>
-                <strong>hola@octogas.es</strong>
+                <strong>contactaocto@gmail.com</strong>
                 <small>Te respondemos lo antes posible</small>
             </span>
-            <span class="material-symbols-outlined arrow">arrow_forward</span>
+            <span class="material-symbols-outlined arrow" aria-hidden="true">arrow_forward</span>
         </a>
 
         <p class="note">
-            Los precios de las gasolineras proceden de los datos abiertos del Ministerio para la
-            Transición Ecológica (MITECO) y se actualizan a diario; si detectas un precio
-            desactualizado, lo habitual es que aún no se haya reflejado en la fuente oficial.
+            Sobre los precios: proceden de los datos abiertos del Ministerio para la Transición
+            Ecológica (MITECO) y se actualizan a diario. Si ves un precio desactualizado, lo
+            habitual es que todavía no se haya reflejado en la fuente oficial.
         </p>
     </div>
 
@@ -60,6 +99,47 @@ import Footer from "../components/Footer.astro";
         line-height: 1.7;
         font-size: 1.05rem;
         margin-bottom: 2rem;
+    }
+    .reasons {
+        display: grid;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .reasonCard {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        text-decoration: none;
+        color: var(--text);
+        transition: border-color 0.2s, transform 0.2s;
+    }
+    .reasonCard:hover {
+        border-color: var(--primary);
+        transform: translateY(-2px);
+    }
+    .reasonCard .icon {
+        font-size: 1.6rem;
+        color: var(--primary);
+        flex-shrink: 0;
+    }
+    .reasonText strong {
+        display: block;
+        font-size: 1.02rem;
+        margin-bottom: 0.25rem;
+    }
+    .reasonText small {
+        color: var(--text-muted);
+        font-size: 0.88rem;
+        line-height: 1.5;
+    }
+    .reasonCard .arrow {
+        margin-left: auto;
+        color: var(--text-muted);
+        align-self: center;
     }
     .emailCard {
         display: flex;
