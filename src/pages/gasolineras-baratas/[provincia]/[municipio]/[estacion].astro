@@ -7,7 +7,7 @@ import AdSlot from "../../../../components/AdSlot.astro";
 import Footer from "../../../../components/Footer.astro";
 import { slugify } from "../../../../lib/slug";
 import { stationSlug, stationUrl, provinceUrl, municipioUrl } from "../../../../lib/stationUrl";
-import { titleCase } from "../../../../lib/format";
+import { placeSlug, displayProvince, displayCity } from "../../../../lib/placeName";
 import { getDistance } from "../../../../lib/geo";
 import { FUEL_LABELS, FUEL_ORDER } from "../../../../lib/fuels";
 import { BRAND_LOGO_FILES } from "../../../../lib/brandLogos";
@@ -74,8 +74,8 @@ export async function getStaticPaths() {
         const agg = muniAgg.get(muniKey(station));
         return {
             params: {
-                provincia: slugify(station.province),
-                municipio: slugify(station.city),
+                provincia: placeSlug(station.province),
+                municipio: placeSlug(station.city),
                 estacion: stationSlug(station),
             },
             props: {
@@ -99,8 +99,8 @@ const { station, nearby, muniAvgSp95, muniAvgDiesel, muniCount, history } = Astr
     history: StationHistory | null;
 };
 
-const provLabel = titleCase(station.province);
-const provSlug = slugify(station.province);
+const provLabel = displayProvince(station.province);
+const cityLabel = displayCity(station.city);
 const fmt = (n: number | null | undefined) => (n != null ? n.toFixed(3) : "—");
 
 // ¿Tiene marca "de verdad" o es una independiente sin rótulo (p. ej. "Nº 10.935")?
@@ -126,9 +126,9 @@ const updated = new Date().toLocaleDateString("es-ES", {
 });
 
 const h1 = brandLabel ? `Gasolinera ${brandLabel}` : "Gasolinera";
-const titlePlace = `${station.address}, ${station.city}`;
+const titlePlace = `${station.address}, ${cityLabel}`;
 const pageTitle = `${h1} en ${titlePlace} — Precios de hoy | OCTO`;
-const pageDescription = `Precios actualizados de ${brandLabel || "la gasolinera"} en ${station.address}, ${station.city} (${provLabel}). Gasolina 95 a ${fmt(station.prices.sp95)} €/L y diésel a ${fmt(station.prices.diesel)} €/L. Horario, mapa y gasolineras cercanas.`;
+const pageDescription = `Precios actualizados de ${brandLabel || "la gasolinera"} en ${station.address}, ${cityLabel} (${provLabel}). Gasolina 95 a ${fmt(station.prices.sp95)} €/L y diésel a ${fmt(station.prices.diesel)} €/L. Horario, mapa y gasolineras cercanas.`;
 
 const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`;
 
@@ -136,11 +136,11 @@ const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${station.la
 const gasStationJsonLd = {
     "@context": "https://schema.org",
     "@type": "GasStation",
-    name: brandLabel ? `${brandLabel} - ${station.city}` : `Gasolinera ${station.address}`,
+    name: brandLabel ? `${brandLabel} - ${cityLabel}` : `Gasolinera ${station.address}`,
     address: {
         "@type": "PostalAddress",
         streetAddress: station.address,
-        addressLocality: station.city,
+        addressLocality: cityLabel,
         addressRegion: provLabel,
         postalCode: station.postalCode || undefined,
         addressCountry: "ES",
@@ -151,10 +151,10 @@ const gasStationJsonLd = {
 
 const faq = [
     {
-        q: `¿Cuánto cuesta la gasolina 95 en ${brandLabel || station.city}?`,
+        q: `¿Cuánto cuesta la gasolina 95 en ${brandLabel || cityLabel}?`,
         a:
             station.prices.sp95 != null
-                ? `La Gasolina 95 está a ${fmt(station.prices.sp95)} €/L en ${station.address}, ${station.city}${sp95Cmp ? `, un ${Math.abs(sp95Cmp.diffPct).toFixed(1)}% ${sp95Cmp.cheaper ? "más barata" : "más cara"} que la media del municipio` : ""}.`
+                ? `La Gasolina 95 está a ${fmt(station.prices.sp95)} €/L en ${station.address}, ${cityLabel}${sp95Cmp ? `, un ${Math.abs(sp95Cmp.diffPct).toFixed(1)}% ${sp95Cmp.cheaper ? "más barata" : "más cara"} que la media del municipio` : ""}.`
                 : `Esta estación no tiene precio de Gasolina 95 disponible actualmente.`,
     },
     {
@@ -163,7 +163,7 @@ const faq = [
     },
     {
         q: `¿Cómo llego a esta gasolinera?`,
-        a: `Está en ${station.address}, ${station.postalCode || ""} ${station.city} (${provLabel}). Puedes abrir la ruta en Google Maps desde el botón "Cómo llegar".`,
+        a: `Está en ${station.address}, ${station.postalCode || ""} ${cityLabel} (${provLabel}). Puedes abrir la ruta en Google Maps desde el botón "Cómo llegar".`,
     },
 ];
 const faqJsonLd = {
@@ -181,7 +181,7 @@ const breadcrumbJsonLd = {
     itemListElement: [
         { "@type": "ListItem", position: 1, name: "Inicio", item: new URL("/", Astro.site).href },
         { "@type": "ListItem", position: 2, name: provLabel, item: new URL(provinceUrl(station.province), Astro.site).href },
-        { "@type": "ListItem", position: 3, name: station.city, item: new URL(municipioUrl(station.province, station.city), Astro.site).href },
+        { "@type": "ListItem", position: 3, name: cityLabel, item: new URL(municipioUrl(station.province, station.city), Astro.site).href },
         { "@type": "ListItem", position: 4, name: h1, item: Astro.url.href },
     ],
 };
@@ -201,7 +201,7 @@ const mapStations = [station, ...nearby];
                 <span>›</span>
                 <a href={provinceUrl(station.province)}>{provLabel}</a>
                 <span>›</span>
-                <a href={municipioUrl(station.province, station.city)}>{station.city}</a>
+                <a href={municipioUrl(station.province, station.city)}>{cityLabel}</a>
                 <span>›</span>
                 <span class="current">{brandLabel || station.address}</span>
             </nav>
@@ -212,20 +212,20 @@ const mapStations = [station, ...nearby];
                         logoFile ? (
                             <img src={`/brands/${logoFile}`} alt={brandLabel || "Gasolinera"} />
                         ) : (
-                            <span class="material-symbols-outlined">local_gas_station</span>
+                            <span class="material-symbols-outlined" aria-hidden="true">local_gas_station</span>
                         )
                     }
                 </div>
                 <div class="head-text">
-                    <h1>{h1} en {station.city}</h1>
+                    <h1>{h1} en {cityLabel}</h1>
                     <p class="address">
-                        <span class="material-symbols-outlined">location_on</span>
-                        {station.address}{station.postalCode ? `, ${station.postalCode}` : ""} {station.city} ({provLabel})
+                        <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
+                        {station.address}{station.postalCode ? `, ${station.postalCode}` : ""} {cityLabel} ({provLabel})
                     </p>
                     <p class="updated">Precios actualizados el {updated}</p>
                 </div>
                 <a class="route-btn" href={mapsUrl} target="_blank" rel="noopener noreferrer">
-                    <span class="material-symbols-outlined">directions</span>
+                    <span class="material-symbols-outlined" aria-hidden="true">directions</span>
                     Cómo llegar
                 </a>
             </header>
@@ -254,12 +254,12 @@ const mapStations = [station, ...nearby];
                         <div class="compare-row">
                             {sp95Cmp && (
                                 <span class={`cmp ${sp95Cmp.cheaper ? "good" : "bad"}`}>
-                                    Gasolina 95: {Math.abs(sp95Cmp.diffPct).toFixed(1)}% {sp95Cmp.cheaper ? "más barata" : "más cara"} que la media de {station.city}
+                                    Gasolina 95: {Math.abs(sp95Cmp.diffPct).toFixed(1)}% {sp95Cmp.cheaper ? "más barata" : "más cara"} que la media de {cityLabel}
                                 </span>
                             )}
                             {dieselCmp && (
                                 <span class={`cmp ${dieselCmp.cheaper ? "good" : "bad"}`}>
-                                    Diésel: {Math.abs(dieselCmp.diffPct).toFixed(1)}% {dieselCmp.cheaper ? "más barato" : "más caro"} que la media de {station.city}
+                                    Diésel: {Math.abs(dieselCmp.diffPct).toFixed(1)}% {dieselCmp.cheaper ? "más barato" : "más caro"} que la media de {cityLabel}
                                 </span>
                             )}
                         </div>
@@ -288,7 +288,7 @@ const mapStations = [station, ...nearby];
                 <div class="info-card">
                     <span class="info-label">Municipio</span>
                     <a class="info-value link" href={municipioUrl(station.province, station.city)}>
-                        {station.city} ({muniCount} gasolineras)
+                        {cityLabel} ({muniCount} gasolineras)
                     </a>
                 </div>
             </section>
@@ -320,7 +320,7 @@ const mapStations = [station, ...nearby];
                                 return (
                                     <a href={stationUrl(n)} class="nearby-card">
                                         <span class="nearby-name">{nGeneric ? n.address : n.brand}</span>
-                                        <span class="nearby-addr">{n.city} · {d.toFixed(1)} km</span>
+                                        <span class="nearby-addr">{displayCity(n.city)} · {d.toFixed(1)} km</span>
                                         <span class="nearby-prices">
                                             {n.prices.sp95 != null && <span>95: {fmt(n.prices.sp95)}</span>}
                                             {n.prices.diesel != null && <span>Diésel: {fmt(n.prices.diesel)}</span>}
