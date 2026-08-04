@@ -8,6 +8,8 @@ import Footer from "../components/Footer.astro";
     title="Comparador de gasolineras: precios cara a cara | OCTO"
     description="Compara hasta 4 gasolineras una al lado de otra: gasolina 95, 98, diésel, GLP y más. Descubre cuál es la más barata para cada combustible con OCTO."
 >
+    {/* La descarga del JSON de estaciones arranca en paralelo con el JS de la isla. */}
+    <link rel="preload" href="/data/stations.json" as="fetch" crossorigin="anonymous" slot="head" />
     <ComparadorApp client:only="react" />
     <Footer />
 </Layout>

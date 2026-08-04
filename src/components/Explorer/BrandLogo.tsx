@@ -36,7 +36,7 @@ const BrandLogo: React.FC<BrandLogoProps> = ({ brand, size = 40 }) => {
                     loading="lazy"
                 />
             ) : (
-                <span className="material-symbols-outlined" style={{ fontSize: size * 0.58 }}>
+                <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: size * 0.58 }}>
                     local_gas_station
                 </span>
             )}

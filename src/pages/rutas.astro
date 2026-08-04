@@ -9,5 +9,7 @@ import RoutePlanner from "../components/Route/RoutePlanner";
     hideSidebar={true}
     hideHeaderLogo={true}
 >
+    {/* La descarga del JSON de estaciones arranca en paralelo con el JS de la isla. */}
+    <link rel="preload" href="/data/stations.json" as="fetch" crossorigin="anonymous" slot="head" />
     <RoutePlanner client:only="react" />
 </Layout>
