@@ -1,14 +1,19 @@
+/**
+ * Precios por combustible. Las claves sin precio se OMITEN en el JSON (ahorra
+ * ~28% del peso de stations.json), así que cada valor puede ser number,
+ * null o undefined: compara siempre con `!= null`, nunca con `=== null`.
+ */
 export interface FuelPrices {
-    sp95: number | null;          // Gasolina 95 E5
-    sp95Premium: number | null;   // Gasolina 95 E5 Premium
-    sp98: number | null;          // Gasolina 98 E5
-    diesel: number | null;        // Gasóleo A
-    dieselPremium: number | null; // Gasóleo Premium
-    dieselB: number | null;       // Gasóleo B (agrícola)
-    glp: number | null;           // Gases licuados del petróleo (autogas)
-    gnc: number | null;           // Gas Natural Comprimido
-    gnl: number | null;           // Gas Natural Licuado
-    hydrogen: number | null;      // Hidrógeno
+    sp95?: number | null;          // Gasolina 95 E5
+    sp95Premium?: number | null;   // Gasolina 95 E5 Premium
+    sp98?: number | null;          // Gasolina 98 E5
+    diesel?: number | null;        // Gasóleo A
+    dieselPremium?: number | null; // Gasóleo Premium
+    dieselB?: number | null;       // Gasóleo B (agrícola)
+    glp?: number | null;           // Gases licuados del petróleo (autogas)
+    gnc?: number | null;           // Gas Natural Comprimido
+    gnl?: number | null;           // Gas Natural Licuado
+    hydrogen?: number | null;      // Hidrógeno
 }
 
 export type FuelType = keyof FuelPrices;
