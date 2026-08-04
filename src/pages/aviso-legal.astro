@@ -1,75 +1,129 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Footer from "../components/Footer.astro";
+import { ADSENSE_ID } from "../consts";
+
+// Mientras no haya publicidad activa (PUBLIC_ADSENSE_ID vacío) se oculta el
+// apartado de publicidad y se renumeran los siguientes; reaparece al activarla.
+const adsActive = Boolean(ADSENSE_ID);
+const nData = adsActive ? 8 : 7; // "Protección de datos"
+const nLaw = adsActive ? 9 : 8; // "Legislación aplicable"
 ---
 
 <Layout
     title="Aviso legal | OCTO"
-    description="Aviso legal de OCTO: condiciones de uso, propiedad intelectual y limitación de responsabilidad."
+    description="Aviso legal de OCTO: datos identificativos, condiciones de uso, propiedad intelectual y limitación de responsabilidad."
     hideSidebar={true}
     noindex={true}
 >
     <div class="legal">
         <a href="/" class="back">← Volver al inicio</a>
         <h1>Aviso legal</h1>
+        <p class="updated">Última actualización: 6 de julio de 2026</p>
 
+        <p>
+            El presente aviso legal regula el acceso y uso del sitio web
+            <strong>octogas.es</strong> (en adelante, «OCTO» o «el Sitio»), en cumplimiento de la
+            Ley 34/2002, de Servicios de la Sociedad de la Información y de Comercio Electrónico
+            (LSSI-CE).
+        </p>
+
+        <h2>1. Datos identificativos del titular</h2>
         <p class="note">
-            ⚠️ Plantilla pendiente de revisión legal. Sustituye los datos identificativos y el
-            texto por los definitivos (idealmente revisados por un profesional) antes de publicar.
+            ⚠️ Pendiente de completar antes de la publicación. La LSSI exige indicar los datos
+            identificativos del titular del sitio. Sustituye los campos entre corchetes por los
+            datos reales.
         </p>
+        <ul>
+            <li><strong>Titular:</strong> [nombre y apellidos o razón social]</li>
+            <li><strong>NIF/CIF:</strong> [NIF/CIF]</li>
+            <li><strong>Domicilio a efectos de notificaciones:</strong> [domicilio]</li>
+            <li>
+                <strong>Correo electrónico de contacto:</strong>
+                <a href="mailto:contactaocto@gmail.com">contactaocto@gmail.com</a>
+            </li>
+            <li><strong>Sitio web:</strong> octogas.es</li>
+        </ul>
 
-        <h2>1. Datos identificativos</h2>
+        <h2>2. Objeto y condición de usuario</h2>
         <p>
-            El presente sitio web (en adelante, "OCTO" o "el Sitio") es operado por [Nombre /
-            Razón social pendiente], con domicilio en [Dirección pendiente] y correo de contacto
-            <a href="mailto:hola@octogas.es">hola@octogas.es</a>.
-        </p>
-
-        <h2>2. Objeto</h2>
-        <p>
-            OCTO ofrece un servicio informativo de comparación de precios de carburante en
-            España, así como herramientas de planificación de rutas y comparación de
-            gasolineras. El acceso y uso del Sitio atribuye la condición de usuario y la
-            aceptación de las condiciones recogidas en este aviso legal.
+            OCTO es un servicio informativo y gratuito que permite comparar precios de carburante
+            en España y ofrece herramientas de exploración por municipio, comparación de
+            gasolineras y planificación de viajes con recomendación de repostajes. El acceso al
+            Sitio es libre y no requiere registro. La navegación por el Sitio atribuye la condición
+            de usuario e implica la aceptación de este aviso legal en la versión publicada en cada
+            momento.
         </p>
 
         <h2>3. Condiciones de uso</h2>
         <p>
-            El usuario se compromete a hacer un uso adecuado y lícito del Sitio, así como de los
-            contenidos e información que en él se ofrecen, absteniéndose de utilizarlos para fines
-            ilícitos o lesivos para OCTO o terceros.
+            El usuario se compromete a hacer un uso adecuado y lícito del Sitio y de sus contenidos,
+            absteniéndose de utilizarlos para fines ilícitos o lesivos para OCTO o para terceros, de
+            introducir o difundir software malicioso, y de realizar actividades que puedan dañar,
+            sobrecargar o impedir el normal funcionamiento del Sitio (por ejemplo, la extracción
+            masiva y automatizada de datos).
         </p>
 
-        <h2>4. Propiedad intelectual</h2>
+        <h2>4. Propiedad intelectual e industrial</h2>
         <p>
-            El diseño, la marca, el código y los textos propios del Sitio son titularidad de
-            OCTO, salvo que se indique lo contrario. Los datos de precios y ubicación de
-            gasolineras proceden de fuentes oficiales (ver siguiente apartado) y se citan conforme
-            a su naturaleza de datos abiertos.
+            El diseño, la marca «OCTO», el logotipo, el código fuente y los textos y elementos
+            gráficos propios del Sitio son titularidad de su responsable o se utilizan con la
+            correspondiente licencia, y quedan protegidos por la normativa de propiedad intelectual
+            e industrial. Los datos de precios y ubicación de gasolineras proceden de fuentes
+            oficiales de datos abiertos (ver apartado 5) y se reutilizan conforme a las condiciones
+            de dichas fuentes. La cartografía procede de OpenStreetMap y sus proveedores, bajo sus
+            respectivas licencias.
         </p>
 
         <h2>5. Origen de los datos y exclusión de responsabilidad</h2>
         <p>
             Los precios y datos de las estaciones de servicio proceden del catálogo de datos
-            abiertos del Ministerio para la Transición Ecológica y el Reto Demográfico (MITECO).
-            OCTO no garantiza la exactitud, vigencia ni disponibilidad permanente de estos datos,
-            ya que dependen de la actualización de la fuente oficial y de terceros (servicios de
-            mapas y cálculo de rutas). Antes de repostar, comprueba el precio en la propia
-            estación.
+            abiertos del Ministerio para la Transición Ecológica y el Reto Demográfico (MITECO) y
+            se actualizan periódicamente. OCTO <strong>no garantiza la exactitud, vigencia,
+            integridad ni disponibilidad permanente</strong> de estos datos, ya que dependen de la
+            actualización de la fuente oficial y de servicios de terceros (mapas, geocodificación y
+            cálculo de rutas). Las recomendaciones de repostaje del planificador de viajes son
+            orientativas y se basan en estimaciones de consumo y autonomía introducidas por el
+            usuario. <strong>Antes de repostar o de emprender un viaje, comprueba el precio y la
+            disponibilidad en la propia estación.</strong> OCTO no se responsabiliza de las
+            decisiones tomadas a partir de la información del Sitio.
         </p>
 
         <h2>6. Enlaces a terceros</h2>
         <p>
-            El Sitio puede incluir enlaces a sitios de terceros (por ejemplo, mapas o servicios de
-            navegación). OCTO no se hace responsable del contenido ni de las políticas de
-            privacidad de dichos sitios.
+            El Sitio utiliza servicios de terceros para su funcionamiento (teselas de mapa,
+            geocodificación y cálculo de rutas) y puede incluir enlaces a plataformas externas de
+            navegación (Google Maps, Apple Maps, Waze). OCTO no controla ni se responsabiliza de los
+            contenidos, el funcionamiento ni las políticas de privacidad de dichos sitios de
+            terceros.
         </p>
 
-        <h2>7. Legislación aplicable</h2>
+        {adsActive && (
+            <>
+                <h2>7. Publicidad</h2>
+                <p>
+                    El Sitio puede mostrar publicidad de terceros (por ejemplo, Google AdSense) para
+                    sostener el proyecto. Dicha publicidad solo se carga previo consentimiento del
+                    usuario, según se detalla en la <a href="/cookies">Política de cookies</a>. OCTO
+                    no se hace responsable de los contenidos de los anuncios ni de los sitios de
+                    destino.
+                </p>
+            </>
+        )}
+
+        <h2>{nData}. Protección de datos</h2>
         <p>
-            Las presentes condiciones se rigen por la legislación española. Para cualquier
-            controversia derivada del uso del Sitio, las partes se someten a los juzgados y
-            tribunales que correspondan conforme a derecho.
+            El tratamiento de datos personales se rige por lo dispuesto en la
+            <a href="/privacidad">Política de privacidad</a> y en la
+            <a href="/cookies">Política de cookies</a>.
+        </p>
+
+        <h2>{nLaw}. Legislación aplicable y jurisdicción</h2>
+        <p>
+            Este aviso legal se rige por la legislación española. Para la resolución de cualquier
+            controversia derivada del acceso o uso del Sitio, y salvo que la normativa de consumo
+            aplicable disponga otro fuero, las partes se someten a los juzgados y tribunales del
+            domicilio del titular.
         </p>
     </div>
 
@@ -95,16 +149,29 @@ import Footer from "../components/Footer.astro";
     .legal h1 {
         font-family: var(--font-header);
         font-size: 2rem;
-        margin: 1rem 0 1.5rem;
+        margin: 1rem 0 0.5rem;
+    }
+    .updated {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin-bottom: 1.5rem;
     }
     .legal h2 {
         font-family: var(--font-header);
         font-size: 1.2rem;
         margin: 2rem 0 0.75rem;
     }
-    .legal p {
+    .legal p,
+    .legal li {
         color: var(--text-muted);
         margin-bottom: 1rem;
+    }
+    .legal ul {
+        padding-left: 1.2rem;
+        margin-bottom: 1rem;
+    }
+    .legal li {
+        margin-bottom: 0.4rem;
     }
     .legal a {
         color: var(--secondary);

@@ -1,59 +1,155 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Footer from "../components/Footer.astro";
+import { ADSENSE_ID } from "../consts";
+
+// Mientras no haya publicidad activa (PUBLIC_ADSENSE_ID vacío), los textos lo
+// dicen expresamente; al activarla y reconstruir, cambian al estado "con ads".
+const adsActive = Boolean(ADSENSE_ID);
 ---
 
 <Layout
-    title="Política de privacidad y cookies | OCTO"
-    description="Política de privacidad y uso de cookies de OCTO."
+    title="Política de privacidad | OCTO"
+    description="Política de privacidad de OCTO conforme al RGPD y la LOPDGDD: qué datos tratamos, con qué finalidad y tus derechos."
     hideSidebar={true}
     noindex={true}
 >
     <div class="legal">
         <a href="/" class="back">← Volver al inicio</a>
-        <h1>Política de privacidad y cookies</h1>
+        <h1>Política de privacidad</h1>
+        <p class="updated">Última actualización: 6 de julio de 2026</p>
 
+        <p>
+            En OCTO nos tomamos en serio tu privacidad. Esta política explica qué datos tratamos,
+            con qué finalidad y base jurídica, y qué derechos tienes, conforme al Reglamento (UE)
+            2016/679 (RGPD) y a la Ley Orgánica 3/2018 (LOPDGDD). El diseño de OCTO es
+            «privacy-first»: <strong>la mayor parte de la información se procesa en tu propio
+            navegador y no se envía a nuestros servidores.</strong>
+        </p>
+
+        <h2>1. Responsable del tratamiento</h2>
         <p class="note">
-            ⚠️ Plantilla pendiente de revisión legal. Sustituye este texto por tu política
-            definitiva (idealmente revisada por un profesional) antes de publicar y activar la
-            publicidad.
+            ⚠️ Completa los datos identificativos del titular antes de publicar (ver también el
+            <a href="/aviso-legal">Aviso legal</a>).
+        </p>
+        <ul>
+            <li><strong>Responsable:</strong> [nombre y apellidos o razón social] — [NIF/CIF]</li>
+            <li>
+                <strong>Contacto:</strong>
+                <a href="mailto:contactaocto@gmail.com">contactaocto@gmail.com</a>
+            </li>
+        </ul>
+
+        <h2>2. Qué datos tratamos, con qué finalidad y base jurídica</h2>
+        <p>
+            OCTO no dispone de registro ni de cuentas de usuario, por lo que
+            <strong>no te pedimos ni almacenamos datos identificativos</strong> (nombre, correo,
+            etc.) para el uso del Sitio. En concreto:
+        </p>
+        <ul>
+            <li>
+                <strong>Navegación:</strong> puedes usar el comparador, el explorador y el
+                planificador sin identificarte. No creamos perfiles con datos identificativos.
+            </li>
+            <li>
+                <strong>Geolocalización (opcional):</strong> si activas «usar mi ubicación», tu
+                posición se obtiene y se procesa <strong>en tu navegador</strong> para centrar el
+                mapa. No se envía ni se guarda en nuestros servidores. Base jurídica: tu
+                consentimiento (permiso del navegador), revocable en cualquier momento.
+            </li>
+            <li>
+                <strong>Preferencias en tu dispositivo:</strong> el tema (claro/oscuro), el ancho
+                del panel, las gasolineras que añades al comparador y tu decisión sobre cookies se
+                guardan en el <em>almacenamiento local</em> de tu navegador, no en servidor. Base
+                jurídica: interés legítimo en recordar tus preferencias y correcto funcionamiento
+                del servicio (cookies técnicas).
+            </li>
+            <li>
+                <strong>Compartir una ruta (acortador de enlaces):</strong> al pulsar «compartir»
+                en el planificador, la dirección (URL) de la ruta se almacena en nuestro servidor
+                para generar un enlace corto. Esa URL contiene los parámetros del viaje (origen,
+                destino, consumo, etc.) que tú introduces, pero <strong>no incluye datos
+                identificativos</strong>. Base jurídica: ejecución de la función que solicitas
+                (interés legítimo).
+            </li>
+            {adsActive && (
+                <li>
+                    <strong>Publicidad y medición de terceros:</strong> previo tu consentimiento,
+                    cargamos publicidad de Google AdSense, que puede tratar datos (identificadores de
+                    dispositivo, cookies, dirección IP) para mostrar anuncios y medir su rendimiento.
+                    Base jurídica: tu consentimiento. Sin él, no se cargan estos scripts. Consulta el
+                    detalle en la <a href="/cookies">Política de cookies</a>.
+                </li>
+            )}
+        </ul>
+
+        <h2>3. Servicios de terceros y transferencias internacionales</h2>
+        <p>
+            Para funcionar, OCTO utiliza servicios externos a los que, según la función que uses,
+            puede enviarse información técnica (como tu dirección IP, tus búsquedas de lugares o las
+            coordenadas de tu ruta):
+        </p>
+        <ul>
+            <li><strong>Teselas de mapa:</strong> OpenStreetMap.</li>
+            <li>
+                <strong>Búsqueda de lugares (geocodificación):</strong> Photon (Komoot) — recibe el
+                texto que escribes para localizar origen, destino y paradas.
+            </li>
+            <li>
+                <strong>Cálculo de rutas:</strong> Valhalla (OpenStreetMap) y, como alternativa,
+                OSRM — reciben las coordenadas de tu trayecto.
+            </li>
+            <li>
+                <strong>Navegación externa:</strong> enlaces a Google Maps, Apple Maps y Waze, que
+                se abren solo cuando tú los pulsas.
+            </li>
+            {adsActive && (
+                <li>
+                    <strong>Publicidad:</strong> Google AdSense (Google Ireland Ltd. / Google LLC),
+                    previo consentimiento.
+                </li>
+            )}
+        </ul>
+        <p>
+            Algunos de estos proveedores pueden estar ubicados fuera del Espacio Económico Europeo
+            (por ejemplo, Google en EE. UU.). En esos casos, las transferencias se amparan en las
+            garantías previstas por el RGPD (decisiones de adecuación o cláusulas contractuales
+            tipo). Te recomendamos consultar sus respectivas políticas de privacidad.
         </p>
 
-        <h2>1. Responsable</h2>
+        <h2>4. Plazo de conservación</h2>
         <p>
-            OCTO (en adelante, "el Sitio") facilita la comparación de precios de carburante en
-            España. Para cualquier consulta sobre privacidad puedes contactar a través de los
-            medios indicados en el Sitio.
-        </p>
-
-        <h2>2. Datos que tratamos</h2>
-        <p>
-            El Sitio no requiere registro para su uso básico. Si utilizas la geolocalización,
-            esta se procesa en tu navegador para centrar el mapa y no se almacena en nuestros
-            servidores. Las preferencias (tema, consentimiento de cookies, ancho del panel) se
-            guardan localmente en tu dispositivo.
-        </p>
-
-        <h2>3. Cookies y publicidad</h2>
-        <p>
-            Utilizamos cookies propias técnicas y, previo tu consentimiento, cookies de terceros
-            con fines publicitarios (por ejemplo, Google AdSense) y de medición. Puedes aceptar o
-            rechazar las cookies no esenciales mediante el banner de consentimiento. Sin tu
-            consentimiento no se cargan scripts publicitarios.
-        </p>
-
-        <h2>4. Datos de gasolineras</h2>
-        <p>
-            Los precios y ubicaciones proceden de los datos abiertos del Ministerio para la
-            Transición Ecológica y el Reto Demográfico. OCTO no garantiza la exactitud en tiempo
-            real de los precios mostrados.
+            Las preferencias guardadas en tu navegador permanecen hasta que las borras (por ejemplo,
+            limpiando los datos del sitio). Los enlaces cortos de rutas se conservan mientras el
+            enlace siga siendo útil. Los datos tratados por terceros se rigen por sus propios
+            plazos. Si nos escribes por correo, conservaremos tu mensaje el tiempo necesario para
+            atender tu solicitud.
         </p>
 
         <h2>5. Tus derechos</h2>
         <p>
-            Puedes revocar el consentimiento de cookies en cualquier momento borrando los datos
-            del Sitio en tu navegador. Para ejercer tus derechos conforme al RGPD,
-            <a href="/contacto">contáctanos</a>.
+            Puedes ejercer los derechos de <strong>acceso, rectificación, supresión, oposición,
+            limitación del tratamiento y portabilidad</strong>, así como retirar el consentimiento
+            en cualquier momento, escribiendo a
+            <a href="mailto:contactaocto@gmail.com">contactaocto@gmail.com</a>. Dado que OCTO no
+            almacena datos identificativos, en muchos casos no podremos vincular un dato concreto a
+            tu persona; aun así, atenderemos tu solicitud en lo que resulte aplicable. Si consideras
+            que no hemos atendido correctamente tus derechos, puedes reclamar ante la Agencia
+            Española de Protección de Datos (<a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer">www.aepd.es</a>).
+        </p>
+
+        <h2>6. Decisiones automatizadas y menores</h2>
+        <p>
+            No realizamos decisiones automatizadas con efectos jurídicos ni elaboración de perfiles
+            con datos identificativos. El Sitio está dirigido a un público general y no está
+            orientado a menores de edad.
+        </p>
+
+        <h2>7. Cambios en esta política</h2>
+        <p>
+            Podemos actualizar esta política para adaptarla a cambios normativos o del servicio. La
+            versión vigente será siempre la publicada en esta página, con su fecha de última
+            actualización.
         </p>
     </div>
 
@@ -79,16 +175,29 @@ import Footer from "../components/Footer.astro";
     .legal h1 {
         font-family: var(--font-header);
         font-size: 2rem;
-        margin: 1rem 0 1.5rem;
+        margin: 1rem 0 0.5rem;
+    }
+    .updated {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin-bottom: 1.5rem;
     }
     .legal h2 {
         font-family: var(--font-header);
         font-size: 1.2rem;
         margin: 2rem 0 0.75rem;
     }
-    .legal p {
+    .legal p,
+    .legal li {
         color: var(--text-muted);
         margin-bottom: 1rem;
+    }
+    .legal ul {
+        padding-left: 1.2rem;
+        margin-bottom: 1rem;
+    }
+    .legal li {
+        margin-bottom: 0.5rem;
     }
     .legal a {
         color: var(--secondary);

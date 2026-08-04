@@ -1,0 +1,256 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Footer from "../components/Footer.astro";
+import { ADSENSE_ID } from "../consts";
+
+// Los textos reflejan el estado REAL del sitio: mientras no haya publicidad
+// activa (PUBLIC_ADSENSE_ID vacío) no hay cookies de terceros ni banner de
+// consentimiento. Al activarla y reconstruir, esta página cambia sola.
+const adsActive = Boolean(ADSENSE_ID);
+---
+
+<Layout
+    title="Política de cookies | OCTO"
+    description="Política de cookies de OCTO: qué cookies y tecnologías de almacenamiento usamos, con qué fin y cómo gestionarlas."
+    hideSidebar={true}
+    noindex={true}
+>
+    <div class="legal">
+        <a href="/" class="back">← Volver al inicio</a>
+        <h1>Política de cookies</h1>
+        <p class="updated">Última actualización: 6 de julio de 2026</p>
+
+        <p>
+            Esta política explica qué cookies y tecnologías de almacenamiento similares utiliza
+            <strong>octogas.es</strong> (OCTO), conforme a la Ley 34/2002 (LSSI-CE) y a la Guía
+            sobre el uso de cookies de la Agencia Española de Protección de Datos (AEPD).
+        </p>
+
+        <h2>1. ¿Qué son las cookies?</h2>
+        <p>
+            Una cookie es un pequeño archivo que un sitio web guarda en tu dispositivo. Junto a las
+            cookies, esta política cubre otras tecnologías equivalentes como el
+            <em>almacenamiento local</em> (localStorage) del navegador, que OCTO usa para recordar
+            tus preferencias sin enviarlas a ningún servidor.
+        </p>
+
+        <h2>2. Tu consentimiento</h2>
+        {
+            adsActive ? (
+                <p>
+                    Al entrar por primera vez verás un aviso de cookies. Puedes <strong>aceptar</strong> o
+                    <strong>rechazar</strong> las cookies no esenciales con la misma facilidad, y navegar
+                    sin aceptarlas. <strong>Mientras no des tu consentimiento, no se cargan las cookies de
+                    publicidad de terceros.</strong> Las cookies técnicas necesarias no requieren
+                    consentimiento porque son imprescindibles para que el Sitio funcione y recuerde tus
+                    preferencias.
+                </p>
+            ) : (
+                <p>
+                    OCTO solo emplea el almacenamiento técnico descrito más abajo —imprescindible
+                    para que el Sitio funcione y recuerde tus preferencias—, que
+                    <strong> no requiere consentimiento</strong>. Por eso no verás ningún aviso de
+                    cookies.
+                </p>
+            )
+        }
+
+        <h2>3. Cookies y almacenamiento que usamos</h2>
+
+        {adsActive && <h3>a) Técnicas o necesarias (no requieren consentimiento)</h3>}
+        <p>
+            Se guardan en el almacenamiento local de tu navegador, <strong>no se envían a nuestros
+            servidores</strong> y sirven para el funcionamiento y tus preferencias:
+        </p>
+        <div class="tableWrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Responsable</th>
+                        <th>Finalidad</th>
+                        <th>Duración</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>octo-consent</td>
+                        <td>OCTO</td>
+                        <td>Recordar tu decisión sobre las cookies</td>
+                        <td>Persistente (hasta que la borres)</td>
+                    </tr>
+                    <tr>
+                        <td>theme</td>
+                        <td>OCTO</td>
+                        <td>Recordar el tema claro u oscuro</td>
+                        <td>Persistente</td>
+                    </tr>
+                    <tr>
+                        <td>octo-sidebar-width</td>
+                        <td>OCTO</td>
+                        <td>Recordar el ancho del panel del explorador</td>
+                        <td>Persistente</td>
+                    </tr>
+                    <tr>
+                        <td>octo-compare</td>
+                        <td>OCTO</td>
+                        <td>Recordar las gasolineras añadidas al comparador</td>
+                        <td>Persistente</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        {adsActive && (
+            <>
+                <h3>b) De terceros: publicidad (requieren consentimiento)</h3>
+                <p>
+                    Si aceptas, cargamos <strong>Google AdSense</strong> para mostrar publicidad que
+                    sostiene el proyecto. Google puede instalar cookies y usar identificadores para
+                    mostrar anuncios y medir su rendimiento, y puede tratar tu dirección IP. Estas
+                    cookies <strong>solo se cargan tras tu aceptación</strong>.
+                </p>
+                <div class="tableWrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Proveedor</th>
+                                <th>Finalidad</th>
+                                <th>Duración</th>
+                                <th>Más información</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Google AdSense (Google Ireland Ltd. / Google LLC)</td>
+                                <td>Publicidad y medición de anuncios (p. ej. cookies como __gads, __eoi, IDE)</td>
+                                <td>Según Google (de sesión a varios meses)</td>
+                                <td>
+                                    <a href="https://policies.google.com/technologies/cookies" target="_blank" rel="noopener noreferrer">Cookies de Google</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </>
+        )}
+        <p>
+            {adsActive
+                ? "OCTO no utiliza actualmente cookies de analítica propias. Si en el futuro incorporamos herramientas de medición, actualizaremos esta política y el aviso de consentimiento."
+                : "OCTO no utiliza cookies de terceros ni de analítica: únicamente el almacenamiento técnico anterior. Si esto cambiara en el futuro, actualizaríamos esta política."}
+        </p>
+
+        <h2>4. Cómo gestionar {adsActive ? "o retirar tu consentimiento" : "el almacenamiento"}</h2>
+        <ul>
+            <li>
+                <strong>En OCTO:</strong> puedes borrar los datos del sitio en tu navegador para
+                eliminar el almacenamiento local.{adsActive
+                    ? " Al volver a entrar, se mostrará de nuevo el aviso de cookies."
+                    : ""}
+            </li>
+            <li>
+                <strong>En tu navegador:</strong> puedes bloquear o eliminar cookies y almacenamiento
+                local desde la configuración de Chrome, Firefox, Safari, Edge, etc. Ten en cuenta que
+                desactivar las cookies técnicas puede afectar al funcionamiento del Sitio.
+            </li>
+            {adsActive && (
+                <li>
+                    <strong>Publicidad de Google:</strong> puedes gestionar la personalización de
+                    anuncios en
+                    <a href="https://myadcenter.google.com" target="_blank" rel="noopener noreferrer">myadcenter.google.com</a>.
+                </li>
+            )}
+        </ul>
+
+        <h2>5. Más información</h2>
+        <p>
+            Para saber cómo tratamos tus datos, consulta nuestra
+            <a href="/privacidad">Política de privacidad</a>. Para cualquier duda, escríbenos a
+            <a href="mailto:contactaocto@gmail.com">contactaocto@gmail.com</a>.
+        </p>
+    </div>
+
+    <Footer />
+</Layout>
+
+<style>
+    .legal {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 5rem 2rem 4rem;
+        color: var(--text);
+        line-height: 1.7;
+    }
+    .back {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.875rem;
+    }
+    .back:hover {
+        color: var(--primary);
+    }
+    .legal h1 {
+        font-family: var(--font-header);
+        font-size: 2rem;
+        margin: 1rem 0 0.5rem;
+    }
+    .updated {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin-bottom: 1.5rem;
+    }
+    .legal h2 {
+        font-family: var(--font-header);
+        font-size: 1.2rem;
+        margin: 2rem 0 0.75rem;
+    }
+    .legal h3 {
+        font-family: var(--font-header);
+        font-size: 1rem;
+        margin: 1.5rem 0 0.5rem;
+        color: var(--text);
+    }
+    .legal p,
+    .legal li {
+        color: var(--text-muted);
+        margin-bottom: 1rem;
+    }
+    .legal ul {
+        padding-left: 1.2rem;
+        margin-bottom: 1rem;
+    }
+    .legal li {
+        margin-bottom: 0.5rem;
+    }
+    .legal a {
+        color: var(--secondary);
+    }
+    .tableWrap {
+        overflow-x: auto;
+        margin: 0 0 1.25rem;
+    }
+    .legal table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+    .legal th,
+    .legal td {
+        text-align: left;
+        padding: 0.6rem 0.75rem;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        vertical-align: top;
+    }
+    .legal th {
+        background: var(--surface);
+        color: var(--text);
+        font-family: var(--font-header);
+        font-size: 0.8rem;
+    }
+    .legal td:first-child {
+        font-family: monospace;
+        color: var(--text);
+        white-space: nowrap;
+    }
+</style>
