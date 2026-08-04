@@ -1,4 +1,4 @@
-import { slugify } from "./lib/slug";
+import { placeSlug } from "./lib/placeName";
 import { fuelEnum, type FuelKey } from "./db/schema";
 
 /** Combustibles para los que calculamos medias agregadas: todos (sin favoritos). */
@@ -22,7 +22,7 @@ interface RawLike {
 
 /** scopeId de un municipio: 'provinciaSlug|municipioSlug' (igual que la web). */
 export function municipioScopeId(province: string, city: string): string {
-    return `${slugify(province)}|${slugify(city)}`;
+    return `${placeSlug(province)}|${placeSlug(city)}`;
 }
 
 /**
@@ -47,7 +47,7 @@ export function computeScopeAverages(raw: RawLike[]): ScopeAvg[] {
             const price = s.prices?.[fuel];
             if (price == null) continue;
             add("national", "", fuel, price);
-            if (s.province) add("province", slugify(s.province), fuel, price);
+            if (s.province) add("province", placeSlug(s.province), fuel, price);
             if (s.province && s.city) add("municipio", municipioScopeId(s.province, s.city), fuel, price);
         }
     }

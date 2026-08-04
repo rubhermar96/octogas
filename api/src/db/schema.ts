@@ -97,4 +97,11 @@ export const dailyPriceAvg = pgTable(
     ]
 );
 
+/** Enlaces cortos (p. ej. para compartir rutas por WhatsApp sin URLs kilométricas). */
+export const shortLinks = pgTable("short_links", {
+    code: text("code").primaryKey(),
+    url: text("url").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type FuelKey = (typeof fuelEnum.enumValues)[number];
