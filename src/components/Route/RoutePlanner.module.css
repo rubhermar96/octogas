@@ -92,7 +92,8 @@
     gap: 0.4rem;
 }
 
-.field label {
+.field label,
+.field .fieldLabel {
     font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -255,6 +256,62 @@
     margin-top: 2.5rem;
 }
 
+/* Selector de estrategia (barata / equilibrada / rápida): alterna sin recalcular. */
+.planTabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
+}
+
+.planTab {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    padding: 0.75rem 0.9rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.875rem;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+
+.planTab:hover {
+    border-color: var(--secondary);
+}
+
+.planTabActive {
+    border-color: var(--secondary);
+    background: color-mix(in srgb, var(--secondary) 12%, var(--surface));
+    box-shadow: inset 0 0 0 1px var(--secondary);
+}
+
+.planTabName {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+}
+
+.planTabActive .planTabName {
+    color: var(--secondary);
+}
+
+.planTabCost {
+    font-family: var(--font-header);
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text);
+}
+
+.planTabMeta {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
 .statsBar {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -324,12 +381,18 @@
 
 .stopCard {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
+    flex-direction: column;
+    gap: 0.7rem;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 0.875rem;
     padding: 0.9rem 1rem;
+}
+
+.stopCardTop {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
 .stopNum {
@@ -372,22 +435,62 @@ a.stopName:hover {
     color: var(--text-muted);
 }
 
-.stopRefuel {
+/* Fila de estadísticas a todo el ancho de la tarjeta (evita que el texto se
+   apriete en la columna central y acabe partiéndose en varias líneas). */
+.stopStats {
     display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    margin-top: 0.3rem;
-    font-size: 0.78rem;
-    color: var(--primary);
-    font-weight: 600;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
-.stopRefuel .material-symbols-outlined {
+.statChip {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.65rem;
+    border-radius: 0.6rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.statChip .material-symbols-outlined {
     font-size: 1rem;
 }
 
-.stopRefuel b {
+.statChip b {
+    color: var(--text);
+    font-weight: 700;
+}
+
+.statChipAccent {
+    background: color-mix(in srgb, var(--primary) 12%, var(--bg));
+    border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
     color: var(--primary);
+    white-space: normal;
+}
+
+.statChipAccent b {
+    color: var(--primary);
+}
+
+.wpIcon {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 0.6rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--secondary);
+}
+
+.wpIcon .material-symbols-outlined {
+    font-size: 1.1rem;
 }
 
 .stopPrice {
@@ -593,6 +696,30 @@ a.stopName:hover {
 .compare tbody tr:first-child td {
     color: var(--primary);
     font-weight: 700;
+}
+
+.compareStations {
+    font-weight: 500 !important;
+    color: var(--text-muted) !important;
+}
+
+/* Fila de la estrategia seleccionada en la tabla comparativa. */
+.compareSelected td {
+    background: color-mix(in srgb, var(--secondary) 12%, transparent);
+}
+
+.compareSelected td:first-child {
+    font-weight: 800;
+    color: var(--secondary) !important;
+}
+
+/* Más específico que ".compare td" para que gane el color de la celda de ahorro. */
+.compare td.deltaGood {
+    color: var(--primary) !important;
+}
+
+.compare td.deltaBad {
+    color: var(--accent) !important;
 }
 
 .baselineRow td {

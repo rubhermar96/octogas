@@ -53,9 +53,16 @@ function decodePolyline6(str: string): [number, number][] {
 
 /** Construye una etiqueta legible a partir de las propiedades de Photon. */
 function photonLabel(p: any): string {
-    const main =
-        p.name || [p.street, p.housenumber].filter(Boolean).join(' ') || p.city || p.county || '';
+    const street = [p.street, p.housenumber].filter(Boolean).join(' ');
+    const main = p.name || street || p.city || p.county || '';
     const parts: string[] = [main];
+    // Si es un lugar con nombre (comercio, hotel, POI…), añadimos su dirección
+    // para distinguir dos locales de la misma cadena en la misma ciudad (p. ej.
+    // los tres Carrefour de Cáceres). Sin calle en OSM, usamos el barrio.
+    if (p.name) {
+        if (street) parts.push(street);
+        else if (p.district && p.district !== main) parts.push(p.district);
+    }
     if (p.city && p.city !== main) parts.push(p.city);
     else if (p.county && p.county !== main) parts.push(p.county);
     if (p.state) parts.push(p.state);
@@ -70,7 +77,9 @@ export async function searchPlaces(query: string, limit = 6): Promise<GeoResult[
     if (query.trim().length < 3) return [];
     // Sin sesgo de proximidad: con él, "Santander" devolvía cajeros en Madrid en
     // vez de la ciudad. Filtramos a España y dejamos el ranking por relevancia.
-    const url = `https://photon.komoot.io/api/?limit=${limit}&q=${encodeURIComponent(query)}`;
+    // lang=default: nombres locales de OSM ("Castilla y León"); sin él, Photon
+    // traduce según el Accept-Language del navegador (en inglés → "Castile and León").
+    const url = `https://photon.komoot.io/api/?limit=${limit}&lang=default&q=${encodeURIComponent(query)}`;
     const res = await fetch(url);
     if (!res.ok) return [];
     const data = await res.json();
@@ -80,17 +89,41 @@ export async function searchPlaces(query: string, limit = 6): Promise<GeoResult[
     // Preferimos resultados en España; si no hay, mostramos todos.
     const es = feats.filter((f: any) => f.properties.countrycode === 'ES');
     const use = es.length ? es : feats;
-    return use.map((f: any) => ({
-        lat: f.geometry.coordinates[1],
-        lng: f.geometry.coordinates[0],
-        label: photonLabel(f.properties),
-    }));
+    // Photon devuelve entidades OSM distintas con el mismo nombre (p. ej. la
+    // ciudad, el municipio y la provincia de "Valladolid"): con nuestra etiqueta
+    // quedan idénticas a la vista, así que deduplicamos quedándonos con la más
+    // relevante (Photon ordena por relevancia y la primera suele ser la ciudad).
+    const seen = new Set<string>();
+    const out: GeoResult[] = [];
+    for (const f of use) {
+        const label = photonLabel(f.properties);
+        const key = label.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0], label });
+    }
+    return out;
 }
 
 /** Geocodifica un texto (devuelve la mejor coincidencia). */
 export async function geocode(query: string): Promise<GeoResult | null> {
     const r = await searchPlaces(query, 1);
     return r[0] ?? null;
+}
+
+/** Dirección aproximada de unas coordenadas (para etiquetar puntos elegidos en el mapa). */
+export async function reverseGeocode(lat: number, lng: number): Promise<GeoResult | null> {
+    try {
+        // lang=default: nombres locales de OSM (ver searchPlaces).
+        const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}&lang=default`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const f = (data.features || [])[0];
+        if (!f?.properties) return null;
+        return { lat, lng, label: photonLabel(f.properties) };
+    } catch {
+        return null;
+    }
 }
 
 /** Calcula la ruta en coche entre dos puntos. */
@@ -241,17 +274,19 @@ export function findCorridorStations(
 export interface FuelPlan {
     fuelNeeded: number;     // litros que consume el viaje
     startLiters: number;    // litros con los que sales
-    usableStart: number;    // litros de salida utilizables (descontada la reserva)
+    usableStart: number;    // litros de salida utilizables (descontado el mínimo)
     startRangeKm: number;   // km que puedes recorrer con el combustible de salida
-    maxRangeKm: number;     // autonomía con depósito lleno (descontada la reserva)
+    maxRangeKm: number;     // autonomía con depósito lleno (descontado el mínimo)
     canMakeItNoStops: boolean;
     minStops: number;       // paradas mínimas necesarias
     litersToBuy: number;    // litros que necesitas comprar en el viaje
-    reserveLiters: number;
+    reserveLiters: number;  // reserva efectiva al LLEGAR (la mayor entre la pedida y tu mínimo)
+    minLiters: number;      // litros mínimos que nunca se bajan ENTRE paradas (el mismo valor pasado, o el def.)
+    belowMinAtStart: boolean; // sales ya con menos combustible que tu mínimo
 }
 
-// Margen de seguridad fijo: combustible que no quieres bajar ENTRE paradas
-// (distinto de la reserva con la que quieres LLEGAR al destino).
+// Margen de seguridad por defecto (%): combustible que no quieres bajar ENTRE
+// paradas cuando el usuario no fija un mínimo explícito en litros.
 export const SAFETY_PCT = 8;
 
 /** Modelo de depósito: autonomía, paradas mínimas y litros a repostar. */
@@ -261,23 +296,30 @@ export function computeFuelPlan(params: {
     capacity: number; // L
     startPct: number; // 0..100
     arrivePct?: number; // % con el que quieres LLEGAR al destino (def. 10)
-    safetyPct?: number; // % de seguridad entre paradas (def. SAFETY_PCT)
+    minLiters?: number; // litros mínimos que no quieres bajar ENTRE paradas (def. SAFETY_PCT% de la capacidad)
 }): FuelPlan {
     const arrivePct = params.arrivePct ?? 10;
-    const safetyPct = params.safetyPct ?? SAFETY_PCT;
+    // El mínimo no puede superar la capacidad del depósito (sería pedir más de lo que cabe).
+    const minLiters = Math.min(
+        Math.max(0, params.minLiters ?? (params.capacity * SAFETY_PCT) / 100),
+        params.capacity
+    );
     const fuelNeeded = (params.distanceKm * params.consumption) / 100;
     const startLiters = (params.capacity * params.startPct) / 100;
     const arriveReserve = (params.capacity * arrivePct) / 100;
-    const safetyReserve = (params.capacity * safetyPct) / 100;
+    // La reserva de llegada nunca puede ser menor que tu mínimo: no tendría sentido
+    // pedir "quiero llegar con el X%" y a la vez "nunca bajar de Y L" si Y > X%.
+    const effectiveArriveReserve = Math.max(arriveReserve, minLiters);
 
-    // Autonomía con el margen de seguridad (no la reserva de llegada).
-    const usableStart = Math.max(0, startLiters - safetyReserve);
+    // Autonomía con el mínimo reservado (no la reserva de llegada, que puede ser mayor).
+    const usableStart = Math.max(0, startLiters - minLiters);
     const startRangeKm = (usableStart / params.consumption) * 100;
-    const fullUsable = Math.max(0.1, params.capacity - safetyReserve);
+    const fullUsable = Math.max(0.1, params.capacity - minLiters);
     const maxRangeKm = (fullUsable / params.consumption) * 100;
 
-    // Llegas sin repostar si, sin parar, terminas con al menos la reserva deseada.
-    const canMakeItNoStops = startLiters - fuelNeeded >= arriveReserve;
+    // Llegas sin repostar si, sin parar, terminas con al menos la reserva deseada
+    // (que ya incorpora tu mínimo, por si es mayor que la reserva de llegada pedida).
+    const canMakeItNoStops = startLiters - fuelNeeded >= effectiveArriveReserve;
 
     let minStops = 0;
     if (!canMakeItNoStops) {
@@ -288,7 +330,7 @@ export function computeFuelPlan(params: {
         // …pero si llegas por autonomía aunque sin la reserva deseada, hace falta 1 parada.
         minStops = Math.max(1, rangeStops);
     }
-    const litersToBuy = Math.max(0, fuelNeeded - startLiters + arriveReserve);
+    const litersToBuy = Math.max(0, fuelNeeded - startLiters + effectiveArriveReserve);
 
     return {
         fuelNeeded,
@@ -299,7 +341,9 @@ export function computeFuelPlan(params: {
         canMakeItNoStops,
         minStops,
         litersToBuy,
-        reserveLiters: arriveReserve,
+        reserveLiters: effectiveArriveReserve,
+        minLiters,
+        belowMinAtStart: startLiters < minLiters,
     };
 }
 
@@ -320,12 +364,15 @@ export function allocateRefuels(
         capacity: number;
         startLiters: number;
         arrivePct: number; // reserva deseada al LLEGAR al destino
-        safetyPct?: number; // margen entre paradas
+        minLiters?: number; // litros mínimos entre paradas (def. SAFETY_PCT% de la capacidad)
     }
 ): RefuelStop[] {
     const sorted = [...stops].sort((a, b) => a.progress - b.progress);
     const arriveReserve = (params.capacity * params.arrivePct) / 100;
-    const safetyReserve = (params.capacity * (params.safetyPct ?? SAFETY_PCT)) / 100;
+    const minLiters = params.minLiters ?? (params.capacity * SAFETY_PCT) / 100;
+    // La última parada nunca reposta menos de lo que hace falta para no bajar del
+    // mínimo, aunque la reserva de llegada pedida sea menor.
+    const effectiveArriveReserve = Math.max(arriveReserve, minLiters);
     const perKm = params.consumption / 100;
     let tank = params.startLiters;
     let prev = 0;
@@ -338,9 +385,9 @@ export function allocateRefuels(
         const isLast = i === sorted.length - 1;
         const nextProgress = isLast ? 1 : sorted[i + 1].progress;
         const legToNext = (nextProgress - s.progress) * params.totalDistanceKm;
-        // En la última parada llenamos para llegar con la reserva deseada;
-        // en las intermedias, solo lo justo para llegar a la siguiente con el margen de seguridad.
-        const targetReserve = isLast ? arriveReserve : safetyReserve;
+        // En la última parada llenamos para llegar con la reserva efectiva;
+        // en las intermedias, solo lo justo para llegar a la siguiente sin bajar del mínimo.
+        const targetReserve = isLast ? effectiveArriveReserve : minLiters;
         const needToNext = legToNext * perKm + targetReserve;
         const fill = Math.max(0, Math.min(params.capacity, needToNext) - tank);
         tank += fill;
@@ -348,6 +395,35 @@ export function allocateRefuels(
         prev = s.progress;
     }
     return out;
+}
+
+export interface TankLevels {
+    arrivalLiters: number; // combustible con el que se llega a esa parada
+    departureLiters: number; // combustible con el que se sale (= llegada + repostaje, si repostas)
+}
+
+/**
+ * Simula el nivel del depósito en cada parada de la ruta, en el orden en que
+ * se visitan (paradas propias del usuario Y de repostaje mezcladas). El
+ * consumo entre paradas solo depende de la distancia, así que una parada sin
+ * repostar no afecta al cálculo de las que sí repostan: simplemente "pasa de
+ * largo" con el mismo nivel de depósito con el que llegó.
+ */
+export function simulateTankLevels(
+    points: { progress: number; isRefuel: boolean; liters?: number }[],
+    params: { startLiters: number; totalDistanceKm: number; consumption: number }
+): TankLevels[] {
+    const perKm = params.consumption / 100;
+    let tank = params.startLiters;
+    let prevProgress = 0;
+    return points.map((p) => {
+        const legKm = (p.progress - prevProgress) * params.totalDistanceKm;
+        const arrivalLiters = Math.max(0, tank - legKm * perKm);
+        const departureLiters = p.isRefuel ? arrivalLiters + (p.liters ?? 0) : arrivalLiters;
+        tank = departureLiters;
+        prevProgress = p.progress;
+        return { arrivalLiters, departureLiters };
+    });
 }
 
 // Pesos relativos de precio vs. tiempo según la prioridad (sobre valores 0..1).
@@ -397,7 +473,7 @@ export function pickStops(
     const enriched = corridor.map((s) => {
         const convenient = nearestWaypointKm(s) <= NEAR_WAYPOINT_KM;
         const timeCost = s.detourKm + (convenient ? 0 : DEDICATED_STOP_KM);
-        return { s, price: s.price, timeCost };
+        return { s, price: s.price, timeCost, convenient };
     });
 
     const prices = enriched.map((e) => e.price);
@@ -409,41 +485,66 @@ export function pickStops(
     const w = PRIORITY_WEIGHTS[priority];
     const scored = enriched.map((e) => ({
         s: e.s,
+        convenient: e.convenient,
         score: w.price * norm(e.price, pMin, pMax) + w.time * norm(e.timeCost, tMin, tMax),
     }));
 
-    // Ventana de progreso [lo, hi] donde puede ir la parada k.
-    // Con datos de autonomía: la parada va donde el depósito está bajo (no antes de
-    // que haga falta), es decir, en el último tramo de cada "tanque". Sin esos datos,
-    // se reparten en tramos iguales.
-    const windowFor = (k: number): [number, number] => {
+    // Límites de progreso (0..1) donde puede ir la parada k, respecto a la posición
+    // REAL de la parada anterior (prevProg; 0 = salida). Se distinguen:
+    //  - hi: hasta dónde llegas con el combustible disponible desde la parada
+    //    anterior. Nunca se coloca una parada fuera de tu alcance real.
+    //  - hardLo: mínimo INNEGOCIABLE para que, desde aquí, los depósitos que quedan
+    //    MÁS la aproximación final (reservando el combustible de llegada) alcancen el
+    //    destino. Garantiza que no te quedes tirado ni te pases de largo del destino.
+    //  - prefLo: preferencia de repostar en el último ~45% del depósito (no recién salido).
+    // Sin datos de autonomía se reparten en tramos iguales.
+    const bounds = (k: number, prevProg: number): { hardLo: number; prefLo: number; hi: number } => {
         if (fuel && fuel.maxRangeKm > 0 && fuel.totalDistanceKm > 0) {
             const D = fuel.totalDistanceKm;
-            const deadlineKm = Math.min(D, fuel.startRangeKm + k * fuel.maxRangeKm);
-            const windowKm = fuel.maxRangeKm * 0.45; // repostar en el último ~45% del tanque
-            let loKm = Math.max(0, deadlineKm - windowKm);
-            // En la ÚLTIMA parada, si quieres llegar muy lleno, debe estar cerca del
-            // destino para que el repostaje alcance la reserva de llegada.
-            if (k === stops - 1 && fuel.arriveTopUpRangeKm != null) {
-                loKm = Math.max(loKm, D - fuel.arriveTopUpRangeKm);
-            }
-            return [Math.max(0, loKm / D), Math.min(1, deadlineKm / D)];
+            const prevKm = prevProg * D;
+            const hiKm = Math.min(D, k === 0 ? fuel.startRangeKm : prevKm + fuel.maxRangeKm);
+            // El último tramo debe reservar el combustible de llegada: su alcance útil
+            // es arriveTopUpRangeKm (si se conoce); los intermedios, un depósito lleno.
+            const lastReachKm = fuel.arriveTopUpRangeKm ?? fuel.maxRangeKm;
+            const feasibleLoKm = D - lastReachKm - (stops - 1 - k) * fuel.maxRangeKm;
+            const hardLoKm = Math.min(hiKm, Math.max(0, prevKm, feasibleLoKm));
+            const prefLoKm = Math.min(hiKm, Math.max(hardLoKm, hiKm - fuel.maxRangeKm * 0.45));
+            return { hardLo: hardLoKm / D, prefLo: prefLoKm / D, hi: hiKm / D };
         }
-        return [k / stops, (k + 1) / stops];
+        return { hardLo: k / stops, prefLo: k / stops, hi: (k + 1) / stops };
     };
 
     const picks: CorridorStation[] = [];
+    let prevProg = 0; // progreso de la última parada elegida (salida = 0)
     for (let k = 0; k < stops; k++) {
-        const [lo, hi] = windowFor(k);
+        const { hardLo, prefLo, hi } = bounds(k, prevProg);
         const available = scored.filter((x) => !picks.some((p) => p.id === x.s.id));
-        let pool = available.filter((x) => x.s.progress >= lo && x.s.progress <= hi);
-        // Si no hay estaciones en la ventana, ampliamos: cualquiera antes del límite;
-        // y si tampoco, cualquiera disponible.
-        if (pool.length === 0) pool = available.filter((x) => x.s.progress <= hi);
-        if (pool.length === 0) pool = available;
-        if (pool.length === 0) break;
-        const best = pool.reduce((a, b) => (b.score < a.score ? b : a));
-        picks.push(best.s);
+        // 1) preferente y factible. Las estaciones "convenient" (junto a una parada
+        //    propia: repostar ahí no cuesta tiempo) entran desde el mínimo FACTIBLE,
+        //    saltándose la preferencia del ~45% del tanque: no tiene sentido descartar
+        //    la gasolinera de tu propia parada por pillarte "demasiado pronto".
+        // 2) factible (relaja la preferencia, mantiene el mínimo innegociable para no
+        //    quedarte tirado ni pasarte del destino).
+        let pool = available.filter(
+            (x) => x.s.progress <= hi && x.s.progress >= (x.convenient ? hardLo : prefLo)
+        );
+        if (pool.length === 0) pool = available.filter((x) => x.s.progress >= hardLo && x.s.progress <= hi);
+        if (pool.length > 0) {
+            const best = pool.reduce((a, b) => (b.score < a.score ? b : a));
+            picks.push(best.s);
+            prevProg = best.s.progress;
+            continue;
+        }
+        // 3) Último recurso (corredor sin estación en el tramo factible): coge la más
+        //    AVANZADA a tu alcance (<= hi) para minimizar el hueco; si ninguna es
+        //    alcanzable, la más cercana. Nunca una barata al inicio que rompa el plan.
+        const reachable = available.filter((x) => x.s.progress <= hi);
+        const chosen = reachable.length
+            ? reachable.reduce((a, b) => (b.s.progress > a.s.progress ? b : a))
+            : available.reduce((a, b) => (b.s.progress < a.s.progress ? b : a), available[0]);
+        if (!chosen) break;
+        picks.push(chosen.s);
+        prevProg = chosen.s.progress;
     }
     return picks.sort((a, b) => a.progress - b.progress);
 }

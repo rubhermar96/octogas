@@ -6,12 +6,7 @@ import 'react-leaflet-cluster/dist/assets/MarkerCluster.css';
 import 'react-leaflet-cluster/dist/assets/MarkerCluster.Default.css';
 import styles from './MainMap.module.css';
 import type { GasStation, FuelType } from '../../types/gasolinera';
-import { FUEL_LABELS, FUEL_ORDER } from '../../lib/fuels';
-import BrandLogo from '../Explorer/BrandLogo';
-import CompareButton from '../Explorer/CompareButton';
-import { slugify } from '../../lib/slug';
-import { stationUrl } from '../../lib/stationUrl';
-import { BRAND_LOGO_FILES } from '../../lib/brandLogos';
+import { stationIcon, StationPopup } from './StationMarker';
 import L from 'leaflet';
 
 // Fix for default marker icon in react-leaflet
@@ -33,30 +28,6 @@ const userLocationIcon = L.divIcon({
     iconSize: [24, 24],
     iconAnchor: [12, 12],
 });
-
-// Marcador con el logo de la marca y un borde de color según el precio.
-// Cacheamos por (logo|color|seleccionado) para no recrear iconos en cada render.
-const iconCache = new Map<string, L.DivIcon>();
-const stationIcon = (brand: string, color: string, selected: boolean): L.DivIcon => {
-    const file = BRAND_LOGO_FILES[slugify(brand)];
-    const key = `${file ?? '_'}|${color}|${selected ? 1 : 0}`;
-    const cached = iconCache.get(key);
-    if (cached) return cached;
-
-    const inner = file
-        ? `<img src="/brands/${file}" alt="" />`
-        : `<span class="material-symbols-outlined">local_gas_station</span>`;
-    const size = selected ? 44 : 34;
-    const icon = L.divIcon({
-        className: 'octo-marker-icon',
-        html: `<div class="octo-marker ${selected ? 'octo-marker-sel' : ''}" style="--bc:${color}">${inner}</div>`,
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size / 2],
-        popupAnchor: [0, -size / 2 + 2],
-    });
-    iconCache.set(key, icon);
-    return icon;
-};
 
 const createClusterCustomIcon = (cluster: any) => {
     const count = cluster.getChildCount();
@@ -174,48 +145,6 @@ interface MainMapProps {
     active?: boolean;
 }
 
-const StationPopup: React.FC<{ station: GasStation; fuelType: FuelType }> = ({ station, fuelType }) => {
-    const availableFuels = FUEL_ORDER.filter((f) => station.prices[f] != null);
-    return (
-        <div className={styles.popupBody}>
-            <div className={styles.popupTop}>
-                <BrandLogo brand={station.brand} size={38} />
-                <div className={styles.popupTitleBlock}>
-                    <h3 className={styles.popupHeader}>
-                        <a className={styles.popupNameLink} href={stationUrl(station)}>{station.name}</a>
-                    </h3>
-                    <p className={styles.popupAddress}>{station.address}, {station.city}</p>
-                </div>
-            </div>
-            <div className={styles.popupGrid}>
-                {availableFuels.map((f) => (
-                    <div key={f} className={`${styles.popupFuel} ${f === fuelType ? styles.popupFuelActive : ''}`}>
-                        <span className={styles.popupFuelLabel}>{FUEL_LABELS[f]}</span>
-                        <span className={styles.popupFuelPrice}>{station.prices[f]!.toFixed(3)}</span>
-                    </div>
-                ))}
-            </div>
-            <div className={styles.popupFooter}>
-                <span className={styles.popupSchedule}>
-                    <span className="material-symbols-outlined">schedule</span>
-                    {station.schedule || 'Horario no disponible'}
-                </span>
-                <div className={styles.popupActions}>
-                    <CompareButton stationId={station.id} variant="icon" />
-                    <a
-                        href={`https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={styles.popupRoute}
-                    >
-                        Cómo llegar
-                    </a>
-                </div>
-            </div>
-        </div>
-    );
-};
-
 const MainMap: React.FC<MainMapProps> = ({
     stations = [],
     initialCenter = [40.4168, -3.7038],
@@ -263,7 +192,7 @@ const MainMap: React.FC<MainMapProps> = ({
     }, [selectedStation, active]);
 
     // Color del borde según el precio relativo a la media de la zona.
-    const getColor = (price: number | null) => {
+    const getColor = (price: number | null | undefined) => {
         if (!price || !averagePrice) return '#94a3b8'; // sin dato
         if (price <= averagePrice * 0.985) return '#22c55e'; // barata
         if (price >= averagePrice * 1.015) return '#ef4444'; // cara
@@ -285,9 +214,11 @@ const MainMap: React.FC<MainMapProps> = ({
                 style={{ height: '100%', width: '100%' }}
                 scrollWheelZoom={true}
             >
+                {/* OSM estándar: el mismo basemap que el planificador de rutas
+                    (más calles/lugares y topónimos en idioma local que CARTO). */}
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                    url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
                 <ResizeHandler />

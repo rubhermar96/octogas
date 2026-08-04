@@ -1,0 +1,142 @@
+/* Estilos del popup de gasolinera, compartidos por todos los mapas de OCTO
+   (Explorador y Planificador de rutas). */
+.popupContent {
+    font-family: var(--font-body);
+}
+
+.popupHeader {
+    font-family: var(--font-header);
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin: 0 0 0.15rem 0;
+    color: #0f172a; /* el popup de Leaflet siempre es blanco -> texto oscuro fijo */
+    line-height: 1.2;
+}
+
+.popupAddress {
+    font-size: 0.72rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.popupBody {
+    min-width: 230px;
+    font-family: var(--font-body);
+}
+
+.popupTop {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0.625rem;
+}
+
+.popupTitleBlock {
+    flex: 1;
+    min-width: 0;
+}
+
+.popupGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+    gap: 0.35rem;
+    margin-bottom: 0.625rem;
+}
+
+.popupFuel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.35rem 0.2rem;
+    border-radius: 0.35rem;
+    background-color: #f1f5f9;
+}
+
+.popupFuelActive {
+    background-color: rgba(52, 211, 153, 0.15);
+    box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.4);
+}
+
+.popupFuelLabel {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #64748b;
+    margin-bottom: 0.15rem;
+}
+
+.popupFuelActive .popupFuelLabel {
+    color: #059669;
+}
+
+.popupFuelPrice {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.popupFuelActive .popupFuelPrice {
+    color: #059669;
+}
+
+.popupFooter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 0.5rem;
+    font-size: 0.68rem;
+    color: #64748b;
+}
+
+.popupSchedule {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.popupSchedule :global(.material-symbols-outlined) {
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.popupActions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.popupNameLink {
+    color: inherit;
+    text-decoration: none;
+}
+
+.popupNameLink:hover {
+    color: #059669;
+    text-decoration: underline;
+}
+
+.popupRoute {
+    color: #0284c7;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.popupRoute:hover {
+    text-decoration: underline;
+}
+
+:global(.leaflet-popup-content-wrapper) {
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+:global(.leaflet-popup-content) {
+    margin: 1rem;
+}
