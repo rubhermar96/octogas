@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { normalizeBrand } from "../lib/brands";
-import { slugify } from "../lib/slug";
+import { placeSlug } from "../lib/placeName";
 import type { GasStation } from "../types/gasolinera";
 
 const API_URL =
@@ -22,6 +22,66 @@ function parseCoord(raw: string | undefined): number {
     return parseFloat(raw.replace(",", "."));
 }
 
+/** Elimina las claves sin precio (null) para no serializarlas en el JSON. */
+function compactPrices(prices: Record<string, number | null>): GasStation["prices"] {
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(prices)) {
+        if (v != null) out[k] = v;
+    }
+    return out as GasStation["prices"];
+}
+
+/**
+ * Descarta precios implausibles (estaciones que reportan valores de relleno a
+ * MITECO, p. ej. "1,000" clavado en todos los carburantes). Umbrales relativos a
+ * la MEDIANA nacional de cada carburante, calibrados con datos reales (jul 2026):
+ *  - Carretera (sp95/98/diésel…): los falsos quedan a ≤0,62× la mediana y el
+ *    suelo legítimo del mercado (Canarias, low-cost) a ≥0,71× → corte en 0,67.
+ *  - Gasóleo B / GLP / GNC…: colas bajas anchas y LEGÍTIMAS (cooperativas,
+ *    granel; hay gasóleo B real a 0,82) → corte laxo en 0,50.
+ *  - Tope superior 1,8× para basura por arriba. Sin mediana fiable (menos de 50
+ *    precios, p. ej. hidrógeno) no se filtra.
+ * Muta `prices` de cada estación; una estación puede quedarse sin precios (y se
+ * excluye después, junto a las no geolocalizadas).
+ */
+const ROAD_FUELS = new Set(["sp95", "sp95Premium", "sp98", "diesel", "dieselPremium"]);
+function sanitizePrices(stations: GasStation[]): void {
+    const byFuel = new Map<string, number[]>();
+    for (const s of stations) {
+        for (const [f, p] of Object.entries(s.prices)) {
+            if (p == null) continue;
+            if (!byFuel.has(f)) byFuel.set(f, []);
+            byFuel.get(f)!.push(p);
+        }
+    }
+    const bounds = new Map<string, { lo: number; hi: number }>();
+    for (const [f, prices] of byFuel) {
+        if (prices.length < 50) continue;
+        prices.sort((a, b) => a - b);
+        const median = prices[Math.floor(prices.length / 2)];
+        const loRatio = ROAD_FUELS.has(f) ? 0.67 : 0.5;
+        bounds.set(f, { lo: median * loRatio, hi: median * 1.8 });
+    }
+    let dropped = 0;
+    const examples: string[] = [];
+    for (const s of stations) {
+        for (const [f, p] of Object.entries(s.prices)) {
+            if (p == null) continue;
+            const b = bounds.get(f);
+            if (b && (p < b.lo || p > b.hi)) {
+                delete (s.prices as Record<string, number>)[f];
+                dropped++;
+                if (examples.length < 8) examples.push(`${s.name} (${s.city}) ${f}=${p}`);
+            }
+        }
+    }
+    if (dropped > 0) {
+        console.log(
+            `OCTO Data: descartados ${dropped} precios implausibles → ${examples.join(" · ")}`
+        );
+    }
+}
+
 async function updateGasData() {
     console.log("OCTO Data: descargando datos del Ministerio…");
     const response = await fetch(API_URL);
@@ -31,7 +91,7 @@ async function updateGasData() {
     const data = await response.json();
     const list: any[] = data.ListaEESSPrecio ?? [];
 
-    const stations: GasStation[] = list
+    const parsed: GasStation[] = list
         .map((item): GasStation => ({
             id: item.IDEESS,
             name: (item["Rótulo"] ?? "").trim(),
@@ -46,7 +106,8 @@ async function updateGasData() {
             lng: parseCoord(item["Longitud (WGS84)"]),
             saleType: item["Tipo Venta"] ?? "",
             schedule: (item.Horario ?? "").trim(),
-            prices: {
+            // Solo las claves con precio (omitimos los null: ahorra ~28% del JSON).
+            prices: compactPrices({
                 sp95: parsePrice(item["Precio Gasolina 95 E5"]),
                 sp95Premium: parsePrice(item["Precio Gasolina 95 E5 Premium"]),
                 sp98: parsePrice(item["Precio Gasolina 98 E5"]),
@@ -57,15 +118,20 @@ async function updateGasData() {
                 gnc: parsePrice(item["Precio Gas Natural Comprimido"]),
                 gnl: parsePrice(item["Precio Gas Natural Licuado"]),
                 hydrogen: parsePrice(item["Precio Hidrogeno"]),
-            },
-        }))
-        // Solo estaciones geolocalizadas y con al menos un precio.
-        .filter(
-            (g) =>
-                Number.isFinite(g.lat) &&
-                Number.isFinite(g.lng) &&
-                Object.values(g.prices).some((p) => p !== null)
-        );
+            }),
+        }));
+
+    // Fuera precios de relleno/implausibles ANTES de filtrar: una estación cuyos
+    // precios sean todos falsos se queda sin ninguno y se excluye del catálogo.
+    sanitizePrices(parsed);
+
+    // Solo estaciones geolocalizadas y con al menos un precio.
+    const stations: GasStation[] = parsed.filter(
+        (g) =>
+            Number.isFinite(g.lat) &&
+            Number.isFinite(g.lng) &&
+            Object.values(g.prices).some((p) => p !== null)
+    );
 
     // Índice ligero de municipios para el autocompletado (evita cargar 3 MB en el cliente).
     const muniMap = new Map<
@@ -82,8 +148,8 @@ async function updateGasData() {
             muniMap.set(key, {
                 city: s.city,
                 province: s.province,
-                provinceSlug: slugify(s.province),
-                citySlug: slugify(s.city),
+                provinceSlug: placeSlug(s.province),
+                citySlug: placeSlug(s.city),
                 count: 1,
             });
         }
