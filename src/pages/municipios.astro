@@ -4,8 +4,8 @@ import path from "node:path";
 import Layout from "../layouts/Layout.astro";
 import MunicipalitySearch from "../components/Explorer/MunicipalitySearch";
 import Footer from "../components/Footer.astro";
-import { titleCase } from "../lib/format";
-import { provinceUrl } from "../lib/stationUrl";
+import { displayProvince } from "../lib/placeName";
+import { provinceUrl, municipioUrl } from "../lib/stationUrl";
 import type { GasStation } from "../types/gasolinera";
 
 // Lista de provincias (con nº de gasolineras) para enlazar a sus páginas.
@@ -17,27 +17,28 @@ for (const s of stationsData) {
     if (s.province) provCounts.set(s.province, (provCounts.get(s.province) ?? 0) + 1);
 }
 const provinces = [...provCounts.entries()]
-    .map(([name, count]) => ({ label: titleCase(name), url: provinceUrl(name), count }))
+    .map(([name, count]) => ({ label: displayProvince(name), url: provinceUrl(name), count }))
     .sort((a, b) => a.label.localeCompare(b.label, "es"));
 
-// Ciudades principales (nombre visible + ruta a su página de municipio).
-const mainCities: { name: string; path: string }[] = [
-    { name: "Madrid", path: "/gasolineras-baratas/madrid/madrid" },
-    { name: "Barcelona", path: "/gasolineras-baratas/barcelona/barcelona" },
-    { name: "Valencia", path: "/gasolineras-baratas/valencia-valencia/valencia" },
-    { name: "Sevilla", path: "/gasolineras-baratas/sevilla/sevilla" },
-    { name: "Zaragoza", path: "/gasolineras-baratas/zaragoza/zaragoza" },
-    { name: "Málaga", path: "/gasolineras-baratas/malaga/malaga" },
-    { name: "Murcia", path: "/gasolineras-baratas/murcia/murcia" },
-    { name: "Palma de Mallorca", path: "/gasolineras-baratas/balears-illes/palma-de-mallorca" },
-    { name: "Las Palmas de Gran Canaria", path: "/gasolineras-baratas/palmas-las/palmas-de-gran-canaria-las" },
-    { name: "Córdoba", path: "/gasolineras-baratas/cordoba/cordoba" },
-    { name: "Valladolid", path: "/gasolineras-baratas/valladolid/valladolid" },
-    { name: "Alicante", path: "/gasolineras-baratas/alicante/alicantealacant" },
-    { name: "Cartagena", path: "/gasolineras-baratas/murcia/cartagena" },
-    { name: "Jerez de la Frontera", path: "/gasolineras-baratas/cadiz/jerez-de-la-frontera" },
-    { name: "Bilbao", path: "/gasolineras-baratas/bizkaia/bilbao" },
-    { name: "Granada", path: "/gasolineras-baratas/granada/granada" },
+// Ciudades principales (nombre visible + provincia/municipio en bruto, tal
+// como vienen del Ministerio, para que municipioUrl() calcule la ruta).
+const mainCities: { name: string; province: string; city: string }[] = [
+    { name: "Madrid", province: "MADRID", city: "Madrid" },
+    { name: "Barcelona", province: "BARCELONA", city: "Barcelona" },
+    { name: "Valencia", province: "VALENCIA / VALÈNCIA", city: "Valencia" },
+    { name: "Sevilla", province: "SEVILLA", city: "Sevilla" },
+    { name: "Zaragoza", province: "ZARAGOZA", city: "Zaragoza" },
+    { name: "Málaga", province: "MÁLAGA", city: "Málaga" },
+    { name: "Murcia", province: "MURCIA", city: "Murcia" },
+    { name: "Palma de Mallorca", province: "BALEARS (ILLES)", city: "Palma de Mallorca" },
+    { name: "Las Palmas de Gran Canaria", province: "PALMAS (LAS)", city: "Palmas de Gran Canaria (Las)" },
+    { name: "Córdoba", province: "CÓRDOBA", city: "Córdoba" },
+    { name: "Valladolid", province: "VALLADOLID", city: "Valladolid" },
+    { name: "Alicante", province: "ALICANTE", city: "Alicante/Alacant" },
+    { name: "Cartagena", province: "MURCIA", city: "Cartagena" },
+    { name: "Jerez de la Frontera", province: "CÁDIZ", city: "Jerez de la Frontera" },
+    { name: "Bilbao", province: "BIZKAIA", city: "Bilbao" },
+    { name: "Granada", province: "GRANADA", city: "Granada" },
 ];
 ---
 
@@ -46,6 +47,8 @@ const mainCities: { name: string; path: string }[] = [
     description="Busca tu municipio y compara al instante los precios de gasolina y diésel de las gasolineras de tu zona. Datos oficiales actualizados de toda España."
     hideSidebar={true}
 >
+    {/* El índice de municipios del buscador se descarga en paralelo con el JS de la isla. */}
+    <link rel="preload" href="/data/municipios.json" as="fetch" crossorigin="anonymous" slot="head" />
     <main class="municipios-page">
         <div class="background-effects">
             <div class="blob blob-1"></div>
@@ -55,7 +58,7 @@ const mainCities: { name: string; path: string }[] = [
         <section class="search-container">
             <header class="page-header">
                 <a href="/" class="back-link">
-                    <span class="material-symbols-outlined">arrow_back</span>
+                    <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
                     Volver al inicio
                 </a>
                 <h1 class="title">Encuentra tu <span class="text-gradient">gasolinera</span></h1>
@@ -69,7 +72,7 @@ const mainCities: { name: string; path: string }[] = [
             <div class="location-cta">
                 <span class="divider-text">o</span>
                 <a href="/explorador?mode=location" class="location-button">
-                    <span class="material-symbols-outlined">my_location</span>
+                    <span class="material-symbols-outlined" aria-hidden="true">my_location</span>
                     Usar mi ubicación en tiempo real
                 </a>
             </div>
@@ -79,9 +82,9 @@ const mainCities: { name: string; path: string }[] = [
                 <div class="cities-grid">
                     {
                         mainCities.map((c) => (
-                            <a href={c.path} class="city-card">
+                            <a href={municipioUrl(c.province, c.city)} class="city-card">
                                 <span class="city-name">{c.name}</span>
-                                <span class="city-icon material-symbols-outlined">location_city</span>
+                                <span class="city-icon material-symbols-outlined" aria-hidden="true">location_city</span>
                             </a>
                         ))
                     }
@@ -89,12 +92,12 @@ const mainCities: { name: string; path: string }[] = [
             </div>
 
             <a href="/precios-combustible-espana" class="espana-link">
-                <span class="material-symbols-outlined">trending_up</span>
+                <span class="material-symbols-outlined" aria-hidden="true">trending_up</span>
                 <span>
                     <strong>Precio medio de la gasolina y el diésel en España</strong>
                     <small>Mira la media nacional y su evolución</small>
                 </span>
-                <span class="material-symbols-outlined arrow">arrow_forward</span>
+                <span class="material-symbols-outlined arrow" aria-hidden="true">arrow_forward</span>
             </a>
 
             <div class="quick-links">

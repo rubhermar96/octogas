@@ -1,4 +1,5 @@
 import { slugify } from './slug';
+import { placeSlug } from './placeName';
 
 /** Campos mínimos necesarios para construir la URL de una gasolinera (admite
  *  tanto un GasStation completo como un subconjunto ligero, p. ej. en tops). */
@@ -23,15 +24,15 @@ export function stationSlug(s: StationLike): string {
 
 /** Ruta canónica de la ficha de una gasolinera. */
 export function stationUrl(s: StationLike): string {
-    return `/gasolineras-baratas/${slugify(s.province)}/${slugify(s.city)}/${stationSlug(s)}`;
+    return `/gasolineras-baratas/${placeSlug(s.province)}/${placeSlug(s.city)}/${stationSlug(s)}`;
 }
 
 /** Ruta de la página de una provincia. */
 export function provinceUrl(province: string): string {
-    return `/gasolineras-baratas/${slugify(province)}`;
+    return `/gasolineras-baratas/${placeSlug(province)}`;
 }
 
 /** Ruta de la página de un municipio. */
 export function municipioUrl(province: string, city: string): string {
-    return `/gasolineras-baratas/${slugify(province)}/${slugify(city)}`;
+    return `/gasolineras-baratas/${placeSlug(province)}/${placeSlug(city)}`;
 }

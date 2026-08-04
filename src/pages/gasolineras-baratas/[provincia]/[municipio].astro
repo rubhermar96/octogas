@@ -6,9 +6,8 @@ import MainMap from "../../../components/Map/MainMap";
 import MunicipioTop from "../../../components/Municipio/MunicipioTop";
 import AdSlot from "../../../components/AdSlot.astro";
 import Footer from "../../../components/Footer.astro";
-import { slugify } from "../../../lib/slug";
 import { stationUrl, provinceUrl } from "../../../lib/stationUrl";
-import { titleCase } from "../../../lib/format";
+import { placeSlug, displayProvince, displayCity } from "../../../lib/placeName";
 import PriceHistoryChart from "../../../components/Station/PriceHistoryChart";
 import { loadAggHistory, scopeKey } from "../../../lib/aggHistory";
 import type { GasStation } from "../../../types/gasolinera";
@@ -37,15 +36,15 @@ export async function getStaticPaths() {
     const provinceMunis: Record<string, Sibling[]> = {};
     for (const province in groups) {
         provinceMunis[province] = Object.entries(groups[province])
-            .map(([name, list]) => ({ name, slug: slugify(name), count: list.length }))
+            .map(([name, list]) => ({ name, slug: placeSlug(name), count: list.length }))
             .sort((a, b) => b.count - a.count);
     }
 
     const paths = [];
     for (const provinceName in groups) {
         for (const municipalityName in groups[provinceName]) {
-            const provSlug = slugify(provinceName);
-            const muniSlug = slugify(municipalityName);
+            const provSlug = placeSlug(provinceName);
+            const muniSlug = placeSlug(municipalityName);
             if (!provSlug || !muniSlug) continue;
 
             const siblings = provinceMunis[provinceName]
@@ -76,10 +75,11 @@ const { provinceName, municipalityName, provSlug, stations, siblings } = Astro.p
 };
 
 // Nombre de provincia en formato "Título" (el dato viene en mayúsculas).
-const provLabel = titleCase(provinceName);
+const provLabel = displayProvince(provinceName);
+const muniLabel = displayCity(municipalityName);
 
 const aggHist = (await loadAggHistory()).get(
-    scopeKey("municipio", `${slugify(provinceName)}|${slugify(municipalityName)}`)
+    scopeKey("municipio", `${placeSlug(provinceName)}|${placeSlug(municipalityName)}`)
 ) ?? {};
 
 // --- Estadísticas para contenido y FAQ ---
@@ -128,28 +128,28 @@ const updated = new Date().toLocaleDateString("es-ES", {
     year: "numeric",
 });
 
-const pageTitle = `Gasolineras baratas en ${municipalityName} (${provLabel}) — Precios hoy | OCTO`;
-const pageDescription = `Compara el precio de la gasolina 95 y el diésel en ${stations.length} gasolineras de ${municipalityName}, ${provLabel}. La más barata desde ${fmt(minSp95)} €/L. Datos oficiales actualizados.`;
+const pageTitle = `Gasolineras baratas en ${muniLabel} (${provLabel}) — Precios hoy | OCTO`;
+const pageDescription = `Compara el precio de la gasolina 95 y el diésel en ${stations.length} gasolineras de ${muniLabel}, ${provLabel}. La más barata desde ${fmt(minSp95)} €/L. Datos oficiales actualizados.`;
 
 // --- Datos estructurados (FAQ + Breadcrumb) ---
 const faq = [
     {
-        q: `¿Cuál es la gasolinera más barata en ${municipalityName}?`,
+        q: `¿Cuál es la gasolinera más barata en ${muniLabel}?`,
         a: cheapestSp95Station
             ? `Actualmente la más barata para Gasolina 95 es ${cheapestSp95Station.name} (${cheapestSp95Station.address}), a ${fmt(minSp95)} €/L.`
-            : `Consulta el listado actualizado de gasolineras en ${municipalityName} para ver la más barata.`,
+            : `Consulta el listado actualizado de gasolineras en ${muniLabel} para ver la más barata.`,
     },
     {
-        q: `¿Cuánto cuesta la gasolina 95 en ${municipalityName}?`,
-        a: `El precio medio de la Gasolina 95 en ${municipalityName} es de ${fmt(avgSp95)} €/L, siendo el más bajo ${fmt(minSp95)} €/L.`,
+        q: `¿Cuánto cuesta la gasolina 95 en ${muniLabel}?`,
+        a: `El precio medio de la Gasolina 95 en ${muniLabel} es de ${fmt(avgSp95)} €/L, siendo el más bajo ${fmt(minSp95)} €/L.`,
     },
     {
-        q: `¿Cuánto cuesta el diésel en ${municipalityName}?`,
-        a: `El precio medio del Gasóleo A (diésel) en ${municipalityName} es de ${fmt(avgDiesel)} €/L, con un mínimo de ${fmt(minDiesel)} €/L.`,
+        q: `¿Cuánto cuesta el diésel en ${muniLabel}?`,
+        a: `El precio medio del Gasóleo A (diésel) en ${muniLabel} es de ${fmt(avgDiesel)} €/L, con un mínimo de ${fmt(minDiesel)} €/L.`,
     },
     {
-        q: `¿Cuántas gasolineras hay en ${municipalityName}?`,
-        a: `Hay ${stations.length} estaciones de servicio con precios disponibles en ${municipalityName}.`,
+        q: `¿Cuántas gasolineras hay en ${muniLabel}?`,
+        a: `Hay ${stations.length} estaciones de servicio con precios disponibles en ${muniLabel}.`,
     },
     {
         q: `¿Con qué frecuencia se actualizan los precios?`,
@@ -181,7 +181,7 @@ const breadcrumbJsonLd = {
         {
             "@type": "ListItem",
             position: 3,
-            name: `${municipalityName} (${provLabel})`,
+            name: `${muniLabel} (${provLabel})`,
             item: Astro.url.href,
         },
     ],
@@ -197,15 +197,15 @@ const breadcrumbJsonLd = {
             <nav class="breadcrumb" aria-label="Migas de pan">
                 <a href="/">Inicio</a>
                 <span>›</span>
-                <a href={provinceUrl(provinceName)}>{titleCase(provinceName)}</a>
+                <a href={provinceUrl(provinceName)}>{provLabel}</a>
                 <span>›</span>
-                <span class="current">{municipalityName}</span>
+                <span class="current">{muniLabel}</span>
             </nav>
 
             <header class="page-header">
-                <h1>Gasolineras baratas en {municipalityName}</h1>
+                <h1>Gasolineras baratas en {muniLabel}</h1>
                 <p class="subtitle">
-                    Precios de gasolina y diésel en {municipalityName}, {provLabel}.
+                    Precios de gasolina y diésel en {muniLabel}, {provLabel}.
                     Comparamos {stations.length} estaciones de servicio para que encuentres la
                     más barata. <span class="updated">Actualizado el {updated}.</span>
                 </p>
@@ -229,7 +229,7 @@ const breadcrumbJsonLd = {
             <MunicipioTop client:load stations={stations} explorerUrl={explorerUrl} />
 
             <section class="chart-section">
-                <h2>Evolución del precio medio en {municipalityName}</h2>
+                <h2>Evolución del precio medio en {muniLabel}</h2>
                 <PriceHistoryChart client:visible history={aggHist} />
             </section>
 
@@ -248,7 +248,7 @@ const breadcrumbJsonLd = {
             </section>
 
             <section class="faq">
-                <h2>Preguntas frecuentes sobre el precio del combustible en {municipalityName}</h2>
+                <h2>Preguntas frecuentes sobre el precio del combustible en {muniLabel}</h2>
                 {
                     faq.map((f) => (
                         <details class="faq-item">
@@ -260,7 +260,7 @@ const breadcrumbJsonLd = {
             </section>
 
             <section class="all-stations">
-                <h2>Todas las gasolineras de {municipalityName}</h2>
+                <h2>Todas las gasolineras de {muniLabel}</h2>
                 <div class="station-link-grid">
                     {
                         stations.map((s) => (
@@ -282,7 +282,7 @@ const breadcrumbJsonLd = {
                         <div class="sibling-grid">
                             {siblings.map((m) => (
                                 <a href={`/gasolineras-baratas/${provSlug}/${m.slug}`} class="sibling-link">
-                                    {m.name}
+                                    {displayCity(m.name)}
                                     <span>{m.count}</span>
                                 </a>
                             ))}

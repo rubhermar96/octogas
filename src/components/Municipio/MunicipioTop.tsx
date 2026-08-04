@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import type { GasStation, FuelType } from '../../types/gasolinera';
 import { FUEL_LABELS } from '../../lib/fuels';
 import { stationUrl } from '../../lib/stationUrl';
+import { displayCity } from '../../lib/placeName';
 import BrandLogo from '../Explorer/BrandLogo';
 import styles from './MunicipioTop.module.css';
 
@@ -52,7 +53,7 @@ const MunicipioTop: React.FC<Props> = ({ stations, explorerUrl }) => {
                         <a className={styles.info} href={stationUrl(s)} title="Ver ficha de la gasolinera">
                             <span className={styles.name}>{s.name}</span>
                             <span className={styles.addr}>
-                                {s.address}, {s.city}
+                                {s.address}, {displayCity(s.city)}
                             </span>
                         </a>
                         <div className={styles.priceCol}>
@@ -66,14 +67,14 @@ const MunicipioTop: React.FC<Props> = ({ stations, explorerUrl }) => {
                             rel="noopener noreferrer"
                             title="Cómo llegar"
                         >
-                            <span className="material-symbols-outlined">directions</span>
+                            <span className="material-symbols-outlined" aria-hidden="true">directions</span>
                         </a>
                     </li>
                 ))}
             </ol>
 
             <a className={styles.cta} href={explorerUrl}>
-                <span className="material-symbols-outlined">explore</span>
+                <span className="material-symbols-outlined" aria-hidden="true">explore</span>
                 Ver todas y explorar el municipio en el mapa
             </a>
         </section>

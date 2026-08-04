@@ -4,9 +4,8 @@ import path from "node:path";
 import Layout from "../../layouts/Layout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Footer from "../../components/Footer.astro";
-import { slugify } from "../../lib/slug";
 import { stationUrl, municipioUrl } from "../../lib/stationUrl";
-import { titleCase } from "../../lib/format";
+import { placeSlug, displayProvince, displayCity } from "../../lib/placeName";
 import PriceHistoryChart from "../../components/Station/PriceHistoryChart";
 import { loadAggHistory, scopeKey } from "../../lib/aggHistory";
 import type { GasStation } from "../../types/gasolinera";
@@ -40,7 +39,7 @@ export async function getStaticPaths() {
                 const sp95 = l.map((x) => x.prices.sp95).filter((p): p is number => p != null);
                 return {
                     name,
-                    slug: slugify(name),
+                    slug: placeSlug(name),
                     count: l.length,
                     minSp95: sp95.length ? Math.min(...sp95) : null,
                 };
@@ -48,7 +47,7 @@ export async function getStaticPaths() {
             .sort((a, b) => b.count - a.count);
 
         return {
-            params: { provincia: slugify(provinceName) },
+            params: { provincia: placeSlug(provinceName) },
             props: { provinceName, stations: list, munis },
         };
     });
@@ -60,9 +59,9 @@ const { provinceName, stations, munis } = Astro.props as {
     munis: Muni[];
 };
 
-const provLabel = titleCase(provinceName);
+const provLabel = displayProvince(provinceName);
 
-const aggHist = (await loadAggHistory()).get(scopeKey("province", slugify(provinceName))) ?? {};
+const aggHist = (await loadAggHistory()).get(scopeKey("province", placeSlug(provinceName))) ?? {};
 
 type FuelKey = "sp95" | "sp98" | "diesel" | "glp";
 const min = (key: FuelKey) => {
@@ -193,7 +192,7 @@ const breadcrumbJsonLd = {
                     <a class="cheapest" href={stationUrl(cheapestSp95)}>
                         <span class="cheapest-tag">Más barata SP95</span>
                         <span class="cheapest-name">{cheapestSp95.name}</span>
-                        <span class="cheapest-meta">{cheapestSp95.city} · {fmt(minSp95)} €/L</span>
+                        <span class="cheapest-meta">{displayCity(cheapestSp95.city)} · {fmt(minSp95)} €/L</span>
                     </a>
                 )
             }
@@ -211,7 +210,7 @@ const breadcrumbJsonLd = {
                     {
                         munis.map((m) => (
                             <a href={municipioUrl(provinceName, m.name)} class="muni-link">
-                                <span class="muni-name">{m.name}</span>
+                                <span class="muni-name">{displayCity(m.name)}</span>
                                 <span class="muni-meta">
                                     {m.minSp95 != null && <span class="muni-price">{fmt(m.minSp95)} €/L</span>}
                                     <span class="muni-count">{m.count}</span>
