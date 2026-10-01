@@ -176,3 +176,10 @@
         font-size: 0.75rem;
     }
 }
+
+/* Desde cuándo hay histórico: explica por qué un rango largo aún no está activo. */
+.coverage {
+    margin: 0.4rem 0 0;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
