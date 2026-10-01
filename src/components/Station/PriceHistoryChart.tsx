@@ -63,25 +63,29 @@ const PriceHistoryChart: React.FC<Props> = ({ history }) => {
     const points = (fuel && history[fuel]) || [];
 
     const hasAny = points.length > 0;
-    const spanDays = hasAny ? (Date.now() - Math.min(...points.map((p) => p.t))) / DAY : 0;
+    const firstT = hasAny ? Math.min(...points.map((p) => p.t)) : 0;
+    const spanDays = hasAny ? (Date.now() - firstT) / DAY : 0;
+    const since = hasAny ? dateLong.format(new Date(firstT)) : "";
 
-    // Por defecto 30 días. Los rangos mayores solo se activan cuando hay histórico
-    // suficiente para que tengan sentido (si no, salen deshabilitados).
+    // Por defecto 30 días. Cada rango mayor se activa en cuanto el histórico va más
+    // allá del rango anterior, es decir, cuando enseña algo que el anterior no enseña
+    // ("Todo" solo con más de un año: hasta entonces coincidiría con "1 año").
     const [rangeIdx, setRangeIdx] = useState(0);
     const [hover, setHover] = useState<{ x: number; t: number } | null>(null);
     const svgRef = useRef<SVGSVGElement>(null);
 
-    const rangeEnabled = (r: (typeof RANGES)[number], i: number) => {
-        if (i === 0) return true; // 30 días siempre
-        if (r.days === Infinity) return spanDays > 365; // "Todo": útil con >1 año
-        return spanDays >= r.days * 0.9;
-    };
+    const rangeEnabled = (i: number) => i === 0 || spanDays > RANGES[i - 1].days;
+    // Al cambiar a un combustible con menos histórico, el rango elegido puede dejar de
+    // estar disponible: entonces se usa "30 días".
+    const activeRange = rangeEnabled(rangeIdx) ? rangeIdx : 0;
 
     const geo = useMemo(() => {
         if (points.length === 0) return null;
         const now = Date.now();
-        const days = RANGES[rangeIdx].days;
-        const start = days === Infinity ? Math.min(...points.map((p) => p.t)) : now - days * DAY;
+        const days = RANGES[activeRange].days;
+        // Si hay menos histórico que el rango, el eje empieza donde empiezan los datos
+        // (en vez de dejar vacía la parte de la gráfica sin datos).
+        const start = days === Infinity ? firstT : Math.max(now - days * DAY, firstT);
 
         // Recorte al rango, con "arrastre" del último valor previo al inicio.
         const inRange = points.filter((p) => p.t >= start);
@@ -123,7 +127,7 @@ const PriceHistoryChart: React.FC<Props> = ({ history }) => {
         });
 
         return { x, y, invX, pts, path: d, yTicks, xTicks };
-    }, [rangeIdx, points]);
+    }, [activeRange, points, firstT]);
 
     const onMove = (e: React.PointerEvent) => {
         if (!geo || !svgRef.current) return;
@@ -186,20 +190,21 @@ const PriceHistoryChart: React.FC<Props> = ({ history }) => {
 
             <div className={styles.ranges}>
                 {RANGES.map((r, i) => {
-                    const en = rangeEnabled(r, i);
+                    const en = rangeEnabled(i);
                     return (
                         <button
                             key={r.label}
-                            className={`${styles.rangeBtn} ${i === rangeIdx ? styles.active : ""}`}
+                            className={`${styles.rangeBtn} ${i === activeRange ? styles.active : ""}`}
                             onClick={() => en && setRangeIdx(i)}
                             disabled={!en}
-                            title={en ? undefined : "Disponible cuando haya más histórico"}
+                            title={en ? undefined : `Aún no hay histórico suficiente: empieza el ${since}`}
                         >
                             {r.label}
                         </button>
                     );
                 })}
             </div>
+            <p className={styles.coverage}>Histórico desde el {since}</p>
 
             <div className={styles.chartBox}>
                 <svg
