@@ -30,3 +30,6 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# volcados de la base de datos (se suben a mano al servidor, nunca al repo)
+*.dump

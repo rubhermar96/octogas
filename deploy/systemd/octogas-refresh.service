@@ -1,0 +1,14 @@
+[Unit]
+Description=OCTO: refresco de precios, ingesta en la BD y publicación de la web
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=__APP_USER__
+WorkingDirectory=__APP_DIR__
+ExecStart=/bin/bash __APP_DIR__/deploy/refresh.sh
+# El build va con prioridad baja para no frenar a Nginx ni a la API.
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=45min
