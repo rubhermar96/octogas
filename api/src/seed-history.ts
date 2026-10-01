@@ -29,6 +29,20 @@ function chunk<T>(arr: T[], size: number): T[][] {
 }
 
 async function main() {
+    // Este script BORRA el histórico real anterior a hoy y lo sustituye por precios
+    // inventados: nunca en producción (setup.sh pone NODE_ENV=production en api/.env)
+    // y, en desarrollo, solo pidiéndolo explícitamente.
+    if (process.env.NODE_ENV === "production") {
+        console.error("Seed simulado bloqueado: NODE_ENV=production. Borraría el histórico real.");
+        process.exit(1);
+    }
+    if (!process.argv.includes("--simulado")) {
+        console.error(
+            "Este script BORRA el histórico anterior a hoy y lo sustituye por precios inventados.\n" +
+                "Si es lo que quieres (solo en una BD de desarrollo), ejecuta: npm run seed -- --simulado"
+        );
+        process.exit(1);
+    }
     console.log("Seed de histórico SIMULADO (solo desarrollo)…");
 
     // Borra histórico de días anteriores (deja el de hoy: la ingesta real).
