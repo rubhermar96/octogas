@@ -2,11 +2,19 @@
 // encuentra enlaces internos rotos o páginas sin título, sin descripción, sin h1, con
 // varios h1 o con un título repetido. Lo ejecuta la integración continua tras el build.
 //
-// Uso: node scripts/check-site.mjs [carpeta]   (por defecto: dist)
+// Uso: node scripts/check-site.mjs [carpeta] [--min-pages N]   (carpeta por defecto: dist)
+//
+// --min-pages: falla también si salen menos páginas (p. ej. si MITECO devolviera un
+// catálogo incompleto, la web sería pequeña pero sin enlaces rotos).
 import fs from 'node:fs';
 import path from 'node:path';
 
-const DIST = path.resolve(process.argv[2] ?? 'dist');
+const args = process.argv.slice(2);
+const minIdx = args.indexOf('--min-pages');
+const MIN_PAGES = minIdx >= 0 ? Number(args.splice(minIdx, 2)[1]) : 0;
+const DIST = path.resolve(args[0] ?? 'dist');
+// En GitHub Actions, el resumen sale como aviso visible en la ejecución.
+const inCI = process.env.GITHUB_ACTIONS === 'true';
 if (!fs.existsSync(DIST)) {
     console.error(`No existe ${DIST}: ejecuta antes el build.`);
     process.exit(1);
@@ -58,12 +66,16 @@ for (const file of files) {
 }
 for (const [title, pages] of titles) if (pages.length > 1) add(`título repetido «${title}»`, pages.join(' · '));
 
-console.log(`${files.length} páginas revisadas, ${checked.size} enlaces internos distintos.`);
+if (files.length < MIN_PAGES) add(`solo ${files.length} páginas (mínimo ${MIN_PAGES})`, '¿catálogo de MITECO incompleto?');
+
+const summary = `${files.length} páginas revisadas, ${checked.size} enlaces internos distintos.`;
+console.log(inCI ? `::notice title=Web revisada::${summary}` : summary);
 if (problems.size === 0) {
     console.log('Sin problemas.');
     process.exit(0);
 }
 for (const [kind, pages] of problems) {
-    console.error(`✗ ${kind}: ${pages.length} página(s), p. ej. ${pages.slice(0, 3).join(' | ')}`);
+    const line = `${kind}: ${pages.length} página(s), p. ej. ${pages.slice(0, 3).join(' | ')}`;
+    console.error(inCI ? `::error title=Revisión de la web::${line}` : `✗ ${line}`);
 }
 process.exit(1);
