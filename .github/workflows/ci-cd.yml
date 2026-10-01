@@ -18,19 +18,21 @@ on:
 permissions:
   contents: read
 
+# Ubuntu 24.04 fijo (no ubuntu-latest): el mismo sistema que el servidor de producción.
+
 jobs:
   ci:
     name: Integración
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     # Un push nuevo cancela la integración en curso del anterior (no el despliegue).
     concurrency:
       group: ci-${{ github.ref }}
       cancel-in-progress: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -70,7 +72,7 @@ jobs:
     name: Despliegue en octogas.es
     needs: ci
     if: github.event_name == 'push' && github.ref == 'refs/heads/design-experiment-square-contrast'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment:
       name: production
