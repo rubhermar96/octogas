@@ -32,5 +32,8 @@ export interface GasStation {
     lng: number;
     saleType: string; // "P" público / "R" restringido (cooperativas, flotas)
     schedule: string;
+    // Margen de la carretera ("D" derecho / "I" izquierdo). Solo viene en las que lo
+    // tienen: distingue las parejas de autovía con la misma dirección, una por sentido.
+    margin?: 'D' | 'I';
     prices: FuelPrices;
 }
