@@ -91,20 +91,23 @@ cerrar la sesión de root, comprueba en otra ventana que entras con:
 ssh octo@IP
 ```
 
-## 4. Subir la base de datos (con todo el histórico)
+## 4. Subir el histórico real de precios
 
-Desde tu PC (PowerShell, en la carpeta del proyecto), vuelca la BD local y súbela:
+El histórico se reconstruye a partir de las descargas diarias de MITECO que has ido
+archivando en `data-archive/` desde el 30 de junio de 2026 (unos 190 MB). Desde tu PC
+(PowerShell, en la carpeta del proyecto):
 
 ```powershell
-& "C:\Program Files\PostgreSQL\18\bin\pg_dump.exe" "postgres://octogas:octogas@localhost:5432/octogas" -Fc -f octogas.dump
-scp octogas.dump octo@IP:/srv/octogas/
+scp -r data-archive octo@IP:/srv/octogas/
 ```
 
-El volcado ocupa unos 20 MB y lleva todo el histórico de precios desde marzo.
-Opcional, como copia: `scp -r data-archive octo@IP:/srv/octogas/` (los snapshots diarios).
+`setup.sh` las reproduce en orden, cada una con su fecha (`npm run replay`): mismo
+histórico que el real, comprobado con una base de datos de prueba.
 
-> Sin volcado, `setup.sh` crea el esquema vacío y, si encuentra snapshots en
-> `data-archive/`, los reproduce con `npm run replay`.
+> **No subas un volcado de tu base de datos local.** Tiene precios **simulados** de
+> marzo a junio (los generó `api/src/seed-history.ts` para probar la gráfica) y se
+> publicarían como si fueran reales. `setup.sh` se niega a publicar cualquier precio
+> anterior al 30 de junio (`REAL_HISTORY_START` en `deploy/config.env`).
 
 ## 5. Instalar y publicar
 
@@ -117,7 +120,7 @@ sudo bash /srv/octogas/deploy/setup.sh
 `setup.sh` (10-15 minutos la primera vez):
 
 1. Crea los `.env` de la web y de la API con la URL de la BD y el dominio.
-2. Instala dependencias y restaura `octogas.dump`.
+2. Instala dependencias y reconstruye el histórico real desde `data-archive/`.
 3. Arranca la API (`octogas-api`).
 4. Descarga los precios de hoy, los ingesta y genera la web (la primera publicación).
 5. Pide el certificado HTTPS a Let's Encrypt (ejecutarlo implica aceptar sus términos) y

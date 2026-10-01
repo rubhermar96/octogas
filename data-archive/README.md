@@ -13,21 +13,15 @@ stations-2026-07-01.json
 Los `.json` están en `.gitignore` (pesan varios MB cada uno) — este README sí
 se versiona para que la carpeta no se pierda y quede documentado el flujo.
 
-## Al desplegar (BD de producción limpia)
+## Al desplegar
 
-1. Copia esta carpeta (`data-archive/`) al VPS, o asegúrate de que el repo
-   clonado allí la tiene con todos los snapshots acumulados.
-2. En `api/.env`, apunta `DATABASE_URL` a la base de datos de **producción**.
-3. Ejecuta:
-   ```bash
-   cd api
-   npm run replay
-   ```
-   Esto reproduce todos los snapshots **en orden cronológico**, cada uno con su
-   fecha real (no la fecha de cuando se ejecuta el replay), reconstruyendo el
-   histórico de precios y las medias diarias por ámbito tal como ocurrieron.
-4. A partir de ahí, sigue con la ingesta normal de cada día (`npm run ingest`,
-   vía el cron/Action de producción) para seguir acumulando histórico real.
+Esta carpeta ES el histórico real de precios: copia su contenido al VPS
+(`scp -r data-archive octo@IP:/srv/octogas/`) y `deploy/setup.sh` la reproduce con
+`npm run replay` en orden cronológico, cada snapshot con su fecha real. Ver el paso 4
+de [DEPLOY.md](../DEPLOY.md).
 
-`npm run replay` es seguro de repetir (usa upserts), pero está pensado para
-ejecutarse **una vez** sobre una BD recién creada.
+No uses un volcado de la BD local en su lugar: tiene precios simulados anteriores
+al 30 de junio de 2026 (`api/src/seed-history.ts`).
+
+En el servidor, el temporizador `octogas-refresh` sigue archivando aquí un snapshot
+por día.

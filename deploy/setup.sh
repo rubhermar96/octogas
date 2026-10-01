@@ -3,9 +3,10 @@
 #
 #     sudo bash /srv/octogas/deploy/setup.sh
 #
-# Configura las variables de entorno, instala dependencias, carga la base de datos
-# (desde /srv/octogas/octogas.dump si lo has subido), hace la primera publicación,
-# obtiene el certificado HTTPS y activa los servicios. Se puede volver a ejecutar.
+# Configura las variables de entorno, instala dependencias, reconstruye el histórico
+# real de precios a partir de las descargas de /srv/octogas/data-archive (replay), hace
+# la primera publicación, obtiene el certificado HTTPS y activa los servicios. Se puede
+# volver a ejecutar.
 set -euo pipefail
 
 main() {
@@ -34,6 +35,7 @@ CONF
     if [[ ! -f $APP_DIR/api/.env ]]; then
         cat > "$APP_DIR/api/.env" <<CONF
 DATABASE_URL=$db_url
+NODE_ENV=production
 PORT=3001
 HOST=127.0.0.1
 CORS_ORIGINS=https://$DOMAIN,https://www.$DOMAIN
@@ -51,20 +53,21 @@ CONF
     local tables
     tables="$(as_app psql "$db_url" -tAc "select count(*) from information_schema.tables where table_schema = 'public'")"
     if [[ $tables -eq 0 ]]; then
-        if [[ -f $APP_DIR/octogas.dump ]]; then
-            echo "    Restaurando $APP_DIR/octogas.dump (histórico completo)..."
-            as_app pg_restore --no-owner --no-privileges -d "$db_url" "$APP_DIR/octogas.dump"
+        echo "    Creando el esquema..."
+        as_app bash -c "cd '$APP_DIR/api' && npx drizzle-kit push --force"
+        # El histórico se reconstruye SOLO con las descargas reales de MITECO, en orden y
+        # con su fecha. No se restaura la BD local: tiene precios simulados de desarrollo.
+        if compgen -G "$APP_DIR/data-archive/stations-*.json" >/dev/null; then
+            echo "    Reconstruyendo el histórico real desde data-archive/ (unos minutos)..."
+            as_app bash -c "cd '$APP_DIR/api' && npm run replay"
         else
-            echo "    Sin volcado: se crea el esquema vacío."
-            as_app bash -c "cd '$APP_DIR/api' && npx drizzle-kit push --force"
-            if compgen -G "$APP_DIR/data-archive/stations-*.json" >/dev/null; then
-                echo "    Reproduciendo los snapshots de data-archive/..."
-                as_app bash -c "cd '$APP_DIR/api' && npm run replay"
-            fi
+            echo "    AVISO: no hay descargas en data-archive/; el histórico empezará hoy."
+            echo "    (Súbelas antes si quieres conservarlo: ver DEPLOY.md, paso 4.)"
         fi
     else
         echo "    La base de datos ya tiene tablas: no se toca."
     fi
+    check_real_history "$db_url"
 
     echo "==> API"
     install_units
@@ -100,6 +103,19 @@ CONF
     echo
     echo "Listo: https://$DOMAIN"
     systemctl list-timers 'octogas-*' --no-pager
+}
+
+# Ningún precio puede ser anterior al inicio del histórico real (REAL_HISTORY_START):
+# lo anterior sería el histórico simulado de desarrollo (api/src/seed-history.ts), que
+# no debe publicarse nunca como si fuera real.
+check_real_history() {
+    local first
+    first="$(as_app psql "$1" -tAc "select coalesce(min(observed_at)::date::text, '') from price_observations")"
+    if [[ -n $first && $first < $REAL_HISTORY_START ]]; then
+        echo "ERROR: la base de datos tiene precios del $first, anteriores al inicio del histórico"
+        echo "       real ($REAL_HISTORY_START). Son datos simulados de desarrollo: no se publican."
+        exit 1
+    fi
 }
 
 # Comprueba que el dominio y www apuntan SOLO a este servidor antes de pedir el
