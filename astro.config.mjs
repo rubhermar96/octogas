@@ -23,6 +23,11 @@ export default defineConfig({
     }),
   ],
   output: 'static',
+  // Astro 7 cambió el valor por defecto a 'jsx' (reglas de espacios de React): un
+  // enlace escrito en una línea nueva se pegaría a la palabra anterior ("y en
+  // laPolítica de cookies"). true mantiene el comportamiento con el que se
+  // escribieron todas las páginas: compacta sin perder los espacios necesarios.
+  compressHTML: true,
   // Precarga las páginas enlazadas al pasar el ratón por encima: la navegación
   // entre páginas estáticas se siente instantánea sin coste en la carga inicial.
   prefetch: {

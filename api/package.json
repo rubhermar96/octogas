@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "description": "API y backend de Octogas (Fastify + Postgres + Drizzle): histórico de precios y servicios para la app móvil.",
   "scripts": {
     "dev": "tsx watch src/server.ts",
@@ -21,13 +24,18 @@
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.2.1",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "tsx": "^4.23.15"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
     "@types/pg": "^8.11.10",
     "drizzle-kit": "^0.31.10",
-    "tsx": "^4.19.2",
     "typescript": "^5.7.2"
+  },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.12"
+    }
   }
 }
