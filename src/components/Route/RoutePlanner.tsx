@@ -708,18 +708,8 @@ const RoutePlanner: React.FC = () => {
     const allRouteCoords = useMemo(() => (result ? result.plans.flatMap((p) => p.coords) : []), [result]);
 
     return (
-        <div className={styles.wrapper}>
-            <div className={styles.intro}>
-                <a href="/" className={styles.brand} title="Volver al inicio">
-                    <img src="/images/logo-octo.webp" alt="OCTO" className={styles.brandLogo} width={540} height={201} />
-                </a>
-                <h1>Planificador de viajes</h1>
-                <p>
-                    Indica tu trayecto, tu coche y tu depósito, y calculamos dónde y cuánto repostar
-                    para gastar lo menos posible.
-                </p>
-            </div>
-
+        // La cabecera (logo, h1 e introducción) la pinta rutas.astro en el HTML estático.
+        <div className={`${styles.wrapper} ${styles.afterIntro}`}>
             <form className={styles.form} onSubmit={handleSubmit}>
                 <div className={styles.row}>
                     <div className={styles.field}>

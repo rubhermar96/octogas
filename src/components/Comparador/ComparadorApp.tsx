@@ -114,15 +114,8 @@ const ComparadorApp: React.FC = () => {
     };
 
     return (
-        <div className={styles.page}>
-            <header className={styles.header}>
-                <div className={styles.headTitle}>
-                    <h1 className={styles.title}>Comparador de gasolineras</h1>
-                    <p className={styles.subtitle}>
-                        Pon hasta {MAX_COMPARE} gasolineras una al lado de otra y compara precio a precio.
-                    </p>
-                </div>
-            </header>
+        // La cabecera (h1 y subtítulo) la pinta comparador.astro en el HTML estático.
+        <div className={`${styles.page} ${styles.pageBody}`}>
 
             {/* Buscador para añadir + vaciar */}
             <div className={styles.toolbar}>

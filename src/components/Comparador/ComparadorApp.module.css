@@ -493,3 +493,13 @@
         font-size: 0.82rem;
     }
 }
+
+/* La cabecera va en el HTML estático de comparador.astro (para que el h1 exista
+   sin JavaScript) y la isla React debajo, repartiendo el relleno de .page. */
+.pageHead {
+    padding-bottom: 0;
+}
+
+.pageBody {
+    padding-top: 0;
+}

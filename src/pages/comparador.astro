@@ -1,6 +1,8 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import ComparadorApp from "../components/Comparador/ComparadorApp";
+import styles from "../components/Comparador/ComparadorApp.module.css";
+import { MAX_COMPARE } from "../lib/compare";
 import Footer from "../components/Footer.astro";
 ---
 
@@ -10,6 +12,18 @@ import Footer from "../components/Footer.astro";
 >
     {/* La descarga del JSON de estaciones arranca en paralelo con el JS de la isla. */}
     <link rel="preload" href="/data/stations.json" as="fetch" crossorigin="anonymous" slot="head" />
+    {/* Cabecera en HTML estático: el comparador es una isla que solo se pinta en el
+        navegador, y así el h1 existe aunque no se ejecute JavaScript. */}
+    <div class={`${styles.page} ${styles.pageHead}`}>
+        <header class={styles.header}>
+            <div class={styles.headTitle}>
+                <h1 class={styles.title}>Comparador de gasolineras</h1>
+                <p class={styles.subtitle}>
+                    Pon hasta {MAX_COMPARE} gasolineras una al lado de otra y compara precio a precio.
+                </p>
+            </div>
+        </header>
+    </div>
     <ComparadorApp client:only="react" />
     <Footer />
 </Layout>
