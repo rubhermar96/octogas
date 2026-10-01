@@ -1,13 +1,15 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Footer from "../components/Footer.astro";
-import { ADSENSE_ID } from "../consts";
+import { ADSENSE_ID, OWNER } from "../consts";
 
 // Mientras no haya publicidad activa (PUBLIC_ADSENSE_ID vacío) se oculta el
 // apartado de publicidad y se renumeran los siguientes; reaparece al activarla.
 const adsActive = Boolean(ADSENSE_ID);
 const nData = adsActive ? 8 : 7; // "Protección de datos"
 const nLaw = adsActive ? 9 : 8; // "Legislación aplicable"
+// NIF y domicilio solo son obligatorios (LSSI) si la web es una actividad económica.
+const missingOwnerData = !OWNER.name || (adsActive && (!OWNER.nif || !OWNER.address));
 ---
 
 <Layout
@@ -29,18 +31,23 @@ const nLaw = adsActive ? 9 : 8; // "Legislación aplicable"
         </p>
 
         <h2>1. Datos identificativos del titular</h2>
-        <p class="note">
-            ⚠️ Pendiente de completar antes de la publicación. La LSSI exige indicar los datos
-            identificativos del titular del sitio. Sustituye los campos entre corchetes por los
-            datos reales.
-        </p>
+        {missingOwnerData && (
+            <p class="note">
+                ⚠️ Faltan datos del titular: complétalos en <code>OWNER</code>
+                (<code>src/consts.ts</code>).
+            </p>
+        )}
         <ul>
-            <li><strong>Titular:</strong> [nombre y apellidos o razón social]</li>
-            <li><strong>NIF/CIF:</strong> [NIF/CIF]</li>
-            <li><strong>Domicilio a efectos de notificaciones:</strong> [domicilio]</li>
+            <li><strong>Titular:</strong> {OWNER.name || "[nombre y apellidos]"}</li>
+            {adsActive && (
+                <>
+                    <li><strong>NIF:</strong> {OWNER.nif || "[NIF]"}</li>
+                    <li><strong>Domicilio a efectos de notificaciones:</strong> {OWNER.address || "[domicilio]"}</li>
+                </>
+            )}
             <li>
                 <strong>Correo electrónico de contacto:</strong>
-                <a href="mailto:contactaocto@gmail.com">contactaocto@gmail.com</a>
+                <a href={`mailto:${OWNER.email}`}>{OWNER.email}</a>
             </li>
             <li><strong>Sitio web:</strong> octogas.es</li>
         </ul>
