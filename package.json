@@ -19,7 +19,7 @@
     "@fontsource/unbounded": "^5.2.8",
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",
-    "astro": "^5.18.0",
+    "astro": "^5.18.2",
     "dotenv": "^16.4.7",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.563.0",
