@@ -27,15 +27,11 @@ servidor está en [`deploy/`](deploy/).
 
 ## Antes de empezar
 
-1. **Decide la rama que se publica.** El trabajo de los últimos meses está en
-   `design-experiment-square-contrast`; `main` se quedó en junio. `deploy/config.env`
-   apunta a la rama del experimento. Si antes la fusionas en `main`, cambia ahí `BRANCH=main`
-   (y haz commit + push).
-2. **Pon tu nombre** en `OWNER.name` de [`src/consts.ts`](src/consts.ts) (y haz commit +
-   push). El RGPD obliga a identificar al responsable de los datos en la política de
-   privacidad. NIF y domicilio solo hacen falta cuando la web sea una actividad económica
-   (al activar publicidad); hasta entonces no se muestran.
-3. **Clave SSH** en tu PC (PowerShell), si no tienes una ya:
+- Se publica la rama **`design-experiment-square-contrast`** (la versión actual de la web;
+  `main` se quedó en junio). Está fijada en `deploy/config.env`.
+- El titular de los textos legales está en `OWNER` de [`src/consts.ts`](src/consts.ts). NIF y
+  domicilio solo se muestran (y hay que rellenarlos) al activar publicidad.
+- **Clave SSH** en tu PC (PowerShell), si no tienes una ya:
    ```powershell
    ssh-keygen -t ed25519
    ```
