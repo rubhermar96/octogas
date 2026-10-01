@@ -1,6 +1,9 @@
 {
   "name": "octogas",
   "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
@@ -13,13 +16,13 @@
     "refresh": "npm run update-data && npm run archive-snapshot && npm --prefix api run ingest"
   },
   "dependencies": {
-    "@astrojs/react": "^4.4.2",
-    "@astrojs/sitemap": "^3.7.3",
+    "@astrojs/react": "^7.0.0",
+    "@astrojs/sitemap": "^3.7.4",
     "@fontsource/geist-sans": "^5.2.5",
     "@fontsource/unbounded": "^5.2.8",
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",
-    "astro": "^5.18.2",
+    "astro": "^7.3.5",
     "dotenv": "^16.4.7",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.563.0",
@@ -33,6 +36,7 @@
     "@types/leaflet": "^1.9.21",
     "@types/node": "^25.2.3",
     "@types/pg": "^8.11.10",
-    "tsx": "^4.21.0"
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
   }
 }
