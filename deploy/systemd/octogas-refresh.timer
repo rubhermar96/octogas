@@ -1,0 +1,13 @@
+[Unit]
+Description=OCTO: refresco de precios dos veces al día
+
+[Timer]
+# Hora de Madrid (provision.sh pone el servidor en Europe/Madrid).
+OnCalendar=*-*-* 07:00:00
+OnCalendar=*-*-* 15:00:00
+RandomizedDelaySec=5min
+# Si el servidor estaba apagado a esa hora, se ejecuta al arrancar.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

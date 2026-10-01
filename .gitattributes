@@ -1,0 +1,4 @@
+# Los scripts y configuraciones del servidor deben llegar a Linux con saltos de
+# línea LF aunque se editen en Windows (con CRLF, bash falla con "$'\r': command not found").
+*.sh text eol=lf
+deploy/** text eol=lf

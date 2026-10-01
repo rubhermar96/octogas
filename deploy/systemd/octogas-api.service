@@ -1,0 +1,23 @@
+[Unit]
+Description=OCTO API (Fastify): histórico de precios y enlaces cortos
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=__APP_USER__
+WorkingDirectory=__APP_DIR__/api
+ExecStart=/usr/bin/node --import tsx src/server.ts
+Environment=NODE_ENV=production
+Restart=on-failure
+RestartSec=5
+MemoryMax=512M
+# Endurecimiento: solo puede escribir en su carpeta y no ve /home.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=__APP_DIR__/api
+
+[Install]
+WantedBy=multi-user.target
