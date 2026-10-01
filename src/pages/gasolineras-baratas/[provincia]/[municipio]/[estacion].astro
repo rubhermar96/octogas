@@ -8,6 +8,7 @@ import Footer from "../../../../components/Footer.astro";
 import { slugify } from "../../../../lib/slug";
 import { stationSlug, stationUrl, provinceUrl, municipioUrl } from "../../../../lib/stationUrl";
 import { placeSlug, displayProvince, displayCity } from "../../../../lib/placeName";
+import { displayAddress } from "../../../../lib/format";
 import { getDistance } from "../../../../lib/geo";
 import { FUEL_LABELS, FUEL_ORDER } from "../../../../lib/fuels";
 import { BRAND_LOGO_FILES } from "../../../../lib/brandLogos";
@@ -101,6 +102,9 @@ const { station, nearby, muniAvgSp95, muniAvgDiesel, muniCount, history } = Astr
 
 const provLabel = displayProvince(station.province);
 const cityLabel = displayCity(station.city);
+const addressLabel = displayAddress(station.address);
+// Solo viene en las parejas de autovía con la misma marca y dirección (una por sentido).
+const marginText = station.margin === "D" ? "margen derecho" : station.margin === "I" ? "margen izquierdo" : "";
 const fmt = (n: number | null | undefined) => (n != null ? n.toFixed(3) : "—");
 
 // ¿Tiene marca "de verdad" o es una independiente sin rótulo (p. ej. "Nº 10.935")?
@@ -126,9 +130,8 @@ const updated = new Date().toLocaleDateString("es-ES", {
 });
 
 const h1 = brandLabel ? `Gasolinera ${brandLabel}` : "Gasolinera";
-const titlePlace = `${station.address}, ${cityLabel}`;
-const pageTitle = `${h1} en ${titlePlace} — Precios de hoy | OCTO`;
-const pageDescription = `Precios actualizados de ${brandLabel || "la gasolinera"} en ${station.address}, ${cityLabel} (${provLabel}). Gasolina 95 a ${fmt(station.prices.sp95)} €/L y diésel a ${fmt(station.prices.diesel)} €/L. Horario, mapa y gasolineras cercanas.`;
+const pageTitle = `${h1} en ${addressLabel}, ${cityLabel}${marginText ? ` (${marginText})` : ""} | OCTO`;
+const pageDescription = `Precios de hoy de ${brandLabel || "la gasolinera"} en ${addressLabel}, ${cityLabel} (${provLabel})${marginText ? `, ${marginText}` : ""}: gasolina 95 a ${fmt(station.prices.sp95)} €/L y diésel a ${fmt(station.prices.diesel)} €/L. Horario, mapa y gasolineras cercanas.`;
 
 const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`;
 
@@ -136,10 +139,10 @@ const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${station.la
 const gasStationJsonLd = {
     "@context": "https://schema.org",
     "@type": "GasStation",
-    name: brandLabel ? `${brandLabel} - ${cityLabel}` : `Gasolinera ${station.address}`,
+    name: brandLabel ? `${brandLabel} - ${cityLabel}` : `Gasolinera ${addressLabel}`,
     address: {
         "@type": "PostalAddress",
-        streetAddress: station.address,
+        streetAddress: addressLabel,
         addressLocality: cityLabel,
         addressRegion: provLabel,
         postalCode: station.postalCode || undefined,
@@ -154,7 +157,7 @@ const faq = [
         q: `¿Cuánto cuesta la gasolina 95 en ${brandLabel || cityLabel}?`,
         a:
             station.prices.sp95 != null
-                ? `La Gasolina 95 está a ${fmt(station.prices.sp95)} €/L en ${station.address}, ${cityLabel}${sp95Cmp ? `, un ${Math.abs(sp95Cmp.diffPct).toFixed(1)}% ${sp95Cmp.cheaper ? "más barata" : "más cara"} que la media del municipio` : ""}.`
+                ? `La Gasolina 95 está a ${fmt(station.prices.sp95)} €/L en ${addressLabel}, ${cityLabel}${sp95Cmp ? `, un ${Math.abs(sp95Cmp.diffPct).toFixed(1)}% ${sp95Cmp.cheaper ? "más barata" : "más cara"} que la media del municipio` : ""}.`
                 : `Esta estación no tiene precio de Gasolina 95 disponible actualmente.`,
     },
     {
@@ -163,7 +166,7 @@ const faq = [
     },
     {
         q: `¿Cómo llego a esta gasolinera?`,
-        a: `Está en ${station.address}, ${station.postalCode || ""} ${cityLabel} (${provLabel}). Puedes abrir la ruta en Google Maps desde el botón "Cómo llegar".`,
+        a: `Está en ${addressLabel}, ${station.postalCode || ""} ${cityLabel} (${provLabel}). Puedes abrir la ruta en Google Maps desde el botón "Cómo llegar".`,
     },
 ];
 const faqJsonLd = {
@@ -203,7 +206,7 @@ const mapStations = [station, ...nearby];
                 <span>›</span>
                 <a href={municipioUrl(station.province, station.city)}>{cityLabel}</a>
                 <span>›</span>
-                <span class="current">{brandLabel || station.address}</span>
+                <span class="current">{brandLabel || addressLabel}</span>
             </nav>
 
             <header class="station-header">
@@ -220,7 +223,7 @@ const mapStations = [station, ...nearby];
                     <h1>{h1} en {cityLabel}</h1>
                     <p class="address">
                         <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
-                        {station.address}{station.postalCode ? `, ${station.postalCode}` : ""} {cityLabel} ({provLabel})
+                        {addressLabel}{station.postalCode ? `, ${station.postalCode}` : ""} {cityLabel} ({provLabel}){marginText && ` · ${marginText}`}
                     </p>
                     <p class="updated">Precios actualizados el {updated}</p>
                 </div>

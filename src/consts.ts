@@ -6,8 +6,9 @@ export const SITE = {
     /** Descripción por defecto (se sobreescribe por página). */
     description:
         'Compara el precio de la gasolina y el diésel en todas las gasolineras de España con datos oficiales del Ministerio. Encuentra la más barata cerca de ti y ahorra en cada repostaje.',
-    /** Imagen por defecto para compartir en redes (debe existir en /public). */
-    ogImage: '/images/logo-octo.png',
+    /** Imagen por defecto para compartir en redes (debe existir en /public): 1200×630,
+     *  el formato que usan WhatsApp, X, Facebook o LinkedIn para la vista previa grande. */
+    ogImage: '/images/og-octo.png',
     locale: 'es_ES',
     twitter: '@octogas',
 } as const;
