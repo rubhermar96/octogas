@@ -64,7 +64,7 @@ jobs:
         run: npm run build
 
       - name: Revisión de las páginas generadas
-        run: node scripts/check-site.mjs
+        run: node scripts/check-site.mjs --min-pages 10000
 
   deploy:
     name: Despliegue en octogas.es
