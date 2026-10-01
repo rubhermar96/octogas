@@ -25,6 +25,7 @@ const BrandLogo: React.FC<BrandLogoProps> = ({ brand, size = 40 }) => {
             className={styles.badge}
             style={{ width: size, height: size, backgroundColor: useImage ? '#fff' : bg, color: fg }}
             title={brand}
+            role="img"
             aria-label={brand}
         >
             {useImage && file ? (

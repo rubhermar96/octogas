@@ -162,12 +162,12 @@
 
 .segment.active {
     background: var(--primary);
-    color: var(--bg);
+    color: var(--on-primary);
 }
 
 .submit {
     background: var(--primary);
-    color: var(--bg);
+    color: var(--on-primary);
     font-weight: 800;
     padding: 0.9rem;
     border-radius: 0.75rem;
@@ -401,7 +401,7 @@
     height: 26px;
     border-radius: 50%;
     background: var(--primary);
-    color: var(--bg);
+    color: var(--on-primary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -774,4 +774,10 @@ a.stopName:hover {
     .mapBox {
         height: 380px;
     }
+}
+
+/* Al calcular, la vista se desplaza a los resultados: este margen los deja por debajo
+   de los botones flotantes de tema y menú (fijos arriba a la derecha) en vez de debajo. */
+.feedbackAnchor {
+    scroll-margin-top: 6rem;
 }

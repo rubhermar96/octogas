@@ -171,6 +171,7 @@ const PriceHistoryChart: React.FC<Props> = ({ history }) => {
                             value={otherAvailable.includes(fuel) ? fuel : ""}
                             onChange={(e) => e.target.value && setSelectedFuel(e.target.value as FuelType)}
                             title="Otros carburantes"
+                            aria-label="Otros carburantes"
                         >
                             <option value="">Otros…</option>
                             {otherAvailable.map((f) => (

@@ -69,8 +69,7 @@
 /* brandTitle removed */
 
 .brandSubtitle {
-    color: rgba(54, 211, 153, 0.9);
-    /* primary/90 */
+    color: var(--primary);
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -167,7 +166,7 @@
 
 .fuelOption.selected {
     background-color: var(--primary);
-    color: var(--bg);
+    color: var(--on-primary);
 }
 
 /* Route Planner */
@@ -243,7 +242,7 @@
 .actionButton {
     width: 100%;
     background-color: var(--primary);
-    color: var(--bg);
+    color: var(--on-primary);
     font-weight: 700;
     padding: 1rem;
     border-radius: 0.75rem;
@@ -752,7 +751,7 @@
     height: 44px;
     border-radius: 50%;
     background-color: var(--primary);
-    color: var(--bg);
+    color: var(--on-primary);
     border: none;
     gap: 5px;
     z-index: 101; /* Higher than overlay */

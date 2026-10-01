@@ -908,7 +908,7 @@ const RoutePlanner: React.FC = () => {
                 </button>
             </form>
 
-            <div ref={feedbackRef}>
+            <div ref={feedbackRef} className={styles.feedbackAnchor}>
             {loading && (
                 <div className={styles.loadingPanel}>
                     <div className={styles.spinner} />
@@ -1164,10 +1164,10 @@ const RoutePlanner: React.FC = () => {
                                     ))}
                                 {/* Ruta seleccionada (azul, por encima). */}
                                 <Polyline positions={active.coords} pathOptions={{ color: '#2563eb', weight: 6, opacity: 0.9 }} />
-                                <Marker position={[active.origin.lat, active.origin.lng]} icon={endpointIcon('A', '#0ea5e9')} />
-                                <Marker position={[active.destination.lat, active.destination.lng]} icon={endpointIcon('B', '#ef4444')} />
+                                <Marker position={[active.origin.lat, active.origin.lng]} icon={endpointIcon('A', '#0ea5e9')} title={`Origen: ${active.origin.label.split(',')[0]}`} />
+                                <Marker position={[active.destination.lat, active.destination.lng]} icon={endpointIcon('B', '#ef4444')} title={`Destino: ${active.destination.label.split(',')[0]}`} />
                                 {active.customStops.map((c, i) => (
-                                    <Marker key={`wp-${i}`} position={[c.lat, c.lng]} icon={endpointIcon('P', '#a855f7')}>
+                                    <Marker key={`wp-${i}`} position={[c.lat, c.lng]} icon={endpointIcon('P', '#a855f7')} title={`Parada: ${c.label.split(',')[0]}`}>
                                         <Popup>Parada: {c.label.split(',')[0]}</Popup>
                                     </Marker>
                                 ))}
@@ -1176,6 +1176,7 @@ const RoutePlanner: React.FC = () => {
                                         key={s.id}
                                         position={[s.lat, s.lng]}
                                         icon={stationIcon(s.brand, priceColor(s.price, active.corridorAvg), true)}
+                                        title={`Repostaje: ${s.name}, ${s.price.toFixed(3)} €/L`}
                                     >
                                         <Popup className={stationMarkerStyles.popupContent}>
                                             <StationPopup station={s} fuelType={active.fuel} />

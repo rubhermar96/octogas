@@ -187,7 +187,7 @@
 
 .confirm {
     background: var(--primary);
-    color: var(--bg);
+    color: var(--on-primary);
     border-color: var(--primary);
 }
 

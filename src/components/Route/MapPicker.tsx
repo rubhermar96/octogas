@@ -162,7 +162,7 @@ const MapPicker: React.FC<Props> = ({ title, initial, onPick, onClose }) => {
                         />
                         <ClickCatcher onClick={handleClick} />
                         <FlyTo target={flyTarget} />
-                        {point && <Marker position={[point.lat, point.lng]} icon={pickIcon} />}
+                        {point && <Marker position={[point.lat, point.lng]} icon={pickIcon} title="Punto elegido" />}
                     </MapContainer>
                 </div>
                 <div className={styles.foot}>

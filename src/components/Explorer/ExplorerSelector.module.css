@@ -26,7 +26,7 @@
 
 .primaryButton {
     background-color: var(--primary);
-    color: #fff;
+    color: var(--on-primary);
     border: none;
     box-shadow: 0 0 15px rgba(54, 211, 153, 0.3);
 }
@@ -104,7 +104,7 @@
     justify-content: center;
     gap: 0.5rem;
     background-color: var(--primary);
-    color: #fff;
+    color: var(--on-primary);
     border: none;
     padding: 0.875rem;
     border-radius: 0.5rem;

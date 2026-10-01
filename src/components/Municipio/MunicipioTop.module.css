@@ -39,7 +39,7 @@
 
 .fuelBtn.active {
     background: var(--primary);
-    color: var(--bg);
+    color: var(--on-primary);
 }
 
 .list {
@@ -151,7 +151,7 @@
     margin-top: 1.5rem;
     padding: 0.95rem;
     background: var(--primary);
-    color: var(--bg);
+    color: var(--on-primary);
     font-weight: 800;
     border-radius: 0.75rem;
     text-decoration: none;

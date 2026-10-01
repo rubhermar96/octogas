@@ -41,7 +41,7 @@
 
 .fuelOption.active {
     background-color: var(--primary);
-    color: #06281c;
+    color: var(--on-primary);
 }
 
 .fuelSelect {

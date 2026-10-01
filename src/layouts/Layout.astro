@@ -142,7 +142,7 @@ const orgJsonLd = {
         </header>
 
         <!-- Flashy Lateral Menu Overlay -->
-        <nav class={styles.menuOverlay} id="menu-overlay">
+        <nav class={styles.menuOverlay} id="menu-overlay" aria-label="Menú">
             <button class={styles.closeMenu} id="close-menu" aria-label="Cerrar menú">
                 <span class={`material-symbols-outlined ${styles.closeIcon}`} aria-hidden="true">close</span>
             </button>
@@ -177,7 +177,7 @@ const orgJsonLd = {
                 </div>
 
                 <!-- Navigation -->
-                <nav class={styles.nav}>
+                <nav class={styles.nav} aria-label="Navegación principal">
                     <a
                         href="/"
                         class={`${styles.navItem} ${Astro.url.pathname === "/" ? styles.active : ""}`}

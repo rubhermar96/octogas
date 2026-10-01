@@ -25,7 +25,7 @@
 .btn.active {
     background: var(--secondary);
     border-color: var(--secondary);
-    color: #fff;
+    color: var(--on-secondary);
 }
 
 .btn:disabled {
