@@ -191,20 +191,96 @@ async function getRouteOSRM(points: GeoPoint[]): Promise<RouteResult | null> {
     return { coords, distanceKm: r.distance / 1000, durationMin: r.duration / 60 };
 }
 
+/**
+ * Kilómetros acumulados desde el origen hasta cada vértice del trazado. Se calcula una
+ * vez por ruta (los arrays de coordenadas no se mutan, así que sirven de clave).
+ */
+const cumulativeCache = new WeakMap<[number, number][], number[]>();
+function cumulativeKm(route: [number, number][]): number[] {
+    let cum = cumulativeCache.get(route);
+    if (!cum) {
+        cum = [0];
+        for (let i = 1; i < route.length; i++) {
+            cum.push(cum[i - 1] + getDistance(route[i - 1][0], route[i - 1][1], route[i][0], route[i][1]));
+        }
+        cumulativeCache.set(route, cum);
+    }
+    return cum;
+}
+
+/**
+ * Progreso (0..1) del vértice i medido en DISTANCIA recorrida. No vale i/(n-1): los
+ * routers ponen muchos más vértices en curvas y ciudades que en autovía, y esa
+ * proporción llegaba a desviarse más de 100 km de la posición real.
+ */
+function progressAt(route: [number, number][], i: number): number {
+    const cum = cumulativeKm(route);
+    const total = cum[cum.length - 1];
+    return total > 0 ? cum[i] / total : 0;
+}
+
+/** Mayor distancia (km) entre dos vértices consecutivos de la muestra. */
+const sampleGapCache = new WeakMap<[number, number][], number>();
+function sampleGapKm(route: [number, number][], step: number): number {
+    let gap = sampleGapCache.get(route);
+    if (gap === undefined) {
+        const cum = cumulativeKm(route);
+        gap = 0;
+        for (let i = 0; i < cum.length; i += step) gap = Math.max(gap, cum[Math.min(i + step, cum.length - 1)] - cum[i]);
+        sampleGapCache.set(route, gap);
+    }
+    return gap;
+}
+
+/**
+ * Vértice del trazado más cercano a un punto. Primero recorre una muestra (un vértice
+ * de cada `step`) y luego afina entre los vecinos del mejor candidato, así la precisión
+ * es la del trazado completo sin recorrer todos los vértices para cada gasolinera.
+ * Con `maxKm`, si la muestra ya queda lejos se ahorra el afinado (no va a entrar).
+ */
+function nearestVertex(
+    route: [number, number][],
+    lat: number,
+    lng: number,
+    maxKm = Infinity
+): { idx: number; km: number } {
+    const step = Math.max(1, Math.floor(route.length / 400));
+    const last = route.length - 1;
+    const sampleIdx: number[] = [];
+    for (let i = 0; i < route.length; i += step) sampleIdx.push(i);
+    if (sampleIdx[sampleIdx.length - 1] !== last) sampleIdx.push(last);
+    const samples = sampleIdx.map((i) => ({ i, d: getDistance(lat, lng, route[i][0], route[i][1]) }));
+    const best = samples.reduce((a, b) => (b.d < a.d ? b : a));
+    const coarse = best.d;
+    if (step === 1) return { idx: best.i, km: best.d };
+
+    // La distancia a la muestra puede exceder la real en hasta media separación entre
+    // muestras (en autovía los vértices están muy espaciados). Se afina alrededor de
+    // TODAS las muestras que podrían esconder el vértice más cercano: si la ruta pasa
+    // dos veces cerca (circunvalaciones), el bueno no tiene por qué ser el de la muestra.
+    const slack = sampleGapKm(route, step) / 2;
+    if (coarse - slack > maxKm) return { idx: best.i, km: best.d };
+    let km = best.d;
+    let idx = best.i;
+    for (const c of samples) {
+        if (c.d - slack > Math.min(km, maxKm)) continue;
+        const from = Math.max(0, c.i - step);
+        const to = Math.min(last, c.i + step);
+        for (let i = from; i <= to; i++) {
+            const d = getDistance(lat, lng, route[i][0], route[i][1]);
+            if (d < km) {
+                km = d;
+                idx = i;
+            }
+        }
+    }
+    return { idx, km };
+}
+
 /** Progreso (0..1) de un punto a lo largo del trazado de la ruta. */
 export function progressOnRoute(route: [number, number][], lat: number, lng: number): number {
     if (route.length < 2) return 0;
-    const step = Math.max(1, Math.floor(route.length / 400));
-    let minD = Infinity;
-    let bestIdx = 0;
-    for (let i = 0; i < route.length; i += step) {
-        const d = getDistance(lat, lng, route[i][0], route[i][1]);
-        if (d < minD) {
-            minD = d;
-            bestIdx = i;
-        }
-    }
-    return bestIdx / (route.length - 1);
+    return progressAt(route, nearestVertex(route, lat, lng).idx);
 }
 
 export type Priority = 'cheap' | 'balanced' | 'fast';
@@ -235,14 +311,11 @@ export function findCorridorStations(
         if (lng < minLng) minLng = lng;
         if (lng > maxLng) maxLng = lng;
     }
-    const margin = corridorKm / 100; // ~grados aprox
-    minLat -= margin; maxLat += margin; minLng -= margin; maxLng += margin;
-
-    // Muestreo del trazado (un punto de cada N) para acelerar.
-    const step = Math.max(1, Math.floor(route.length / 400));
-    const sampled: [number, number][] = [];
-    for (let i = 0; i < route.length; i += step) sampled.push(route[i]);
-    if (sampled[sampled.length - 1] !== route[route.length - 1]) sampled.push(route[route.length - 1]);
+    // Margen en grados: 1° de latitud son ~111 km, pero 1° de longitud mide menos cuanto
+    // más al norte (~80 km a la latitud de Galicia).
+    const marginLat = corridorKm / 111;
+    const marginLng = corridorKm / (111 * Math.cos((Math.max(Math.abs(minLat), Math.abs(maxLat)) * Math.PI) / 180));
+    minLat -= marginLat; maxLat += marginLat; minLng -= marginLng; maxLng += marginLng;
 
     const result: CorridorStation[] = [];
     for (const s of stations) {
@@ -250,20 +323,12 @@ export function findCorridorStations(
         const price = s.prices[fuel];
         if (price == null) continue;
 
-        let minD = Infinity;
-        let bestIdx = 0;
-        for (let i = 0; i < sampled.length; i++) {
-            const d = getDistance(s.lat, s.lng, sampled[i][0], sampled[i][1]);
-            if (d < minD) {
-                minD = d;
-                bestIdx = i;
-            }
-        }
-        if (minD <= corridorKm) {
+        const near = nearestVertex(route, s.lat, s.lng, corridorKm);
+        if (near.km <= corridorKm) {
             result.push({
                 ...s,
-                detourKm: minD,
-                progress: bestIdx / (sampled.length - 1),
+                detourKm: near.km,
+                progress: progressAt(route, near.idx),
                 price,
             });
         }
