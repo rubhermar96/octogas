@@ -8,7 +8,7 @@ import Footer from "../components/Footer.astro";
     description="La página que buscas no existe o ha cambiado de dirección."
     noindex={true}
 >
-    <main class="nf-page">
+    <div class="nf-page">
         <p class="nf-code">404</p>
         <h1>Esta página se quedó sin gasolina</h1>
         <p class="nf-lead">
@@ -25,7 +25,7 @@ import Footer from "../components/Footer.astro";
                 Buscar mi municipio
             </a>
         </div>
-    </main>
+    </div>
     <Footer />
 </Layout>
 
@@ -78,7 +78,7 @@ import Footer from "../components/Footer.astro";
     }
     .nf-cta {
         background: var(--primary);
-        color: #06281c;
+        color: var(--on-primary);
     }
     .nf-cta:hover {
         filter: brightness(1.06);

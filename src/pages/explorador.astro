@@ -11,5 +11,7 @@ import ExplorerApp from "../components/Explorer/ExplorerApp";
 >
     {/* La descarga del JSON de estaciones arranca en paralelo con el JS de la isla. */}
     <link rel="preload" href="/data/stations.json" as="fetch" crossorigin="anonymous" slot="head" />
+    {/* El explorador es todo mapa y no tiene título visible; este es para lectores de pantalla y buscadores. */}
+    <h1 class="sr-only">Explorador de gasolineras en el mapa</h1>
     <ExplorerApp client:only="react" />
 </Layout>

@@ -54,6 +54,7 @@ const NationalTopFuels: React.FC<Props> = ({ topByFuel }) => {
                         value={otherAvailable.includes(selected) ? selected : ""}
                         onChange={(e) => e.target.value && setFuel(e.target.value as FuelType)}
                         title="Otros carburantes"
+                            aria-label="Otros carburantes"
                     >
                         <option value="">Otros…</option>
                         {otherAvailable.map((f) => (

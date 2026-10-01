@@ -247,7 +247,7 @@
     justify-content: center;
     border-radius: 50%;
     background: var(--primary);
-    color: #06281c;
+    color: var(--on-primary);
     font-weight: 800;
     font-size: 0.8rem;
 }
@@ -282,7 +282,7 @@
 
 .cta {
     background: var(--primary);
-    color: #06281c;
+    color: var(--on-primary);
 }
 
 .cta:hover {
@@ -444,6 +444,11 @@
 
 .cheapest .price {
     color: var(--primary);
+}
+
+/* Sobre el fondo verde suave, el gris atenuado no llega al contraste mínimo. */
+.cheapest .unit {
+    color: var(--text);
 }
 
 .bestTag {

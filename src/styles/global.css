@@ -20,6 +20,12 @@
     --brand: #6c2800;
     /* Deep Brown - Logo */
 
+    /* Texto sobre un fondo de color de marca (botones, chips activos...). Sobre estos
+       tonos claros solo el negro llega al contraste mínimo (WCAG AA, 4,5:1). */
+    --on-primary: #000000;
+    --on-secondary: #000000;
+    --on-accent: #000000;
+
     /* Neutros para Modo Oscuro (Default): negro puro, sin tono de superficie
        distinto (surface = bg); el borde de alto contraste es lo que separa
        visualmente una tarjeta del fondo. */
@@ -43,6 +49,17 @@
 
     --text-muted: #64748b;
     --slate-800: #e2e8f0;
+
+    /* Sobre blanco, los tonos de marca del modo oscuro no se leen (el verde da 1,9:1).
+       Mismos colores, más oscuros, para pasar de 4,5:1 como texto sobre blanco y
+       llevar texto blanco encima cuando son fondo. */
+    --primary: #047857;
+    --secondary: #0369a1;
+    --accent: #c2410c;
+    --on-primary: #ffffff;
+    --on-secondary: #ffffff;
+    --on-accent: #ffffff;
+    --primary-dim: rgba(4, 120, 87, 0.1);
 }
 
 /* Ángulos de 90 grados en todos los componentes (sin esquinas redondeadas). */
@@ -171,4 +188,16 @@ input {
 
 .octo-marker-sel .material-symbols-outlined {
     font-size: 22px;
+}
+/* Texto solo para lectores de pantalla (y buscadores): no ocupa sitio en pantalla. */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }

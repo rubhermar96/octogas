@@ -9,6 +9,10 @@ import type { GasStation, FuelType } from '../../types/gasolinera';
 import { stationIcon, StationPopup } from './StationMarker';
 import L from 'leaflet';
 
+/** Nombre accesible del marcador: Leaflet lo pone como title del botón del icono. */
+const markerTitle = (s: GasStation, price: number | null | undefined) =>
+    price != null ? `${s.name}, ${price.toFixed(3)} €/L` : s.name;
+
 // Fix for default marker icon in react-leaflet
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
@@ -228,7 +232,7 @@ const MainMap: React.FC<MainMapProps> = ({
                 {disableGeolocation && <BoundsReporter onBoundsChange={handleLocalBoundsChange} />}
 
                 {userPos && (
-                    <Marker position={userPos} icon={userLocationIcon} zIndexOffset={1000}>
+                    <Marker position={userPos} icon={userLocationIcon} zIndexOffset={1000} title="Tu ubicación">
                         <Popup className={styles.popupContent}>
                             <strong>Estás aquí</strong>
                         </Popup>
@@ -249,6 +253,7 @@ const MainMap: React.FC<MainMapProps> = ({
                                     key={station.id}
                                     position={[station.lat, station.lng]}
                                     icon={stationIcon(station.brand, getColor(price), false)}
+                                    title={markerTitle(station, price)}
                                     eventHandlers={{ click: () => onSelectStation?.(station.id) }}
                                 >
                                     <Popup className={styles.popupContent}>
@@ -265,6 +270,7 @@ const MainMap: React.FC<MainMapProps> = ({
                         ref={selectedMarkerRef}
                         position={[selectedStation.lat, selectedStation.lng]}
                         icon={stationIcon(selectedStation.brand, getColor(selectedStation.prices[fuelType]), true)}
+                        title={markerTitle(selectedStation, selectedStation.prices[fuelType])}
                         zIndexOffset={1000}
                         eventHandlers={{ click: () => onSelectStation?.(selectedStation.id) }}
                     >

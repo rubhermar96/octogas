@@ -122,6 +122,7 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
                             value={OTHER_FUELS.includes(fuelType) ? fuelType : ''}
                             onChange={(e) => e.target.value && onFuelTypeChange(e.target.value as FuelType)}
                             title="Otros carburantes"
+                            aria-label="Otros carburantes"
                         >
                             <option value="">Otros…</option>
                             {OTHER_FUELS.map((f) => (
@@ -170,6 +171,7 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
                         Filtros
                     </button>
                 )}
+                <h2 className="sr-only">Gasolineras en la zona visible del mapa</h2>
                 <div className={`${styles.stationList} ${wide ? styles.stationListWide : ''}`}>
                     {sortedStations.slice(0, MAX_RENDER).map((station) => {
                         const isSelected = station.id === selectedId;

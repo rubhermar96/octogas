@@ -42,7 +42,7 @@
 
 .fuelOption.active {
     background-color: var(--primary);
-    color: #06281c;
+    color: var(--on-primary);
 }
 
 .fuelSelect {
@@ -88,7 +88,7 @@
 .rangeBtn.active {
     background: var(--primary);
     border-color: var(--primary);
-    color: #06281c;
+    color: var(--on-primary);
 }
 
 .rangeBtn:disabled {

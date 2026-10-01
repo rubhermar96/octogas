@@ -224,7 +224,7 @@ const ComparadorApp: React.FC = () => {
                     <table className={styles.table}>
                         <thead>
                             <tr>
-                                <th className={styles.rowHead} />
+                                <td className={styles.rowHead} />
                                 {stations.map((s) => {
                                     const wins = winsById.get(s.id) ?? 0;
                                     return (
@@ -282,7 +282,9 @@ const ComparadorApp: React.FC = () => {
                             </tr>
                             {/* Cómo llegar */}
                             <tr>
-                                <th className={styles.rowHead} />
+                                <th className={styles.rowHead}>
+                                    <span className="sr-only">Cómo llegar</span>
+                                </th>
                                 {stations.map((s) => (
                                     <td key={s.id} className={styles.cellInfo}>
                                         <a

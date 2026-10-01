@@ -53,6 +53,14 @@
 
 /* ===== Hero (centrado, sin tarjeta de datos) ===== */
 .hero {
+    /* El hero va siempre sobre el vídeo oscuro: en tema claro se mantienen los tonos
+       de marca del modo oscuro (los oscurecidos del tema claro no se leerían aquí). */
+    --primary: #34d399;
+    --secondary: #38bdf8;
+    --accent: #fb923c;
+    --on-primary: #000000;
+    --on-secondary: #000000;
+    --on-accent: #000000;
     position: relative;
     z-index: 10;
     min-height: 100vh;
@@ -308,7 +316,7 @@
     margin-top: 1.75rem;
     padding: 0.8rem 1.4rem;
     background: var(--primary);
-    color: #06281c;
+    color: var(--on-primary);
     font-weight: 800;
     border-radius: 0.75rem;
     text-decoration: none;
@@ -518,7 +526,7 @@
     justify-content: center;
     border-radius: 50%;
     background: var(--primary);
-    color: #06281c;
+    color: var(--on-primary);
     font-family: var(--font-header);
     font-weight: 800;
     font-size: 1.25rem;

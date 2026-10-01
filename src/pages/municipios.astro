@@ -49,12 +49,7 @@ const mainCities: { name: string; province: string; city: string }[] = [
 >
     {/* El índice de municipios del buscador se descarga en paralelo con el JS de la isla. */}
     <link rel="preload" href="/data/municipios.json" as="fetch" crossorigin="anonymous" slot="head" />
-    <main class="municipios-page">
-        <div class="background-effects">
-            <div class="blob blob-1"></div>
-            <div class="blob blob-2"></div>
-        </div>
-
+    <div class="municipios-page">
         <section class="search-container">
             <header class="page-header">
                 <a href="/" class="back-link">
@@ -114,7 +109,7 @@ const mainCities: { name: string; province: string; city: string }[] = [
                 </div>
             </div>
         </section>
-    </main>
+    </div>
 
     <Footer />
 </Layout>
@@ -128,36 +123,6 @@ const mainCities: { name: string; province: string; city: string }[] = [
         padding: 6rem 2rem 2rem 2rem;
         position: relative;
         overflow: hidden;
-    }
-
-    .background-effects {
-        position: fixed;
-        inset: 0;
-        z-index: -1;
-        overflow: hidden;
-        pointer-events: none;
-    }
-
-    .blob {
-        position: absolute;
-        width: 600px;
-        height: 600px;
-        border-radius: 50%;
-        filter: blur(100px);
-        opacity: 0.15;
-        z-index: -1;
-    }
-
-    .blob-1 {
-        top: -100px;
-        right: -100px;
-        background-color: var(--primary);
-    }
-
-    .blob-2 {
-        bottom: -200px;
-        left: -200px;
-        background-color: #3b82f6; /* A matching blue */
     }
 
     .search-container {
