@@ -1,0 +1,110 @@
+# Integración y despliegue continuos de OCTO.
+#
+# En cada push y pull request: tipos de la web y de la API, build completo con los
+# precios del día y revisión de todas las páginas generadas. Si todo pasa y el push es
+# a la rama publicada, se despliega en el servidor (deploy/ci-deploy.sh).
+#
+# El despliegue necesita tres secretos (los da deploy/setup-ci.sh en el servidor):
+# DEPLOY_HOST, DEPLOY_KNOWN_HOSTS y DEPLOY_SSH_KEY. Mientras no existan, el trabajo
+# de despliegue se salta sin dar error.
+name: Integración y despliegue
+
+on:
+  push:
+    branches: [design-experiment-square-contrast]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Integración
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Un push nuevo cancela la integración en curso del anterior (no el despliegue).
+    concurrency:
+      group: ci-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            api/package-lock.json
+
+      - name: Dependencias
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix api --no-audit --no-fund
+
+      - name: Tipos (web y API)
+        run: |
+          npx tsc --noEmit
+          cd api && npx tsc --noEmit
+
+      # Los datos no se versionan: se descargan como en el servidor. Tres intentos por
+      # si el servicio del Ministerio falla en ese momento.
+      - name: Precios de hoy (MITECO)
+        run: |
+          for intento in 1 2 3; do
+            npm run update-data && exit 0
+            echo "Intento $intento fallido; reintentando en 30 s..."
+            sleep 30
+          done
+          exit 1
+
+      # Sin base de datos (como en un PR): las gráficas de histórico se omiten.
+      - name: Build de la web
+        run: npm run build
+
+      - name: Revisión de las páginas generadas
+        run: node scripts/check-site.mjs
+
+  deploy:
+    name: Despliegue en octogas.es
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/design-experiment-square-contrast'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://octogas.es
+    # Los despliegues van de uno en uno y nunca se cancelan a medias.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - name: ¿Está configurado el despliegue?
+        id: config
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "::notice::Despliegue continuo sin configurar: ejecuta deploy/setup-ci.sh en el servidor y crea los secretos (ver DEPLOY.md)."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Desplegar
+        if: steps.config.outputs.ready == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # La clave solo puede ejecutar deploy/ci-deploy.sh; el argumento es el commit
+          # exacto que acaba de pasar la integración.
+          ssh -i ~/.ssh/deploy_key \
+              -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
+              "octo@$DEPLOY_HOST" "$GITHUB_SHA"
