@@ -30,6 +30,13 @@ export default defineConfig({
   compressHTML: true,
   // Precarga las páginas enlazadas al pasar el ratón por encima: la navegación
   // entre páginas estáticas se siente instantánea sin coste en la carga inicial.
+  vite: {
+    // Caché de Vite separada para el build: si comparte node_modules/.vite con un
+    // `astro dev` en marcha, el build la regenera y el servidor de desarrollo se queda
+    // sirviendo dependencias obsoletas (504 "Outdated Optimize Dep": las islas de
+    // React, como los mapas, dejan de cargar).
+    cacheDir: process.argv.includes('build') ? 'node_modules/.vite-build' : 'node_modules/.vite',
+  },
   prefetch: {
     prefetchAll: true,
     defaultStrategy: 'hover',
