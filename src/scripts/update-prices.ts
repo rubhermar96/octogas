@@ -16,6 +16,37 @@ function parsePrice(raw: string | undefined): number | null {
     return Number.isFinite(value) && value > 0 ? value : null;
 }
 
+// Cajas que cubren España: península, Baleares, Ceuta y Melilla; y Canarias.
+const SPAIN_BOXES = [
+    { minLat: 35.1, maxLat: 43.9, minLng: -9.5, maxLng: 4.5 },
+    { minLat: 27.5, maxLat: 29.5, minLng: -18.3, maxLng: -13.3 },
+];
+const inSpain = (lat: number, lng: number) =>
+    SPAIN_BOXES.some((b) => lat >= b.minLat && lat <= b.maxLat && lng >= b.minLng && lng <= b.maxLng);
+
+/**
+ * Valida la posición que publica MITECO. Algunas estaciones llegan en (0, 0) —en el
+ * Atlántico, frente a África— o con latitud y longitud intercambiadas. Las segundas se
+ * corrigen; el resto se marca como no geolocalizada (NaN) y se excluye del catálogo.
+ */
+function fixCoords(stations: GasStation[]): void {
+    const fixed: string[] = [];
+    const dropped: string[] = [];
+    for (const s of stations) {
+        if (!Number.isFinite(s.lat) || !Number.isFinite(s.lng) || inSpain(s.lat, s.lng)) continue;
+        if (inSpain(s.lng, s.lat)) {
+            [s.lat, s.lng] = [s.lng, s.lat];
+            fixed.push(`${s.name} (${s.city})`);
+        } else {
+            dropped.push(`${s.name} (${s.city}) ${s.lat},${s.lng}`);
+            s.lat = NaN;
+            s.lng = NaN;
+        }
+    }
+    if (fixed.length) console.log(`OCTO Data: ${fixed.length} con latitud/longitud intercambiadas, corregidas → ${fixed.join(" · ")}`);
+    if (dropped.length) console.log(`OCTO Data: ${dropped.length} con coordenadas fuera de España, excluidas → ${dropped.join(" · ")}`);
+}
+
 /** Convierte "39,211417" -> 39.211417. */
 function parseCoord(raw: string | undefined): number {
     if (!raw) return NaN;
@@ -106,6 +137,7 @@ async function updateGasData() {
             lng: parseCoord(item["Longitud (WGS84)"]),
             saleType: item["Tipo Venta"] ?? "",
             schedule: (item.Horario ?? "").trim(),
+            margin: item.Margen === "D" || item.Margen === "I" ? item.Margen : undefined,
             // Solo las claves con precio (omitimos los null: ahorra ~28% del JSON).
             prices: compactPrices({
                 sp95: parsePrice(item["Precio Gasolina 95 E5"]),
@@ -123,6 +155,7 @@ async function updateGasData() {
 
     // Fuera precios de relleno/implausibles ANTES de filtrar: una estación cuyos
     // precios sean todos falsos se queda sin ninguno y se excluye del catálogo.
+    fixCoords(parsed);
     sanitizePrices(parsed);
 
     // Solo estaciones geolocalizadas y con al menos un precio.
@@ -132,6 +165,13 @@ async function updateGasData() {
             Number.isFinite(g.lng) &&
             Object.values(g.prices).some((p) => p !== null)
     );
+
+    // El margen solo se conserva donde hace falta para distinguir dos gasolineras con
+    // la misma marca y dirección (parejas de autovía); en el resto solo engordaría el JSON.
+    const sameKey = (g: GasStation) => `${g.brand}|${g.address}|${g.city}`.toLowerCase();
+    const keyCount = new Map<string, number>();
+    for (const g of stations) keyCount.set(sameKey(g), (keyCount.get(sameKey(g)) ?? 0) + 1);
+    for (const g of stations) if ((keyCount.get(sameKey(g)) ?? 0) < 2) delete g.margin;
 
     // Índice ligero de municipios para el autocompletado (evita cargar 3 MB en el cliente).
     const muniMap = new Map<
