@@ -21,7 +21,7 @@ export const SITE = {
  */
 export const OWNER = {
     /** Nombre y apellidos (o razón social). */
-    name: '',
+    name: 'Rubén Herrera Marcos',
     /** Solo se muestran con publicidad activa. */
     nif: '',
     address: '',
