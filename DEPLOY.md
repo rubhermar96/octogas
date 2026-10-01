@@ -144,6 +144,44 @@ da Search Console) y enviar después el sitemap: `https://octogas.es/sitemap-ind
 Si prefieres la etiqueta `<meta>`, pon su valor en `/srv/octogas/.env`
 (`PUBLIC_GOOGLE_SITE_VERIFICATION=...`) y regenera la web (ver abajo).
 
+## 7. Despliegue continuo (una vez)
+
+A partir de aquí, cada `git push` a `design-experiment-square-contrast` se publica solo.
+Lo hace el flujo [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml):
+
+1. **Integración** (también en cada pull request): tipos de la web y de la API, build
+   completo con los precios del día y revisión de todas las páginas generadas (enlaces
+   rotos, títulos repetidos, páginas sin `h1` o sin descripción). Si algo falla, no se
+   despliega.
+2. **Despliegue**: GitHub entra por SSH y ejecuta
+   [`deploy/ci-deploy.sh`](deploy/ci-deploy.sh) con el commit exacto que ha pasado la
+   integración. Actualiza el código, reinstala dependencias si cambiaron, reinicia la API,
+   comprueba que responde, regenera la web y comprueba que se sirve. **Si algo falla,
+   vuelve solo al commit y a la publicación anteriores.**
+
+Para activarlo, en el servidor:
+
+```bash
+sudo bash /srv/octogas/deploy/setup-ci.sh
+```
+
+Muestra tres valores. Créalos en GitHub, en el repositorio → **Settings → Secrets and
+variables → Actions → New repository secret**: `DEPLOY_HOST`, `DEPLOY_KNOWN_HOSTS` y
+`DEPLOY_SSH_KEY`. Mientras no existan, el despliegue se salta sin error (la integración
+sí se ejecuta).
+
+La clave que usa GitHub **solo puede ejecutar el script de despliegue** como `octo`: sin
+terminal, sin reenvíos y sin permisos de administrador (lo único que se le permite como
+root es reiniciar la API).
+
+**Lo que no se despliega solo**, a propósito: los cambios en el esquema de la base de
+datos (`api/src/db/schema.ts`) o en la configuración del servidor (`deploy/systemd`,
+`deploy/nginx`, `deploy/postgres`, `deploy/config.env`). Necesitan root o una migración y
+conviene revisarlos: el despliegue se detiene avisando, y se aplican con
+`sudo bash /srv/octogas/deploy/update.sh`.
+
+El resultado de cada despliegue se ve en la pestaña **Actions** del repositorio.
+
 ---
 
 ## Operación diaria
@@ -155,7 +193,8 @@ Si prefieres la etiqueta `<meta>`, pon su valor en `/srv/octogas/.env`
 | Último refresco (¿falló?)             | `journalctl -u octogas-refresh -n 50`                      |
 | Próximas ejecuciones                  | `systemctl list-timers 'octogas-*'`                        |
 | Refrescar precios y web ahora         | `sudo systemctl start octogas-refresh`                     |
-| Publicar código nuevo (tras `git push`) | `sudo bash /srv/octogas/deploy/update.sh`                |
+| Publicar código nuevo                 | Automático con cada `git push` (ver paso 7)                |
+| Publicar cambios de servidor o de BD  | `sudo bash /srv/octogas/deploy/update.sh`                  |
 | Copias de seguridad                   | `ls -lh /var/backups/octogas`                              |
 
 ### Volver a la versión anterior de la web

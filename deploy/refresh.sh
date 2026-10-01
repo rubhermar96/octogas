@@ -13,6 +13,11 @@ main() {
     source "$dir/deploy/config.env"
     cd "$dir"
 
+    # Un solo refresco a la vez: el temporizador y un despliegue automático pueden
+    # coincidir, y dos builds simultáneos se pisarían dist/. El segundo espera.
+    exec 9>"$WEB_ROOT/.refresh.lock"
+    flock 9
+
     log "Descargando precios de MITECO"
     npm run --silent update-data
 
