@@ -14,6 +14,21 @@ export const SITE = {
 } as const;
 
 /**
+ * Titular de la web, para los textos legales. El RGPD obliga a identificar al
+ * responsable del tratamiento de datos (nombre y forma de contacto). El NIF y el
+ * domicilio los exige la LSSI cuando la web es una actividad económica —p. ej. al
+ * activar publicidad—; mientras no la haya, no se muestran.
+ */
+export const OWNER = {
+    /** Nombre y apellidos (o razón social). */
+    name: '',
+    /** Solo se muestran con publicidad activa. */
+    nif: '',
+    address: '',
+    email: 'contactaocto@gmail.com',
+} as const;
+
+/**
  * ID de editor de Google AdSense (formato ca-pub-XXXXXXXXXXXXXXXX).
  * Se lee de la variable de entorno PUBLIC_ADSENSE_ID. Mientras esté vacío,
  * los anuncios no se cargan y los huecos de anuncio no ocupan espacio.

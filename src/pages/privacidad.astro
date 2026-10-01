@@ -1,7 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Footer from "../components/Footer.astro";
-import { ADSENSE_ID } from "../consts";
+import { ADSENSE_ID, OWNER } from "../consts";
 
 // Mientras no haya publicidad activa (PUBLIC_ADSENSE_ID vacío), los textos lo
 // dicen expresamente; al activarla y reconstruir, cambian al estado "con ads".
@@ -28,15 +28,20 @@ const adsActive = Boolean(ADSENSE_ID);
         </p>
 
         <h2>1. Responsable del tratamiento</h2>
-        <p class="note">
-            ⚠️ Completa los datos identificativos del titular antes de publicar (ver también el
-            <a href="/aviso-legal">Aviso legal</a>).
-        </p>
+        {!OWNER.name && (
+            <p class="note">
+                ⚠️ Falta el nombre del titular: complétalo en <code>OWNER</code>
+                (<code>src/consts.ts</code>).
+            </p>
+        )}
         <ul>
-            <li><strong>Responsable:</strong> [nombre y apellidos o razón social] — [NIF/CIF]</li>
+            <li>
+                <strong>Responsable:</strong> {OWNER.name || "[nombre y apellidos]"}
+                {adsActive && OWNER.nif && <> — NIF {OWNER.nif}</>}
+            </li>
             <li>
                 <strong>Contacto:</strong>
-                <a href="mailto:contactaocto@gmail.com">contactaocto@gmail.com</a>
+                <a href={`mailto:${OWNER.email}`}>{OWNER.email}</a>
             </li>
         </ul>
 
@@ -65,6 +70,14 @@ const adsActive = Boolean(ADSENSE_ID);
                 del servicio (cookies técnicas).
             </li>
             <li>
+                <strong>Registros técnicos del servidor:</strong> como cualquier web, el servidor
+                anota cada visita (fecha y hora, página solicitada, navegador y dirección IP) para
+                mantener la seguridad del servicio, frenar abusos y resolver errores. En los
+                registros de acceso la IP se guarda <strong>anonimizada</strong> (sin su último
+                bloque). Se conservan 14 días. Base jurídica: interés legítimo en la seguridad del
+                servicio.
+            </li>
+            <li>
                 <strong>Compartir una ruta (acortador de enlaces):</strong> al pulsar «compartir»
                 en el planificador, la dirección (URL) de la ruta se almacena en nuestro servidor
                 para generar un enlace corto. Esa URL contiene los parámetros del viaje (origen,
@@ -90,6 +103,11 @@ const adsActive = Boolean(ADSENSE_ID);
             coordenadas de tu ruta):
         </p>
         <ul>
+            <li>
+                <strong>Alojamiento:</strong> el servidor de OCTO está contratado a un proveedor de
+                alojamiento con centros de datos en la Unión Europea, que actúa como encargado del
+                tratamiento.
+            </li>
             <li><strong>Teselas de mapa:</strong> OpenStreetMap.</li>
             <li>
                 <strong>Búsqueda de lugares (geocodificación):</strong> Photon (Komoot) — recibe el
@@ -120,7 +138,8 @@ const adsActive = Boolean(ADSENSE_ID);
         <h2>4. Plazo de conservación</h2>
         <p>
             Las preferencias guardadas en tu navegador permanecen hasta que las borras (por ejemplo,
-            limpiando los datos del sitio). Los enlaces cortos de rutas se conservan mientras el
+            limpiando los datos del sitio). Los registros técnicos del servidor se borran a los
+            14 días. Los enlaces cortos de rutas se conservan mientras el
             enlace siga siendo útil. Los datos tratados por terceros se rigen por sus propios
             plazos. Si nos escribes por correo, conservaremos tu mensaje el tiempo necesario para
             atender tu solicitud.
