@@ -1,6 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import RoutePlanner from "../components/Route/RoutePlanner";
+import styles from "../components/Route/RoutePlanner.module.css";
 ---
 
 <Layout
@@ -11,5 +12,19 @@ import RoutePlanner from "../components/Route/RoutePlanner";
 >
     {/* La descarga del JSON de estaciones arranca en paralelo con el JS de la isla. */}
     <link rel="preload" href="/data/stations.json" as="fetch" crossorigin="anonymous" slot="head" />
+    {/* Cabecera en HTML estático: el planificador es una isla que solo se pinta en el
+        navegador, y así el h1 y la introducción existen aunque no se ejecute JavaScript. */}
+    <div class={`${styles.wrapper} ${styles.introWrap}`}>
+        <div class={styles.intro}>
+            <a href="/" class={styles.brand} title="Volver al inicio">
+                <img src="/images/logo-octo.webp" alt="OCTO" class={styles.brandLogo} width="540" height="201" />
+            </a>
+            <h1>Planificador de viajes</h1>
+            <p>
+                Indica tu trayecto, tu coche y tu depósito, y calculamos dónde y cuánto repostar
+                para gastar lo menos posible.
+            </p>
+        </div>
+    </div>
     <RoutePlanner client:only="react" />
 </Layout>

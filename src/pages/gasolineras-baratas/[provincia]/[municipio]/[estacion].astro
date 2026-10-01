@@ -71,6 +71,12 @@ export async function getStaticPaths() {
     // devuelve vacío y las fichas se generan sin gráfica.
     const history = await loadPriceHistory();
 
+    // Gasolineras indistinguibles por marca, dirección, municipio y margen (MITECO
+    // tiene alguna registrada dos veces a pocos metros): llevarán su número oficial.
+    const sameKey = (s: GasStation) => `${s.brand}|${s.address}|${s.city}|${s.margin ?? ""}`.toLowerCase();
+    const sameCount = new Map<string, number>();
+    for (const s of stations) sameCount.set(sameKey(s), (sameCount.get(sameKey(s)) ?? 0) + 1);
+
     return stations.map((station) => {
         const agg = muniAgg.get(muniKey(station));
         return {
@@ -86,18 +92,20 @@ export async function getStaticPaths() {
                 muniAvgDiesel: mean(agg?.diesel ?? []),
                 muniCount: agg?.count ?? 1,
                 history: history.get(station.id) ?? null,
+                showId: (sameCount.get(sameKey(station)) ?? 0) > 1,
             },
         };
     });
 }
 
-const { station, nearby, muniAvgSp95, muniAvgDiesel, muniCount, history } = Astro.props as {
+const { station, nearby, muniAvgSp95, muniAvgDiesel, muniCount, history, showId } = Astro.props as {
     station: GasStation;
     nearby: GasStation[];
     muniAvgSp95: number | null;
     muniAvgDiesel: number | null;
     muniCount: number;
     history: StationHistory | null;
+    showId: boolean;
 };
 
 const provLabel = displayProvince(station.province);
@@ -105,6 +113,8 @@ const cityLabel = displayCity(station.city);
 const addressLabel = displayAddress(station.address);
 // Solo viene en las parejas de autovía con la misma marca y dirección (una por sentido).
 const marginText = station.margin === "D" ? "margen derecho" : station.margin === "I" ? "margen izquierdo" : "";
+// Lo que distingue a esta gasolinera de otra con la misma dirección (si hace falta).
+const distinctText = [marginText, showId ? `n.º ${station.id}` : ""].filter(Boolean).join(", ");
 const fmt = (n: number | null | undefined) => (n != null ? n.toFixed(3) : "—");
 
 // ¿Tiene marca "de verdad" o es una independiente sin rótulo (p. ej. "Nº 10.935")?
@@ -130,8 +140,8 @@ const updated = new Date().toLocaleDateString("es-ES", {
 });
 
 const h1 = brandLabel ? `Gasolinera ${brandLabel}` : "Gasolinera";
-const pageTitle = `${h1} en ${addressLabel}, ${cityLabel}${marginText ? ` (${marginText})` : ""} | OCTO`;
-const pageDescription = `Precios de hoy de ${brandLabel || "la gasolinera"} en ${addressLabel}, ${cityLabel} (${provLabel})${marginText ? `, ${marginText}` : ""}: gasolina 95 a ${fmt(station.prices.sp95)} €/L y diésel a ${fmt(station.prices.diesel)} €/L. Horario, mapa y gasolineras cercanas.`;
+const pageTitle = `${h1} en ${addressLabel}, ${cityLabel}${distinctText ? ` (${distinctText})` : ""} | OCTO`;
+const pageDescription = `Precios de hoy de ${brandLabel || "la gasolinera"} en ${addressLabel}, ${cityLabel} (${provLabel})${distinctText ? `, ${distinctText}` : ""}: gasolina 95 a ${fmt(station.prices.sp95)} €/L y diésel a ${fmt(station.prices.diesel)} €/L. Horario, mapa y gasolineras cercanas.`;
 
 const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`;
 
@@ -223,7 +233,7 @@ const mapStations = [station, ...nearby];
                     <h1>{h1} en {cityLabel}</h1>
                     <p class="address">
                         <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
-                        {addressLabel}{station.postalCode ? `, ${station.postalCode}` : ""} {cityLabel} ({provLabel}){marginText && ` · ${marginText}`}
+                        {addressLabel}{station.postalCode ? `, ${station.postalCode}` : ""} {cityLabel} ({provLabel}){distinctText && ` · ${distinctText}`}
                     </p>
                     <p class="updated">Precios actualizados el {updated}</p>
                 </div>
