@@ -137,7 +137,7 @@ check_real_history() {
 # otro sitio (p. ej. la página de aparcamiento del registrador) hace fallar la emisión.
 check_dns() {
     local ips host resolved ip
-    ips=" $(hostname -I) "
+    ips=" $(ip -o addr show scope global | awk '{print $4}' | cut -d/ -f1 | tr '\n' ' ') "
     for host in "$DOMAIN" "www.$DOMAIN"; do
         resolved="$(getent ahosts "$host" | awk '{print $1}' | sort -u | tr '\n' ' ')"
         if [[ -z $resolved ]]; then

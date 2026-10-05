@@ -1,7 +1,7 @@
 # Despliegue de OCTO en un VPS
 
 Guía para publicar **octogas.es** en un VPS propio (recomendado: **Netcup VPS 500 G12**,
-2 vCPU · 4 GB · 128 GB NVMe, con **Ubuntu 24.04 LTS**). Todo lo que se instala en el
+2 vCPU · 4 GB · 128 GB NVMe, con **Debian 13**; vale también Ubuntu 24.04). Todo lo que se instala en el
 servidor está en [`deploy/`](deploy/).
 
 ## Cómo queda montado
@@ -69,8 +69,9 @@ y no tienes que inventar ninguno salvo la contraseña de `sudo`.
 
 ## 1. Contratar el VPS y el dominio
 
-- **VPS:** Netcup VPS 500 G12 → imagen **Ubuntu 24.04**. Apunta la **IPv4** (y la IPv6)
-  y la contraseña de root que te envían.
+- **VPS:** Netcup VPS 500 G12 → imagen **Debian 13 (trixie) minimal**. Apunta la
+  **IPv4**, la **IPv6**, la contraseña de root y la **huella SSH ED25519** que te envían
+  (`SHA256:...`).
 - **Dominio:** `octogas.es` en Dondominio o Porkbun.
 
 ## 2. DNS
@@ -102,10 +103,14 @@ type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh root@IP "mkdir -p ~/.ssh && cat 
 ssh root@IP
 ```
 
+La primera vez, SSH muestra la huella del servidor (`ED25519 key fingerprint is
+SHA256:...`): **compárala con la del correo de Netcup** antes de contestar `yes`. Si no
+coincide, no sigas.
+
 Ya en el servidor:
 
 ```bash
-apt-get update && apt-get install -y git
+apt-get update && apt-get install -y git ca-certificates
 git clone https://github.com/rubhermar96/octogas.git /srv/octogas
 bash /srv/octogas/deploy/provision.sh
 ```

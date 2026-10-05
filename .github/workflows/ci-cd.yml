@@ -18,7 +18,8 @@ on:
 permissions:
   contents: read
 
-# Ubuntu 24.04 fijo (no ubuntu-latest): el mismo sistema que el servidor de producción.
+# Ubuntu 24.04 fijo (no ubuntu-latest), para que las ejecuciones sean reproducibles. El
+# servidor usa Debian 13; lo que importa para el build es la misma versión de Node (22).
 
 jobs:
   ci:

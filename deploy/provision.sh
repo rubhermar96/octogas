@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepara un VPS recién instalado (Ubuntu 24.04 LTS) para OCTO. Se ejecuta UNA vez,
+# Prepara un VPS recién instalado (Debian 13; vale también Ubuntu 24.04) para OCTO. Se ejecuta UNA vez,
 # como root, desde el repositorio ya clonado en /srv/octogas:
 #
 #     bash /srv/octogas/deploy/provision.sh
@@ -19,8 +19,9 @@ main() {
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
     apt-get -y upgrade
-    apt-get install -y curl git rsync ca-certificates gnupg openssl ufw fail2ban \
-        unattended-upgrades nginx certbot postgresql-common
+    # La imagen mínima de Debian no trae sudo ni el lector del journal para fail2ban.
+    apt-get install -y curl git rsync ca-certificates gnupg openssl iproute2 sudo ufw \
+        fail2ban python3-systemd unattended-upgrades nginx certbot postgresql-common
 
     # Actualizaciones de seguridad automáticas.
     cat > /etc/apt/apt.conf.d/20auto-upgrades <<'CONF'
@@ -31,7 +32,9 @@ CONF
     echo "==> PostgreSQL 18 (misma versión que en local, para restaurar el volcado)"
     if ! dpkg -s postgresql-18 &>/dev/null; then
         /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
-        apt-get install -y postgresql-18
+        # El clúster toma la codificación del idioma del sistema; sin idioma definido
+        # (imagen mínima) saldría SQL_ASCII en vez de UTF-8.
+        LANG=C.UTF-8 LC_ALL=C.UTF-8 apt-get install -y postgresql-18
     fi
     install -m 644 postgres/octogas.conf /etc/postgresql/18/main/conf.d/octogas.conf
     systemctl restart postgresql
@@ -44,8 +47,7 @@ CONF
 
     echo "==> Usuario $APP_USER"
     if ! id "$APP_USER" &>/dev/null; then
-        adduser --disabled-password --gecos "" "$APP_USER"
-        usermod -aG sudo "$APP_USER"
+        useradd --create-home --shell /bin/bash --groups sudo "$APP_USER"
         echo "Elige una contraseña para $APP_USER (te la pedirá sudo):"
         passwd "$APP_USER"
     fi
@@ -72,10 +74,22 @@ CONF
     fi
 
     echo "==> Firewall y fail2ban"
-    ufw allow OpenSSH
-    ufw allow 'Nginx Full'
+    # Puertos y no perfiles de aplicación ("OpenSSH", "Nginx Full"): Debian no los trae.
+    ufw allow 22/tcp
+    ufw allow 80/tcp
+    ufw allow 443/tcp
     ufw --force enable
-    systemctl enable --now fail2ban
+    # Debian no escribe /var/log/auth.log: los intentos de SSH se leen del journal. Se
+    # filtra por servicio (ssh.service) porque OpenSSH 10 registra los accesos como
+    # "sshd-session" y no como "sshd".
+    cat > /etc/fail2ban/jail.d/octogas.local <<'CONF'
+[sshd]
+enabled = true
+backend = systemd
+journalmatch = _SYSTEMD_UNIT=ssh.service
+CONF
+    systemctl enable fail2ban
+    systemctl restart fail2ban
 
     echo "==> Swap de 4 GB (red de seguridad para el pico de memoria del build)"
     if ! swapon --show | grep -q /swapfile; then
@@ -99,15 +113,16 @@ CONF
         local pass
         pass="$(openssl rand -hex 24)"
         runuser -u postgres -- psql -v ON_ERROR_STOP=1 -c "CREATE ROLE octogas LOGIN PASSWORD '$pass'"
-        runuser -u postgres -- psql -v ON_ERROR_STOP=1 -c "CREATE DATABASE octogas OWNER octogas"
+        runuser -u postgres -- psql -v ON_ERROR_STOP=1 -c \
+            "CREATE DATABASE octogas OWNER octogas ENCODING 'UTF8' LOCALE 'C.UTF-8' TEMPLATE template0"
         echo "postgres://octogas:$pass@localhost:5432/octogas" > /etc/octogas/database-url
         chown root:"$APP_USER" /etc/octogas/database-url
         chmod 640 /etc/octogas/database-url
     fi
 
     echo
-    echo "Servidor preparado. Siguiente paso: sube el volcado de la base de datos (ver"
-    echo "DEPLOY.md) y ejecuta:  sudo bash $APP_DIR/deploy/setup.sh"
+    echo "Servidor preparado. Siguiente paso: sube el paquete del histórico (DEPLOY.md,"
+    echo "paso 4) y ejecuta:  sudo bash $APP_DIR/deploy/setup.sh"
 }
 
 main "$@"
