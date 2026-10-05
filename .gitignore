@@ -33,3 +33,6 @@ pnpm-debug.log*
 
 # volcados de la base de datos (se suben a mano al servidor, nunca al repo)
 *.dump
+
+# paquete del histórico para subir al servidor (npm run pack-archive)
+deploy-package/

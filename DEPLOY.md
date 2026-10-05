@@ -35,6 +35,38 @@ servidor está en [`deploy/`](deploy/).
    ssh-keygen -t ed25519
    ```
 
+## Claves y secretos
+
+**Ninguno va al repositorio**, que es público: los `.env` están en `.gitignore` y el
+historial está revisado (nunca se ha subido una clave). Los genera el propio despliegue
+y no tienes que inventar ninguno salvo la contraseña de `sudo`.
+
+| Qué | Lo crea | Dónde vive | Quién lo ve |
+|---|---|---|---|
+| Contraseña de la BD de producción | `provision.sh` (aleatoria) | `/etc/octogas/database-url` y los `.env` del servidor (solo root y `octo`) | Nadie: nunca sale del servidor |
+| Contraseña de `sudo` de `octo` | Tú, al ejecutar `provision.sh` | Tu gestor de contraseñas | Tú |
+| Tu clave SSH | `ssh-keygen` en tu PC | La privada en tu PC; la pública en el servidor | Tú |
+| Clave de despliegue (GitHub → servidor) | `setup-ci.sh` (se muestra una vez) | Secreto `DEPLOY_SSH_KEY` de GitHub; no queda en el servidor | GitHub Actions |
+| `DEPLOY_HOST` y `DEPLOY_KNOWN_HOSTS` | `setup-ci.sh` | Secretos de GitHub | GitHub Actions |
+| Certificado HTTPS | certbot | `/etc/letsencrypt` (se renueva solo) | — |
+| Verificación de Search Console | Search Console | Registro DNS `TXT` | Pública (no es un secreto) |
+| Accesos a Netcup, al registrador y a GitHub | Tú | Tu gestor de contraseñas | Tú |
+
+- Activa la **verificación en dos pasos** en GitHub, Netcup y el registrador. Con el
+  despliegue continuo, quien pueda hacer push a `main` publica en la web.
+- La base de datos local de desarrollo (`octogas:octogas@localhost`) no es un secreto y
+  no se usa en producción.
+
+**Si alguno se filtra:**
+- **Clave de despliegue:** vuelve a ejecutar `sudo bash /srv/octogas/deploy/setup-ci.sh`
+  (sustituye la anterior) y actualiza los secretos de GitHub.
+- **Contraseña de la BD:**
+  `sudo -u postgres psql -c "ALTER ROLE octogas PASSWORD 'nueva'"`, cámbiala en
+  `/etc/octogas/database-url`, `/srv/octogas/.env` y `/srv/octogas/api/.env`, y
+  ejecuta `sudo systemctl restart octogas-api`.
+- **Tu clave SSH:** quita la línea correspondiente de `/home/octo/.ssh/authorized_keys`
+  y añade la nueva.
+
 ## 1. Contratar el VPS y el dominio
 
 - **VPS:** Netcup VPS 500 G12 → imagen **Ubuntu 24.04**. Apunta la **IPv4** (y la IPv6)
@@ -93,15 +125,19 @@ ssh octo@IP
 ## 4. Subir el histórico real de precios
 
 El histórico se reconstruye a partir de las descargas diarias de MITECO que has ido
-archivando en `data-archive/` desde el 30 de junio de 2026 (unos 190 MB). Desde tu PC
-(PowerShell, en la carpeta del proyecto):
+archivando en `data-archive/` desde el 30 de junio de 2026. **Justo antes de desplegar**
+(para incluir los últimos días), desde tu PC, en la carpeta del proyecto:
 
 ```powershell
-scp -r data-archive octo@IP:/srv/octogas/
+npm run pack-archive
+scp deploy-package/data-archive.tar.gz deploy-package/data-archive.tar.gz.sha256 octo@IP:/srv/octogas/
 ```
 
-`setup.sh` las reproduce en orden, cada una con su fecha (`npm run replay`): mismo
-histórico que el real, comprobado con una base de datos de prueba.
+`pack-archive` lo deja todo en un solo fichero (~30 MB en vez de ~200 MB) con su suma
+SHA-256. `setup.sh` comprueba la suma (si la subida se cortó, se para y avisa),
+descomprime las descargas y las reproduce en orden, cada una con su fecha
+(`npm run replay`): mismo histórico que el real, comprobado con una base de datos de
+prueba.
 
 > **No subas un volcado de tu base de datos local.** Tiene precios **simulados** de
 > marzo a junio (los generó `api/src/seed-history.ts` para probar la gráfica) y se

@@ -49,6 +49,20 @@ CONF
     as_app bash -c "cd '$APP_DIR' && npm ci --no-audit --no-fund"
     as_app bash -c "cd '$APP_DIR/api' && npm ci --no-audit --no-fund"
 
+    echo "==> Histórico real (paquete de data-archive)"
+    # Lo genera `npm run pack-archive` en tu PC y se sube con scp junto a su SHA-256.
+    if [[ -f $APP_DIR/data-archive.tar.gz ]]; then
+        if [[ -f $APP_DIR/data-archive.tar.gz.sha256 ]]; then
+            (cd "$APP_DIR" && sha256sum --check --quiet data-archive.tar.gz.sha256) \
+                || { echo "ERROR: el paquete no coincide con su SHA-256 (¿subida incompleta?). Vuelve a subirlo."; exit 1; }
+        fi
+        as_app tar -xzf "$APP_DIR/data-archive.tar.gz" -C "$APP_DIR" --no-same-owner \
+            --wildcards 'data-archive/stations-*.json'
+        echo "    $(compgen -G "$APP_DIR/data-archive/stations-*.json" | wc -l) días de histórico listos en data-archive/"
+    else
+        echo "    No hay $APP_DIR/data-archive.tar.gz: se usará lo que haya en data-archive/."
+    fi
+
     echo "==> Base de datos"
     local tables
     tables="$(as_app psql "$db_url" -tAc "select count(*) from information_schema.tables where table_schema = 'public'")"
