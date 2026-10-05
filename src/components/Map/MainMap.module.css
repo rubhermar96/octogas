@@ -71,6 +71,16 @@
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
+/* Leaflet pone display:block a .leaflet-marker-icon y, en el build, su hoja se carga
+   después y anula el flex de arriba: el número se centra desde el propio span. */
+.clusterIcon > span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
 .clusterSmall {
     width: 2rem;
     height: 2rem;
