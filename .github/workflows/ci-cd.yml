@@ -11,7 +11,7 @@ name: Integración y despliegue
 
 on:
   push:
-    branches: [design-experiment-square-contrast]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -71,7 +71,7 @@ jobs:
   deploy:
     name: Despliegue en octogas.es
     needs: ci
-    if: github.event_name == 'push' && github.ref == 'refs/heads/design-experiment-square-contrast'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment:

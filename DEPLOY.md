@@ -27,8 +27,7 @@ servidor está en [`deploy/`](deploy/).
 
 ## Antes de empezar
 
-- Se publica la rama **`design-experiment-square-contrast`** (la versión actual de la web;
-  `main` se quedó en junio). Está fijada en `deploy/config.env`.
+- Se publica la rama **`main`** (fijada en `deploy/config.env`).
 - El titular de los textos legales está en `OWNER` de [`src/consts.ts`](src/consts.ts). NIF y
   domicilio solo se muestran (y hay que rellenarlos) al activar publicidad.
 - **Clave SSH** en tu PC (PowerShell), si no tienes una ya:
@@ -75,7 +74,7 @@ Ya en el servidor:
 
 ```bash
 apt-get update && apt-get install -y git
-git clone -b design-experiment-square-contrast https://github.com/rubhermar96/octogas.git /srv/octogas
+git clone https://github.com/rubhermar96/octogas.git /srv/octogas
 bash /srv/octogas/deploy/provision.sh
 ```
 
@@ -146,7 +145,7 @@ Si prefieres la etiqueta `<meta>`, pon su valor en `/srv/octogas/.env`
 
 ## 7. Despliegue continuo (una vez)
 
-A partir de aquí, cada `git push` a `design-experiment-square-contrast` se publica solo.
+A partir de aquí, cada `git push` a `main` se publica solo.
 Lo hace el flujo [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml):
 
 1. **Integración** (también en cada pull request): tipos de la web y de la API, build

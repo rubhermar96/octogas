@@ -1,9 +1,8 @@
 /* ============================================================
-   EXPERIMENTO DE DISEÑO (rama design-experiment-square-contrast):
-   ángulos rectos en todo, alto contraste blanco/negro, colores del
-   logo reservados para acentos, tarjetas = mismo fondo que la página
-   con borde de contraste (en vez de un tono de superficie distinto).
-   Para volver al diseño anterior: git checkout main.
+   Diseño de OCTO: ángulos rectos en todo, alto contraste blanco/negro,
+   colores del logo reservados para acentos, tarjetas = mismo fondo que
+   la página con borde de contraste (en vez de un tono de superficie
+   distinto).
    ============================================================ */
 :root {
     /* Fuentes */
