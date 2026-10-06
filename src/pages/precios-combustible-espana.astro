@@ -58,7 +58,7 @@ const faqJsonLd = {
     <script type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} slot="head" />
 
     <div class="page-container">
-        <div class="content-wrapper">
+        <div class="content-wrapper" data-reveal-children>
             <nav class="breadcrumb" aria-label="Migas de pan">
                 <a href="/">Inicio</a>
                 <span>›</span>
@@ -73,7 +73,7 @@ const faqJsonLd = {
                 </p>
             </header>
 
-            <section class="stats-bar">
+            <section class="stats-bar" data-reveal-items>
                 <div class="stat">
                     <span class="stat-label">Media Gasolina 95</span>
                     <span class="stat-value">{fmt(avgSp95)} <small>€/L</small></span>
@@ -103,7 +103,7 @@ const faqJsonLd = {
                 </p>
             </section>
 
-            <section class="faq">
+            <section class="faq" data-reveal-items>
                 <h2>Preguntas frecuentes</h2>
                 {
                     faq.map((f) => (

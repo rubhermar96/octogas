@@ -13,7 +13,7 @@ const adsActive = Boolean(ADSENSE_ID);
     description="¿Tienes una idea para mejorar OCTO? Escríbenos a contactaocto@gmail.com."
     hideSidebar={true}
 >
-    <div class="contact">
+    <div class="contact" data-reveal-children>
         <a href="/" class="back">← Volver al inicio</a>
         <h1>Hablemos</h1>
         <p class="lead">
@@ -21,9 +21,9 @@ const adsActive = Boolean(ADSENSE_ID);
             gustaría que hiciéramos distinto o qué no funciona como esperas.
         </p>
 
-        <div class="reasons">
+        <div class="reasons" data-reveal-items>
             <a
-                class="reasonCard"
+                class="reasonCard hover-lift"
                 href="mailto:contactaocto@gmail.com?subject=Mejora%20o%20sugerencia%20para%20OCTO"
             >
                 <span class="material-symbols-outlined icon" aria-hidden="true">lightbulb</span>
@@ -39,7 +39,7 @@ const adsActive = Boolean(ADSENSE_ID);
 
             {adsActive && (
                 <a
-                    class="reasonCard"
+                    class="reasonCard hover-lift"
                     href="mailto:contactaocto@gmail.com?subject=Publicidad%20y%20colaboraciones%20en%20OCTO"
                 >
                     <span class="material-symbols-outlined icon" aria-hidden="true">campaign</span>
@@ -55,7 +55,7 @@ const adsActive = Boolean(ADSENSE_ID);
             )}
         </div>
 
-        <a class="emailCard" href="mailto:contactaocto@gmail.com">
+        <a class="emailCard hover-lift" href="mailto:contactaocto@gmail.com">
             <span class="material-symbols-outlined" aria-hidden="true">mail</span>
             <span>
                 <strong>contactaocto@gmail.com</strong>

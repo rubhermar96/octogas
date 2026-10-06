@@ -6,6 +6,7 @@ import MainMap from "../../../components/Map/MainMap";
 import MunicipioTop from "../../../components/Municipio/MunicipioTop";
 import AdSlot from "../../../components/AdSlot.astro";
 import Footer from "../../../components/Footer.astro";
+import CompareToggle from "../../../components/CompareToggle.astro";
 import { stationUrl, provinceUrl } from "../../../lib/stationUrl";
 import { placeSlug, displayProvince, displayCity } from "../../../lib/placeName";
 import PriceHistoryChart from "../../../components/Station/PriceHistoryChart";
@@ -193,7 +194,7 @@ const breadcrumbJsonLd = {
     <script type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd)} slot="head" />
 
     <div class="page-container">
-        <div class="content-wrapper">
+        <div class="content-wrapper" data-reveal-children>
             <nav class="breadcrumb" aria-label="Migas de pan">
                 <a href="/">Inicio</a>
                 <span>›</span>
@@ -211,7 +212,7 @@ const breadcrumbJsonLd = {
                 </p>
             </header>
 
-            <section class="stats-bar" aria-label="Precio medio por combustible">
+            <section class="stats-bar" data-reveal-items aria-label="Precio medio por combustible">
                 <div class="stat">
                     <span class="stat-label">Estaciones</span>
                     <span class="stat-value">{stations.length}</span>
@@ -247,7 +248,7 @@ const breadcrumbJsonLd = {
                 </div>
             </section>
 
-            <section class="faq">
+            <section class="faq" data-reveal-items>
                 <h2>Preguntas frecuentes sobre el precio del combustible en {muniLabel}</h2>
                 {
                     faq.map((f) => (
@@ -261,15 +262,16 @@ const breadcrumbJsonLd = {
 
             <section class="all-stations">
                 <h2>Todas las gasolineras de {muniLabel}</h2>
-                <div class="station-link-grid">
+                <div class="station-link-grid" data-reveal-items>
                     {
                         stations.map((s) => (
-                            <a href={stationUrl(s)} class="station-link">
-                                <span class="sl-name">{/^n[ºo°]/i.test(s.brand) || /^\d/.test(s.brand) ? s.address : s.brand}</span>
+                            <div class="station-link hover-lift">
+                                <a href={stationUrl(s)} class="sl-name">{/^n[ºo°]/i.test(s.brand) || /^\d/.test(s.brand) ? s.address : s.brand}</a>
                                 <span class="sl-meta">
                                     {s.prices.sp95 != null && <span class="sl-price">{fmt(s.prices.sp95)} €/L</span>}
                                 </span>
-                            </a>
+                                <div class="sl-compare"><CompareToggle stationId={s.id} variant="square" /></div>
+                            </div>
                         ))
                     }
                 </div>
@@ -279,9 +281,9 @@ const breadcrumbJsonLd = {
                 siblings.length > 0 && (
                     <section class="siblings">
                         <h2>Gasolineras en otros municipios de {provLabel}</h2>
-                        <div class="sibling-grid">
+                        <div class="sibling-grid" data-reveal-items>
                             {siblings.map((m) => (
-                                <a href={`/gasolineras-baratas/${provSlug}/${m.slug}`} class="sibling-link">
+                                <a href={`/gasolineras-baratas/${provSlug}/${m.slug}`} class="sibling-link hover-lift">
                                     {displayCity(m.name)}
                                     <span>{m.count}</span>
                                 </a>
@@ -550,12 +552,15 @@ const breadcrumbJsonLd = {
         grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
         gap: 0.6rem;
     }
+    /* Toda la fila lleva a la ficha (el enlace del nombre se estira sobre ella con
+       ::after) y el botón de comparar queda por encima. */
     .station-link {
+        position: relative;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 0.5rem;
-        padding: 0.75rem 1rem;
+        padding: 0.45rem 0.45rem 0.45rem 1rem;
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 0.7rem;
@@ -568,11 +573,25 @@ const breadcrumbJsonLd = {
         transform: translateY(-1px);
     }
     .sl-name {
+        flex: 1;
+        min-width: 0;
+        color: inherit;
+        text-decoration: none;
         font-size: 0.88rem;
         font-weight: 600;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+    .sl-name::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+    }
+    .sl-compare {
+        position: relative;
+        z-index: 1;
+        display: flex;
     }
     .sl-price {
         font-size: 0.78rem;

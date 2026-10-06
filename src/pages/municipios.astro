@@ -49,7 +49,7 @@ const mainCities: { name: string; province: string; city: string }[] = [
 >
     {/* El índice de municipios del buscador se descarga en paralelo con el JS de la isla. */}
     <link rel="preload" href="/data/municipios.json" as="fetch" crossorigin="anonymous" slot="head" />
-    <div class="municipios-page">
+    <div class="municipios-page" data-reveal-children>
         <section class="search-container">
             <header class="page-header">
                 <a href="/" class="back-link">
@@ -66,7 +66,7 @@ const mainCities: { name: string; province: string; city: string }[] = [
 
             <div class="location-cta">
                 <span class="divider-text">o</span>
-                <a href="/explorador?mode=location" class="location-button">
+                <a href="/explorador?mode=location" class="location-button btn-pop">
                     <span class="material-symbols-outlined" aria-hidden="true">my_location</span>
                     Usar mi ubicación en tiempo real
                 </a>
@@ -74,10 +74,10 @@ const mainCities: { name: string; province: string; city: string }[] = [
 
             <div class="quick-links">
                 <h2>Ciudades principales</h2>
-                <div class="cities-grid">
+                <div class="cities-grid" data-reveal-items>
                     {
                         mainCities.map((c) => (
-                            <a href={municipioUrl(c.province, c.city)} class="city-card">
+                            <a href={municipioUrl(c.province, c.city)} class="city-card hover-lift">
                                 <span class="city-name">{c.name}</span>
                                 <span class="city-icon material-symbols-outlined" aria-hidden="true">location_city</span>
                             </a>
@@ -86,7 +86,7 @@ const mainCities: { name: string; province: string; city: string }[] = [
                 </div>
             </div>
 
-            <a href="/precios-combustible-espana" class="espana-link">
+            <a href="/precios-combustible-espana" class="espana-link hover-lift">
                 <span class="material-symbols-outlined" aria-hidden="true">trending_up</span>
                 <span>
                     <strong>Precio medio de la gasolina y el diésel en España</strong>
@@ -97,10 +97,10 @@ const mainCities: { name: string; province: string; city: string }[] = [
 
             <div class="quick-links">
                 <h2>Gasolineras por provincia</h2>
-                <div class="province-grid">
+                <div class="province-grid" data-reveal-items>
                     {
                         provinces.map((p) => (
-                            <a href={p.url} class="province-link">
+                            <a href={p.url} class="province-link hover-lift">
                                 <span class="province-name">{p.label}</span>
                                 <span class="province-count">{p.count}</span>
                             </a>

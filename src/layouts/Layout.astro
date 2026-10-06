@@ -10,6 +10,7 @@ import "@fontsource/geist-sans/800.css";
 import "@fontsource/unbounded/700.css";
 import "../styles/global.css";
 import styles from "../styles/Layout.module.css";
+import iconFontUrl from "../assets/fonts/material-symbols-outlined.woff2?url";
 
 import { SITE, GOOGLE_SITE_VERIFICATION, ADSENSE_ID } from "../consts";
 import ConsentBanner from "../components/ConsentBanner.astro";
@@ -65,6 +66,25 @@ const orgJsonLd = {
         <meta charset="utf-8" />
         <meta content="width=device-width, initial-scale=1.0" name="viewport" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
+        <script is:inline>
+            // Antes de pintar: el tema guardado (si no, cada página se pintaba oscura y
+            // cambiaba a clara un instante después) y las animaciones de entrada
+            // (global.css), salvo sin IntersectionObserver o si se pide reducir el
+            // movimiento. Red de seguridad: si el script que las lanza (al final del
+            // body) no llegara a ejecutarse, se quitan y se ve todo.
+            (function () {
+                var root = document.documentElement;
+                try {
+                    if (localStorage.getItem("theme") === "light") root.setAttribute("data-theme", "light");
+                } catch (e) {}
+                if ("IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                    root.classList.add("motion");
+                    setTimeout(function () {
+                        if (!root.classList.contains("motion-ready")) root.classList.remove("motion");
+                    }, 4000);
+                }
+            })();
+        </script>
 
         {GOOGLE_SITE_VERIFICATION && (
             <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />
@@ -103,20 +123,15 @@ const orgJsonLd = {
         <!-- Datos estructurados globales -->
         <script type="application/ld+json" set:html={JSON.stringify(orgJsonLd)} />
 
-        <!-- Icons (Material Symbols), subseteados a los iconos que usamos de verdad
-             (la fuente pasa de ~300KB a unos pocos KB) y con los ejes variables
-             fijados a los valores que aplica el CSS (.material-symbols-outlined).
-             Si usas un icono NUEVO en el código, añádelo también a icon_names.
-             display=block evita el destello del nombre en texto ("search") al cargar. -->
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <link
-            href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_circle,arrow_back,arrow_forward,balance,campaign,check,check_circle,close,dark_mode,delete_sweep,directions,expand_more,explore,home,hourglass_top,ios_share,left_panel_close,light_mode,lightbulb,local_gas_station,location_city,location_off,location_on,mail,map,my_location,near_me,north_east,payments,pin_drop,place,route,savings,schedule,search,sync_alt,toll,travel_explore,trending_up,trophy,tune,update,verified,water_drop&display=block"
-            rel="stylesheet"
-        />
+        <!-- Iconos: fuente propia con solo los que usamos (global.css; con un icono
+             nuevo, npm run icons). Precargada para que no tarden en aparecer. -->
+        <link rel="preload" href={iconFontUrl} as="font" type="font/woff2" crossorigin />
+
         <slot name="head" />
     </head>
     <body class={`custom-scrollbar ${isHome ? 'home-page' : ''} ${!hideSidebar ? 'has-sidebar' : ''}`}>
+        <div class="nav-progress" aria-hidden="true"></div>
+
         <!-- Floating Header -->
         <header class={styles.header} id="main-header">
             {!hideHeaderLogo && (
@@ -235,6 +250,35 @@ const orgJsonLd = {
         {/* Sin publicidad activa no hay cookies de terceros: no procede pedir
             consentimiento. El banner vuelve solo al configurar PUBLIC_ADSENSE_ID. */}
         {ADSENSE_ID && <ConsentBanner />}
+
+        <script is:inline>
+            // Animaciones de entrada (global.css): cada bloque marcado con data-reveal,
+            // data-reveal-children o data-reveal-items aparece al entrar en pantalla; los
+            // que entran a la vez, escalonados. Va en línea al final del body para
+            // enganchar el observador en cuanto existe el contenido.
+            (function () {
+                var root = document.documentElement;
+                if (!root.classList.contains("motion")) return;
+                var io = new IntersectionObserver(
+                    function (entries) {
+                        var n = 0;
+                        entries.forEach(function (e) {
+                            if (!e.isIntersecting) return;
+                            e.target.style.setProperty("--reveal-delay", Math.min(n++, 6) * 60 + "ms");
+                            e.target.classList.add("is-revealed");
+                            io.unobserve(e.target);
+                        });
+                    },
+                    { rootMargin: "0px 0px -6% 0px" }
+                );
+                document
+                    .querySelectorAll("[data-reveal], [data-reveal-children] > *, [data-reveal-items] > *")
+                    .forEach(function (el) {
+                        io.observe(el);
+                    });
+                root.classList.add("motion-ready");
+            })();
+        </script>
     </body>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
@@ -260,6 +304,21 @@ const orgJsonLd = {
                     bodyTag.classList.remove('menu-open');
                 });
             });
+
+            // Barra de progreso (global.css) al pulsar un enlace a otra página de la web.
+            document.addEventListener('click', (e) => {
+                if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                const link = (e.target as Element | null)?.closest('a[href]') as HTMLAnchorElement | null;
+                if (!link || (link.target && link.target !== '_self') || link.hasAttribute('download')) return;
+                const url = new URL(link.href, location.href);
+                if (url.origin !== location.origin) return;
+                if (url.pathname === location.pathname && url.search === location.search) return; // mismo documento (#ancla)
+                htmlElement.classList.add('is-navigating');
+                // Por si la navegación se cancela (botón de parar del navegador).
+                setTimeout(() => htmlElement.classList.remove('is-navigating'), 15000);
+            });
+            // Al volver con "atrás" el navegador restaura la página tal cual: sin barra.
+            window.addEventListener('pageshow', () => htmlElement.classList.remove('is-navigating'));
 
             // Light/Dark Mode Toggle
             const initTheme = () => {

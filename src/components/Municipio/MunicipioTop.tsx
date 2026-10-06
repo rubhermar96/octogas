@@ -4,6 +4,7 @@ import { FUEL_LABELS } from '../../lib/fuels';
 import { stationUrl } from '../../lib/stationUrl';
 import { displayCity } from '../../lib/placeName';
 import BrandLogo from '../Explorer/BrandLogo';
+import CompareButton from '../Explorer/CompareButton';
 import styles from './MunicipioTop.module.css';
 
 interface Props {
@@ -47,7 +48,7 @@ const MunicipioTop: React.FC<Props> = ({ stations, explorerUrl }) => {
 
             <ol className={styles.list}>
                 {top.map((s, i) => (
-                    <li key={s.id} className={styles.row}>
+                    <li key={s.id} className={styles.row} style={{ '--i': i } as React.CSSProperties}>
                         <span className={styles.rank}>{i + 1}</span>
                         <BrandLogo brand={s.brand} size={36} />
                         <a className={styles.info} href={stationUrl(s)} title="Ver ficha de la gasolinera">
@@ -60,6 +61,7 @@ const MunicipioTop: React.FC<Props> = ({ stations, explorerUrl }) => {
                             <span className={styles.price}>{(s.prices[fuel] as number).toFixed(3)}</span>
                             <span className={styles.unit}>€/L</span>
                         </div>
+                        <CompareButton stationId={s.id} variant="square" />
                         <a
                             className={styles.go}
                             href={`https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`}
@@ -73,7 +75,7 @@ const MunicipioTop: React.FC<Props> = ({ stations, explorerUrl }) => {
                 ))}
             </ol>
 
-            <a className={styles.cta} href={explorerUrl}>
+            <a className={`${styles.cta} btn-pop`} href={explorerUrl}>
                 <span className="material-symbols-outlined" aria-hidden="true">explore</span>
                 Ver todas y explorar el municipio en el mapa
             </a>

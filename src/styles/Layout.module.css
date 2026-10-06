@@ -18,6 +18,8 @@
     z-index: 20;
     overflow-y: auto;
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+    /* Se queda quieto en las transiciones entre páginas (ver global.css). */
+    view-transition-name: octo-sidebar;
 }
 
 .main {
@@ -642,6 +644,8 @@
     align-items: center;
     z-index: 50;
     pointer-events: none; /* Let clicks pass through the invisible header bar */
+    /* Se queda quieta en las transiciones entre páginas (ver global.css). */
+    view-transition-name: octo-header;
 }
 
 /* 
@@ -813,10 +817,9 @@
 
 .menuOverlay {
     position: fixed;
-    top: 0;
-    right: 0;
-    width: 100vw;
-    height: 100vh;
+    /* inset en vez de 100vw/100vh: en iOS 100vh incluye la barra del navegador y el
+       contenido centrado quedaba desplazado hacia abajo. */
+    inset: 0;
     background-color: rgba(9, 9, 11, 0.95);
     backdrop-filter: blur(20px);
     z-index: 100;
@@ -837,13 +840,19 @@
 .menuNav {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: clamp(1.25rem, 4.5vh, 2rem);
+    padding: 0 1.5rem;
     text-align: center;
 }
 
+/* Unbounded es muy ancha: a tamaño fijo, "Planificar viaje" no cabía en un móvil
+   (~400 px). Escala con el ancho de pantalla y, si aun así no cabe, parte en dos
+   líneas equilibradas. */
 .menuLink {
     font-family: var(--font-header);
-    font-size: 2.25rem;
+    font-size: clamp(1.35rem, 6.5vw, 2.25rem);
+    line-height: 1.2;
+    text-wrap: balance;
     font-weight: 700;
     color: white;
     text-decoration: none;

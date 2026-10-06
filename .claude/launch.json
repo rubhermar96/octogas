@@ -29,6 +29,17 @@
         "preview"
       ],
       "port": 4321
+    },
+    {
+      "name": "preview-movil",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "preview",
+        "--",
+        "--host"
+      ],
+      "port": 4321
     }
   ]
 }

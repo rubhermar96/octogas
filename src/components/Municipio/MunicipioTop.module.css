@@ -59,6 +59,24 @@
     border: 1px solid var(--border);
     border-radius: 0.75rem;
     padding: 0.7rem 0.9rem;
+    transition: border-color 0.2s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    /* Entran escalonadas al aparecer y al cambiar de combustible (--i = posición). */
+    animation: rowIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+@media (hover: hover) {
+    .row:hover {
+        border-color: var(--primary);
+        transform: translateX(4px);
+    }
+}
+
+@keyframes rowIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
 }
 
 .rank {
@@ -159,4 +177,17 @@
 
 .cta:hover {
     box-shadow: 0 0 22px rgba(52, 211, 153, 0.4);
+}
+
+/* En móvil, fila más compacta para que el nombre conserve sitio junto a los botones
+   de comparar y "Cómo llegar". */
+@media (max-width: 560px) {
+    .row {
+        gap: 0.45rem;
+        padding: 0.6rem 0.6rem;
+    }
+    .go {
+        width: 32px;
+        height: 32px;
+    }
 }

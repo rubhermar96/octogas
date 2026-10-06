@@ -387,6 +387,16 @@
     border: 1px solid var(--border);
     border-radius: 0.875rem;
     padding: 0.9rem 1rem;
+    /* Al calcular la ruta, las paradas entran escalonadas (--i = posición). */
+    animation: stopIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+@keyframes stopIn {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
 }
 
 .stopCardTop {

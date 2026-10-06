@@ -4,6 +4,7 @@ import { FUEL_LABELS, MAIN_FUELS, OTHER_FUELS, FUEL_ORDER } from "../../lib/fuel
 import { stationUrl } from "../../lib/stationUrl";
 import { displayProvince, displayCity } from "../../lib/placeName";
 import BrandLogo from "../Explorer/BrandLogo";
+import CompareButton from "../Explorer/CompareButton";
 import styles from "./NationalTopFuels.module.css";
 
 export interface TopStation {
@@ -68,7 +69,11 @@ const NationalTopFuels: React.FC<Props> = ({ topByFuel }) => {
 
             <ol className={styles.list}>
                 {list.map((s, i) => (
-                    <li key={s.id} className={`${styles.row} ${i === 0 ? styles.first : ""}`}>
+                    <li
+                        key={s.id}
+                        className={`${styles.row} ${i === 0 ? styles.first : ""}`}
+                        style={{ "--i": i } as React.CSSProperties}
+                    >
                         <span className={styles.rank}>{i + 1}</span>
                         <BrandLogo brand={s.brand} size={38} />
                         <a className={styles.info} href={stationUrl(s)} title="Ver ficha de la gasolinera">
@@ -81,6 +86,7 @@ const NationalTopFuels: React.FC<Props> = ({ topByFuel }) => {
                             <span className={styles.price}>{fmtPrice(s.price)}</span>
                             <span className={styles.unit}>€/L</span>
                         </div>
+                        <CompareButton stationId={s.id} variant="square" />
                     </li>
                 ))}
             </ol>

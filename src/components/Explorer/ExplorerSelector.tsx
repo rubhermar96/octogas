@@ -6,7 +6,7 @@ const ExplorerSelector: React.FC = () => {
         <div className={styles.selectorContainer}>
             <div className={styles.buttonGroup}>
                 <button 
-                    className={styles.primaryButton}
+                    className={`${styles.primaryButton} btn-pop`}
                     onClick={() => {
                         window.location.href = '/explorador?mode=location';
                     }}
@@ -15,7 +15,7 @@ const ExplorerSelector: React.FC = () => {
                     Usar mi ubicación
                 </button>
                 <a 
-                    className={styles.secondaryButton}
+                    className={`${styles.secondaryButton} btn-pop`}
                     href="/municipios"
                     style={{ textDecoration: 'none' }}
                 >

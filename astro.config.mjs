@@ -28,8 +28,6 @@ export default defineConfig({
   // laPolítica de cookies"). true mantiene el comportamiento con el que se
   // escribieron todas las páginas: compacta sin perder los espacios necesarios.
   compressHTML: true,
-  // Precarga las páginas enlazadas al pasar el ratón por encima: la navegación
-  // entre páginas estáticas se siente instantánea sin coste en la carga inicial.
   vite: {
     // Caché de Vite separada para el build: si comparte node_modules/.vite con un
     // `astro dev` en marcha, el build la regenera y el servidor de desarrollo se queda
@@ -37,6 +35,8 @@ export default defineConfig({
     // React, como los mapas, dejan de cargar).
     cacheDir: process.argv.includes('build') ? 'node_modules/.vite-build' : 'node_modules/.vite',
   },
+  // Precarga las páginas enlazadas al pasar el ratón por encima: la navegación
+  // entre páginas estáticas se siente instantánea sin coste en la carga inicial.
   prefetch: {
     prefetchAll: true,
     defaultStrategy: 'hover',

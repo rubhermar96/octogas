@@ -53,6 +53,15 @@ function parseCoord(raw: string | undefined): number {
     return parseFloat(raw.replace(",", "."));
 }
 
+/**
+ * Quita comas sueltas de la dirección: "CALLE SAN RAMON 8," y "CALLE JOVEN TRINIDAD,, 11"
+ * daban ",," al mostrarla como "{dirección}, {municipio}". La URL no cambia (el slug
+ * ya descarta la puntuación).
+ */
+function cleanAddress(raw: string): string {
+    return raw.trim().replace(/\s*,(?:\s*,)+\s*/g, ", ").replace(/[\s,;]+$/, "");
+}
+
 /** Elimina las claves sin precio (null) para no serializarlas en el JSON. */
 function compactPrices(prices: Record<string, number | null>): GasStation["prices"] {
     const out: Record<string, number> = {};
@@ -127,7 +136,7 @@ async function updateGasData() {
             id: item.IDEESS,
             name: (item["Rótulo"] ?? "").trim(),
             brand: normalizeBrand(item["Rótulo"]),
-            address: (item["Dirección"] ?? "").trim(),
+            address: cleanAddress(item["Dirección"] ?? ""),
             city: (item.Municipio ?? "").trim(),
             province: (item.Provincia ?? "").trim(),
             postalCode: item["C.P."] ?? "",

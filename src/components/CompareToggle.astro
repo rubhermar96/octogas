@@ -1,0 +1,64 @@
+---
+/**
+ * Botón "Comparar" para las páginas estáticas (ficha, municipio, provincia). Mismo
+ * aspecto que CompareButton (React), pero sin una isla por gasolinera: un único
+ * script por página sincroniza todos los botones con la lista de comparación
+ * (y con los CompareButton de las islas, vía el mismo evento de src/lib/compare).
+ */
+import styles from "./Explorer/CompareButton.module.css";
+import type { CompareVariant } from "./Explorer/CompareButton";
+
+interface Props {
+    stationId: string;
+    variant?: Exclude<CompareVariant, "icon">;
+}
+
+const { stationId, variant = "card" } = Astro.props;
+const withText = variant !== "square";
+---
+
+<button
+    type="button"
+    class:list={[styles.btn, variant !== "card" && styles[variant]]}
+    data-compare-id={stationId}
+    data-compare-mini={variant === "mini" || undefined}
+    aria-pressed="false"
+    aria-label="Añadir al comparador"
+>
+    <span class="material-symbols-outlined" aria-hidden="true" data-compare-icon>balance</span>
+    {withText && <span data-compare-text>Comparar</span>}
+</button>
+
+<script>
+    import { getCompareIds, toggleCompare, onCompareChange, MAX_COMPARE } from "../lib/compare";
+    import styles from "./Explorer/CompareButton.module.css";
+
+    function sync(ids: string[]) {
+        const full = ids.length >= MAX_COMPARE;
+        for (const btn of document.querySelectorAll<HTMLButtonElement>("button[data-compare-id]")) {
+            const on = ids.includes(btn.dataset.compareId!);
+            btn.classList.toggle(styles.active, on);
+            btn.disabled = full && !on;
+            btn.setAttribute("aria-pressed", String(on));
+            btn.setAttribute("aria-label", on ? "Quitar del comparador" : "Añadir al comparador");
+            btn.title = btn.disabled ? `Máximo ${MAX_COMPARE} gasolineras` : on ? "En comparador" : "Comparar";
+            const icon = btn.querySelector("[data-compare-icon]");
+            if (icon) icon.textContent = on ? "check" : "balance";
+            const text = btn.querySelector("[data-compare-text]");
+            if (text) text.textContent = !on ? "Comparar" : btn.hasAttribute("data-compare-mini") ? "Comparando" : "En comparador";
+        }
+    }
+
+    document.addEventListener("click", (e) => {
+        const btn = (e.target as Element | null)?.closest<HTMLButtonElement>("button[data-compare-id]");
+        if (!btn) return;
+        e.preventDefault();
+        if (toggleCompare(btn.dataset.compareId!).full) {
+            alert(`Solo puedes comparar ${MAX_COMPARE} gasolineras a la vez. Quita alguna en el comparador.`);
+        }
+    });
+    onCompareChange(sync);
+    // Al volver con "atrás" (caché del navegador) la lista puede haber cambiado en otra página.
+    window.addEventListener("pageshow", () => sync(getCompareIds()));
+    sync(getCompareIds());
+</script>

@@ -19,12 +19,14 @@ const ADDRESS_MINOR_WORDS = new Set(['de', 'del', 'la', 'las', 'el', 'los', 'y',
  * ya viene con mayúsculas y minúsculas, se respeta tal cual.
  */
 export function displayAddress(raw: string): string {
-    const text = raw.trim();
+    // Los datos traen comas sueltas ("CALLE SAN RAMON 8,", "CALLE JOVEN TRINIDAD,, 11")
+    // que, al componer textos como "{dirección}, {municipio}", daban ",,".
+    const text = raw.trim().replace(/\s*,(?:\s*,)+\s*/g, ', ').replace(/[\s,;]+$/, '');
     if (text !== text.toUpperCase()) return text;
     return text
         .split(/\s+/)
         .map((word, i) => {
-            if (/^[a-zñ]{1,4}-?\d/i.test(word) || /^s\/n\W*$/i.test(word)) return word.toUpperCase();
+            if (/^[a-zñ]{1,4}-?\d/i.test(word) || /^s[/.]n\W*$/i.test(word)) return word.toUpperCase();
             const lower = word.toLowerCase();
             if (i > 0 && ADDRESS_MINOR_WORDS.has(lower)) return lower;
             return titleCase(lower);

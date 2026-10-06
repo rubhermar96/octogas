@@ -129,6 +129,41 @@
     animation: float 6s ease-in-out infinite;
 }
 
+/* Entrada de la cabecera al cargar: logo, titular, texto, datos y botones suben en
+   secuencia. (El logo se anima en la imagen: su caja ya tiene la flotación.) */
+@media (prefers-reduced-motion: no-preference) {
+    .logoImage,
+    .slogan,
+    .heroLead,
+    .heroStats,
+    .heroSelectorWrap,
+    .scrollIndicator {
+        animation: heroIn 0.9s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    }
+    .slogan {
+        animation-delay: 0.12s;
+    }
+    .heroLead {
+        animation-delay: 0.24s;
+    }
+    .heroStats {
+        animation-delay: 0.36s;
+    }
+    .heroSelectorWrap {
+        animation-delay: 0.48s;
+    }
+    .scrollIndicator {
+        animation-delay: 0.8s;
+    }
+}
+
+@keyframes heroIn {
+    from {
+        opacity: 0;
+        transform: translateY(28px);
+    }
+}
+
 .logoImage {
     width: 100%;
     height: auto;
@@ -638,13 +673,6 @@
     max-width: 540px;
     margin-left: auto;
     margin-right: auto;
-}
-
-/* ===== Animación de aparición ===== */
-.reveal {
-    opacity: 0;
-    transform: translateY(40px);
-    transition: opacity 0.8s ease-out, transform 0.8s ease-out;
 }
 
 /* ===== Responsive ===== */

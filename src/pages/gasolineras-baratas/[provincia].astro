@@ -4,6 +4,7 @@ import path from "node:path";
 import Layout from "../../layouts/Layout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Footer from "../../components/Footer.astro";
+import CompareToggle from "../../components/CompareToggle.astro";
 import { stationUrl, municipioUrl } from "../../lib/stationUrl";
 import { placeSlug, displayProvince, displayCity } from "../../lib/placeName";
 import PriceHistoryChart from "../../components/Station/PriceHistoryChart";
@@ -150,7 +151,7 @@ const breadcrumbJsonLd = {
     <script type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd)} slot="head" />
 
     <div class="page-container">
-        <div class="content-wrapper">
+        <div class="content-wrapper" data-reveal-children>
             <nav class="breadcrumb" aria-label="Migas de pan">
                 <a href="/">Inicio</a>
                 <span>›</span>
@@ -168,7 +169,7 @@ const breadcrumbJsonLd = {
                 </p>
             </header>
 
-            <section class="stats-bar" aria-label="Resumen de precios">
+            <section class="stats-bar" data-reveal-items aria-label="Resumen de precios">
                 <div class="stat">
                     <span class="stat-label">Estaciones</span>
                     <span class="stat-value">{stations.length}</span>
@@ -189,11 +190,12 @@ const breadcrumbJsonLd = {
 
             {
                 cheapestSp95 && (
-                    <a class="cheapest" href={stationUrl(cheapestSp95)}>
+                    <div class="cheapest hover-lift">
                         <span class="cheapest-tag">Más barata SP95</span>
-                        <span class="cheapest-name">{cheapestSp95.name}</span>
+                        <a class="cheapest-name" href={stationUrl(cheapestSp95)}>{cheapestSp95.name}</a>
                         <span class="cheapest-meta">{displayCity(cheapestSp95.city)} · {fmt(minSp95)} €/L</span>
-                    </a>
+                        <div class="cheapest-compare"><CompareToggle stationId={cheapestSp95.id} /></div>
+                    </div>
                 )
             }
 
@@ -206,10 +208,10 @@ const breadcrumbJsonLd = {
 
             <section class="munis">
                 <h2>Municipios de {provLabel}</h2>
-                <div class="muni-grid">
+                <div class="muni-grid" data-reveal-items>
                     {
                         munis.map((m) => (
-                            <a href={municipioUrl(provinceName, m.name)} class="muni-link">
+                            <a href={municipioUrl(provinceName, m.name)} class="muni-link hover-lift">
                                 <span class="muni-name">{displayCity(m.name)}</span>
                                 <span class="muni-meta">
                                     {m.minSp95 != null && <span class="muni-price">{fmt(m.minSp95)} €/L</span>}
@@ -221,7 +223,7 @@ const breadcrumbJsonLd = {
                 </div>
             </section>
 
-            <section class="faq">
+            <section class="faq" data-reveal-items>
                 <h2>Preguntas frecuentes sobre el combustible en {provLabel}</h2>
                 {
                     faq.map((f) => (
@@ -324,7 +326,10 @@ const breadcrumbJsonLd = {
         font-weight: 600;
         color: var(--text-muted);
     }
+    /* Toda la tarjeta lleva a la ficha (el enlace del nombre se estira sobre ella con
+       ::after) y el botón de comparar queda por encima. */
     .cheapest {
+        position: relative;
         display: flex;
         flex-direction: column;
         gap: 0.2rem;
@@ -349,9 +354,22 @@ const breadcrumbJsonLd = {
         font-weight: 800;
     }
     .cheapest-name {
+        color: inherit;
+        text-decoration: none;
         font-family: var(--font-header);
         font-size: 1.2rem;
         font-weight: 700;
+    }
+    .cheapest-name::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+    }
+    .cheapest-compare {
+        position: relative;
+        z-index: 1;
+        align-self: flex-start;
+        margin-top: 0.5rem;
     }
     .cheapest-meta {
         font-size: 0.9rem;

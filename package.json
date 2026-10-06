@@ -14,7 +14,8 @@
     "update-data": "tsx src/scripts/update-prices.ts",
     "archive-snapshot": "tsx src/scripts/archive-snapshot.ts",
     "refresh": "npm run update-data && npm run archive-snapshot && npm --prefix api run ingest",
-    "pack-archive": "node scripts/pack-archive.mjs"
+    "pack-archive": "node scripts/pack-archive.mjs",
+    "icons": "node scripts/update-icons.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^7.0.0",

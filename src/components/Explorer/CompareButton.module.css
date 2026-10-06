@@ -71,3 +71,64 @@
 .btn.mini :global(.material-symbols-outlined) {
     font-size: 0.8rem;
 }
+
+/* Variante cuadrada (solo icono) al final de una fila de listado, del mismo tamaño
+   que el botón "Cómo llegar" de esas filas. */
+.btn.square {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    justify-content: center;
+    color: var(--secondary);
+}
+
+.btn.square.active {
+    color: var(--on-secondary);
+}
+
+.btn.square :global(.material-symbols-outlined) {
+    font-size: 1.1rem;
+}
+
+/* Variante grande: acción principal de la ficha, junto a "Cómo llegar". */
+.btn.large {
+    flex-shrink: 0;
+    gap: 0.4rem;
+    padding: 0.7rem 1.2rem;
+    border-color: var(--secondary);
+    background: transparent;
+    color: var(--secondary);
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.btn.large.active {
+    background: var(--secondary);
+    color: var(--on-secondary);
+}
+
+.btn.large :global(.material-symbols-outlined) {
+    font-size: 1.25rem;
+}
+
+/* En móvil comparte la fila con "Cómo llegar" a mitad de ancho: menos relleno para
+   que "En comparador" no se parta en dos líneas. */
+@media (max-width: 600px) {
+    .btn.large {
+        padding: 0.7rem 0.75rem;
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: 560px) {
+    .btn.square {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+/* Al pulsar: pequeño hundimiento como confirmación táctil. */
+.btn:active:not(:disabled) {
+    transform: scale(0.94);
+}

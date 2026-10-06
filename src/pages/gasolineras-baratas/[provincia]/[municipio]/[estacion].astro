@@ -5,6 +5,7 @@ import Layout from "../../../../layouts/Layout.astro";
 import MainMap from "../../../../components/Map/MainMap";
 import AdSlot from "../../../../components/AdSlot.astro";
 import Footer from "../../../../components/Footer.astro";
+import CompareToggle from "../../../../components/CompareToggle.astro";
 import { slugify } from "../../../../lib/slug";
 import { stationSlug, stationUrl, provinceUrl, municipioUrl } from "../../../../lib/stationUrl";
 import { placeSlug, displayProvince, displayCity } from "../../../../lib/placeName";
@@ -208,7 +209,7 @@ const mapStations = [station, ...nearby];
     <script type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd)} slot="head" />
 
     <div class="page-container">
-        <div class="content-wrapper">
+        <div class="content-wrapper" data-reveal-children>
             <nav class="breadcrumb" aria-label="Migas de pan">
                 <a href="/">Inicio</a>
                 <span>›</span>
@@ -237,10 +238,13 @@ const mapStations = [station, ...nearby];
                     </p>
                     <p class="updated">Precios actualizados el {updated}</p>
                 </div>
-                <a class="route-btn" href={mapsUrl} target="_blank" rel="noopener noreferrer">
-                    <span class="material-symbols-outlined" aria-hidden="true">directions</span>
-                    Cómo llegar
-                </a>
+                <div class="head-actions">
+                    <a class="route-btn btn-pop" href={mapsUrl} target="_blank" rel="noopener noreferrer">
+                        <span class="material-symbols-outlined" aria-hidden="true">directions</span>
+                        Cómo llegar
+                    </a>
+                    <CompareToggle stationId={station.id} variant="large" />
+                </div>
             </header>
 
             {
@@ -251,7 +255,7 @@ const mapStations = [station, ...nearby];
 
             <section class="prices-section" aria-label="Precios por combustible">
                 <h2>Precios de hoy</h2>
-                <div class="price-grid">
+                <div class="price-grid" data-reveal-items>
                     {
                         availableFuels.map((f) => (
                             <div class="price-card">
@@ -285,7 +289,7 @@ const mapStations = [station, ...nearby];
                 <PriceHistoryChart client:visible history={history ?? {}} />
             </section>
 
-            <section class="info-grid">
+            <section class="info-grid" data-reveal-items>
                 <div class="info-card">
                     <span class="info-label">Horario</span>
                     <span class="info-value">{station.schedule || "No disponible"}</span>
@@ -326,19 +330,20 @@ const mapStations = [station, ...nearby];
                 nearby.length > 0 && (
                     <section class="nearby">
                         <h2>Gasolineras cercanas</h2>
-                        <div class="nearby-grid">
+                        <div class="nearby-grid" data-reveal-items>
                             {nearby.map((n) => {
                                 const d = getDistance(station.lat, station.lng, n.lat, n.lng);
                                 const nGeneric = /^n[ºo°]/i.test(n.brand) || /^\d/.test(n.brand);
                                 return (
-                                    <a href={stationUrl(n)} class="nearby-card">
-                                        <span class="nearby-name">{nGeneric ? n.address : n.brand}</span>
+                                    <div class="nearby-card hover-lift">
+                                        <a href={stationUrl(n)} class="nearby-name">{nGeneric ? n.address : n.brand}</a>
                                         <span class="nearby-addr">{displayCity(n.city)} · {d.toFixed(1)} km</span>
                                         <span class="nearby-prices">
                                             {n.prices.sp95 != null && <span>95: {fmt(n.prices.sp95)}</span>}
                                             {n.prices.diesel != null && <span>Diésel: {fmt(n.prices.diesel)}</span>}
                                         </span>
-                                    </a>
+                                        <div class="nearby-compare"><CompareToggle stationId={n.id} variant="square" /></div>
+                                    </div>
                                 );
                             })}
                         </div>
@@ -346,7 +351,7 @@ const mapStations = [station, ...nearby];
                 )
             }
 
-            <section class="faq">
+            <section class="faq" data-reveal-items>
                 <h2>Preguntas frecuentes</h2>
                 {
                     faq.map((f) => (
@@ -450,7 +455,13 @@ const mapStations = [station, ...nearby];
         font-size: 0.85rem;
         margin-top: 0.35rem;
     }
+    .head-actions {
+        display: flex;
+        gap: 0.6rem;
+        flex-shrink: 0;
+    }
     .route-btn {
+        --pop-color: var(--secondary);
         display: inline-flex;
         align-items: center;
         gap: 0.4rem;
@@ -594,7 +605,10 @@ const mapStations = [station, ...nearby];
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
         gap: 0.75rem;
     }
+    /* Toda la tarjeta lleva a la ficha (el enlace del nombre se estira sobre ella con
+       ::after) y el botón de comparar queda por encima, en la esquina. */
     .nearby-card {
+        position: relative;
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 0.75rem;
@@ -611,11 +625,25 @@ const mapStations = [station, ...nearby];
         transform: translateY(-2px);
     }
     .nearby-name {
+        color: inherit;
+        text-decoration: none;
+        padding-right: 2.6rem;
         font-weight: 700;
         font-size: 0.92rem;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+    .nearby-name::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+    }
+    .nearby-compare {
+        position: absolute;
+        top: 0.55rem;
+        right: 0.55rem;
+        z-index: 1;
     }
     .nearby-addr {
         font-size: 0.78rem;
@@ -680,12 +708,14 @@ const mapStations = [station, ...nearby];
         h1 {
             font-size: 1.4rem;
         }
-        /* El botón "Cómo llegar" pasa a su propia línea, a ancho completo, para que
-           el título no quede comprimido en una columna estrechísima. */
-        .route-btn {
+        /* "Cómo llegar" y "Comparar" pasan a su propia línea, a ancho completo, para
+           que el título no quede comprimido en una columna estrechísima. */
+        .head-actions {
             width: 100%;
+        }
+        .head-actions > :global(*) {
+            flex: 1;
             justify-content: center;
-            padding: 0.8rem 1.2rem;
         }
         section h2 {
             font-size: 1.2rem;

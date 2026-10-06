@@ -15,10 +15,10 @@ const adsActive = Boolean(ADSENSE_ID);
     hideSidebar={true}
     noindex={true}
 >
-    <div class="legal">
+    <div class="legal" data-reveal-children>
         <a href="/" class="back">← Volver al inicio</a>
         <h1>Política de cookies</h1>
-        <p class="updated">Última actualización: 6 de julio de 2026</p>
+        <p class="updated">Última actualización: 6 de octubre de 2026</p>
 
         <p>
             Esta política explica qué cookies y tecnologías de almacenamiento similares utiliza
@@ -73,12 +73,17 @@ const adsActive = Boolean(ADSENSE_ID);
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td>octo-consent</td>
-                        <td>OCTO</td>
-                        <td>Recordar tu decisión sobre las cookies</td>
-                        <td>Persistente (hasta que la borres)</td>
-                    </tr>
+                    {/* Solo existe con publicidad: guarda la respuesta al aviso de cookies. */}
+                    {
+                        adsActive && (
+                            <tr>
+                                <td>octo-consent</td>
+                                <td>OCTO</td>
+                                <td>Recordar tu decisión sobre las cookies</td>
+                                <td>Persistente (hasta que la borres)</td>
+                            </tr>
+                        )
+                    }
                     <tr>
                         <td>theme</td>
                         <td>OCTO</td>

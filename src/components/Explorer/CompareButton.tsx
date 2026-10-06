@@ -3,13 +3,17 @@ import { toggleCompare, MAX_COMPARE } from '../../lib/compare';
 import { useCompareIds } from '../../lib/useCompare';
 import styles from './CompareButton.module.css';
 
+export type CompareVariant = 'card' | 'icon' | 'mini' | 'square' | 'large';
+
 interface CompareButtonProps {
     stationId: string;
     /**
-     * 'card' (botón con texto), 'icon' (compacto, para el popup del mapa) o
-     * 'mini' (muy pequeño, para ir bajo el nombre de la estación).
+     * 'card' (botón con texto), 'icon' (compacto, para el popup del mapa),
+     * 'mini' (muy pequeño, para ir bajo el nombre de la estación), 'square'
+     * (solo icono, al final de una fila de listado) o 'large' (botón principal,
+     * junto a "Cómo llegar").
      */
-    variant?: 'card' | 'icon' | 'mini';
+    variant?: CompareVariant;
 }
 
 /**
@@ -30,7 +34,7 @@ const CompareButton: React.FC<CompareButtonProps> = ({ stationId, variant = 'car
     };
 
     const label = inCompare ? 'En comparador' : 'Comparar';
-    const variantClass = variant === 'icon' ? styles.icon : variant === 'mini' ? styles.mini : '';
+    const variantClass = variant === 'card' ? '' : styles[variant];
 
     return (
         <button
@@ -44,7 +48,7 @@ const CompareButton: React.FC<CompareButtonProps> = ({ stationId, variant = 'car
             <span className="material-symbols-outlined" aria-hidden="true">
                 {inCompare ? 'check' : 'balance'}
             </span>
-            {variant === 'card' && <span>{label}</span>}
+            {(variant === 'card' || variant === 'large') && <span>{label}</span>}
             {variant === 'mini' && <span>{inCompare ? 'Comparando' : 'Comparar'}</span>}
         </button>
     );

@@ -78,6 +78,24 @@
     border: 1px solid var(--border);
     border-radius: 0.75rem;
     padding: 0.65rem 0.9rem;
+    transition: border-color 0.2s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    /* Entran escalonadas al aparecer y al cambiar de combustible (--i = posición). */
+    animation: rowIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+@media (hover: hover) {
+    .row:hover {
+        border-color: var(--primary);
+        transform: translateX(4px);
+    }
+}
+
+@keyframes rowIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
 }
 
 .row.first {
@@ -154,5 +172,15 @@
     }
     .addr {
         max-width: 140px;
+    }
+    /* Fila más compacta para que el nombre conserve sitio junto al botón de comparar. */
+    .row {
+        gap: 0.45rem;
+        padding: 0.6rem 0.6rem;
+    }
+    .priceCol {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0;
     }
 }

@@ -202,7 +202,7 @@ const steps = [
         <section class={styles.section} id="top10">
             <div class={styles.inner}>
                 <div class={styles.topFuelsLayout}>
-                    <div class={`${styles.topFuelsText} reveal`}>
+                    <div class={styles.topFuelsText} data-reveal>
                         <span class={styles.eyebrow}>Datos en directo</span>
                         <h2 class={styles.sectionTitle}>
                             Las gasolineras más baratas de España, ahora mismo
@@ -211,12 +211,12 @@ const steps = [
                             Elige el combustible y mira el top 10 nacional al instante: gasolina,
                             diésel, GLP y más. Datos oficiales actualizados a diario.
                         </p>
-                        <a class={styles.topFuelsCta} href="/municipios">
+                        <a class={`${styles.topFuelsCta} btn-pop`} href="/municipios">
                             <span class="material-symbols-outlined" aria-hidden="true">search</span>
                             Buscar en tu zona
                         </a>
                     </div>
-                    <div class={`${styles.topFuelsWidget} reveal`}>
+                    <div class={styles.topFuelsWidget} data-reveal>
                         <NationalTopFuels client:visible topByFuel={topByFuel} />
                     </div>
                 </div>
@@ -226,7 +226,7 @@ const steps = [
         <!-- ===== FEATURES (bento) ===== -->
         <section class={styles.section} id="features">
             <div class={styles.inner}>
-                <div class={`${styles.sectionHead} reveal`}>
+                <div class={styles.sectionHead} data-reveal>
                     <span class={styles.eyebrow}>Todo en un sitio</span>
                     <h2 class={styles.sectionTitle}>Qué puedes hacer con OCTO</h2>
                     <p class={styles.sectionSubtitle}>
@@ -239,7 +239,8 @@ const steps = [
                     {
                         features.map((f) => (
                             <a
-                                class={`${styles.featureCard} ${f.size === "big" ? styles.cardBig : ""} ${f.size === "wide" ? styles.cardWide : ""} reveal`}
+                                class={`${styles.featureCard} ${f.size === "big" ? styles.cardBig : ""} ${f.size === "wide" ? styles.cardWide : ""}`}
+                                data-reveal
                                 href={f.href}
                                 style={`--accentColor:${f.color}`}
                             >
@@ -270,14 +271,14 @@ const steps = [
         <!-- ===== CÓMO FUNCIONA ===== -->
         <section class={styles.section}>
             <div class={styles.inner}>
-                <div class={`${styles.sectionHead} reveal`}>
+                <div class={styles.sectionHead} data-reveal>
                     <span class={styles.eyebrow}>Así de fácil</span>
                     <h2 class={styles.sectionTitle}>Ahorrar te lleva 3 pasos</h2>
                 </div>
                 <div class={styles.steps}>
                     {
                         steps.map((s, i) => (
-                            <div class={`${styles.step} reveal`}>
+                            <div class={styles.step} data-reveal>
                                 <div class={styles.stepNum}>{i + 1}</div>
                                 <h3 class={styles.stepTitle}>{s.title}</h3>
                                 <p class={styles.stepDesc}>{s.desc}</p>
@@ -291,24 +292,24 @@ const steps = [
         <!-- ===== COBERTURA / CONFIANZA ===== -->
         <section class={`${styles.section} ${styles.coverage}`}>
             <div class={styles.inner}>
-                <div class={`${styles.sectionHead} reveal`}>
+                <div class={styles.sectionHead} data-reveal>
                     <span class={styles.eyebrow}>Cobertura nacional</span>
                     <h2 class={styles.sectionTitle}>Toda España, datos oficiales</h2>
                 </div>
                 <div class={styles.statsGrid}>
-                    <div class={`${styles.bigStat} reveal`}>
+                    <div class={styles.bigStat} data-reveal>
                         <span class={styles.bigStatValue}>{nf.format(totalStations)}</span>
                         <span class={styles.bigStatLabel}>Gasolineras</span>
                     </div>
-                    <div class={`${styles.bigStat} reveal`}>
+                    <div class={styles.bigStat} data-reveal>
                         <span class={styles.bigStatValue}>{totalProvinces}</span>
                         <span class={styles.bigStatLabel}>Provincias</span>
                     </div>
-                    <div class={`${styles.bigStat} reveal`}>
+                    <div class={styles.bigStat} data-reveal>
                         <span class={styles.bigStatValue}>{nf.format(totalMunis)}</span>
                         <span class={styles.bigStatLabel}>Municipios</span>
                     </div>
-                    <div class={`${styles.bigStat} reveal`}>
+                    <div class={styles.bigStat} data-reveal>
                         <span class={styles.bigStatValue}>{fmt(avgSp95)}</span>
                         <span class={styles.bigStatLabel}>Media SP95 (€/L)</span>
                     </div>
@@ -332,7 +333,7 @@ const steps = [
 
         <!-- ===== CTA FINAL ===== -->
         <section class={`${styles.section} ${styles.ctaBand}`}>
-            <div class={`${styles.ctaCard} reveal`}>
+            <div class={styles.ctaCard} data-reveal>
                 <h2 class={styles.ctaTitle}>Empieza a ahorrar en cada repostaje</h2>
                 <p class={styles.ctaText}>
                     Encuentra tu gasolinera más barata ahora mismo. Sin registros, gratis y con
@@ -353,19 +354,7 @@ const steps = [
         const headerLogo = document.getElementById("header-logo");
         const heroLogo = document.getElementById("hero-logo");
 
-        // Animación de aparición al hacer scroll.
-        const observer = new IntersectionObserver(
-            (entries) => {
-                entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add("is-visible");
-                        observer.unobserve(entry.target);
-                    }
-                });
-            },
-            { threshold: 0.15, rootMargin: "0px 0px -40px 0px" }
-        );
-        document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
+        // (La aparición al hacer scroll es la común de Layout.astro: data-reveal.)
 
         // Header flotante + logo mini al hacer scroll.
         if (homeContainer) {
@@ -381,10 +370,6 @@ const steps = [
 </script>
 
 <style>
-    :global(.reveal.is-visible) {
-        opacity: 1 !important;
-        transform: translateY(0) !important;
-    }
     :global(header[data-scrolled="true"]) {
         padding-top: 1rem !important;
         padding-bottom: 1rem !important;

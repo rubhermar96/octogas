@@ -198,11 +198,11 @@ const ComparadorApp: React.FC = () => {
                         </ol>
 
                         <div className={styles.emptyActions}>
-                            <a className={styles.cta} href="/municipios">
+                            <a className={`${styles.cta} btn-pop`} href="/municipios">
                                 <span className="material-symbols-outlined" aria-hidden="true">search</span>
                                 Buscar por municipio
                             </a>
-                            <a className={styles.ctaGhost} href="/explorador?mode=location">
+                            <a className={`${styles.ctaGhost} btn-pop`} href="/explorador?mode=location">
                                 <span className="material-symbols-outlined" aria-hidden="true">my_location</span>
                                 Usar mi ubicación
                             </a>

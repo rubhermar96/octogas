@@ -20,6 +20,7 @@ import {
 } from '../../lib/route';
 import BrandLogo from '../Explorer/BrandLogo';
 import BrandFilter, { type BrandOption } from '../Explorer/BrandFilter';
+import CompareButton from '../Explorer/CompareButton';
 import PlaceInput, { type PlaceValue } from './PlaceInput';
 import MapPicker from './MapPicker';
 import { stationUrl } from '../../lib/stationUrl';
@@ -1017,7 +1018,7 @@ const RoutePlanner: React.FC = () => {
                                                 const s = p.station;
                                                 const delta = s.price - active.corridorAvg;
                                                 return (
-                                                    <div key={`fuel-${s.id}`} className={styles.stopCard}>
+                                                    <div key={`fuel-${s.id}`} className={styles.stopCard} style={{ '--i': i } as React.CSSProperties}>
                                                         <div className={styles.stopCardTop}>
                                                             <div className={styles.stopNum}>{i + 1}</div>
                                                             <BrandLogo brand={s.brand} size={34} />
@@ -1026,6 +1027,7 @@ const RoutePlanner: React.FC = () => {
                                                                 <div className={styles.stopMeta}>
                                                                     {displayCity(s.city)} · desvío {s.detourKm.toFixed(1)} km
                                                                 </div>
+                                                                <CompareButton stationId={s.id} variant="mini" />
                                                             </div>
                                                             <div className={styles.stopPrice}>
                                                                 <b>{s.price.toFixed(3)}</b>
@@ -1053,7 +1055,7 @@ const RoutePlanner: React.FC = () => {
                                                 );
                                             }
                                             return (
-                                                <div key={`wp-${i}`} className={styles.stopCard}>
+                                                <div key={`wp-${i}`} className={styles.stopCard} style={{ '--i': i } as React.CSSProperties}>
                                                     <div className={styles.stopCardTop}>
                                                         <div className={styles.stopNum}>{i + 1}</div>
                                                         <div className={styles.wpIcon}>

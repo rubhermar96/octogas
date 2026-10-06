@@ -51,6 +51,10 @@ jobs:
           npx tsc --noEmit
           cd api && npx tsc --noEmit
 
+      # Un icono nuevo que no esté en la fuente propia se vería como texto ("balance").
+      - name: Iconos en la fuente
+        run: npm run icons -- --check
+
       # Los datos no se versionan: se descargan como en el servidor. Tres intentos por
       # si el servicio del Ministerio falla en ese momento.
       - name: Precios de hoy (MITECO)
