@@ -30,6 +30,7 @@ DATABASE_URL=$db_url
 PUBLIC_API_BASE_URL=https://$DOMAIN
 PUBLIC_GOOGLE_SITE_VERIFICATION=
 PUBLIC_ADSENSE_ID=
+INDEXNOW_KEY=$(openssl rand -hex 16)
 CONF
     fi
     if [[ ! -f $APP_DIR/api/.env ]]; then

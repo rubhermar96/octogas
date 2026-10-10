@@ -50,6 +50,7 @@ y no tienes que inventar ninguno salvo la contraseña de `sudo`.
 | `DEPLOY_HOST` y `DEPLOY_KNOWN_HOSTS` | `setup-ci.sh` | Secretos de GitHub | GitHub Actions |
 | Certificado HTTPS | certbot | `/etc/letsencrypt` (se renueva solo) | — |
 | Verificación de Search Console | Search Console | Registro DNS `TXT` | Pública (no es un secreto) |
+| Clave de IndexNow | `refresh.sh` (aleatoria, la primera vez) | `/srv/octogas/.env` (`INDEXNOW_KEY`) y publicada en `https://octogas.es/{clave}.txt` | Pública (el protocolo exige publicarla) |
 | Accesos a Netcup, al registrador y a GitHub | Tú | Tu gestor de contraseñas | Tú |
 
 - Activa la **verificación en dos pasos** en GitHub, Netcup y el registrador. Con el
@@ -184,6 +185,17 @@ da Search Console) y enviar después el sitemap: `https://octogas.es/sitemap-ind
 Si prefieres la etiqueta `<meta>`, pon su valor en `/srv/octogas/.env`
 (`PUBLIC_GOOGLE_SITE_VERIFICATION=...`) y regenera la web (ver abajo).
 
+**Bing (y Yahoo, DuckDuckGo, Ecosia, que usan su índice):** date de alta en
+[Bing Webmaster Tools](https://www.bing.com/webmasters) con "Importar desde Google
+Search Console": trae el dominio verificado y el sitemap en un minuto.
+
+Además, cada publicación avisa por **IndexNow** a Bing, Yandex, Seznam y Naver de las
+páginas nuevas y eliminadas y, una vez al día, de la portada, las provincias y una
+séptima parte del resto por turnos (cada página, una vez por semana): ver
+[`scripts/indexnow.mjs`](scripts/indexnow.mjs). Funciona solo: `refresh.sh` crea la
+clave la primera vez y el build publica el fichero que la verifica. El resultado sale
+en el registro del refresco (`journalctl -u octogas-refresh | grep IndexNow`).
+
 ## 7. Despliegue continuo (una vez)
 
 A partir de aquí, cada `git push` a `main` se publica solo.
@@ -236,6 +248,7 @@ El resultado de cada despliegue se ve en la pestaña **Actions** del repositorio
 | Publicar código nuevo                 | Automático con cada `git push` (ver paso 7)                |
 | Publicar cambios de servidor o de BD  | `sudo bash /srv/octogas/deploy/update.sh`                  |
 | Copias de seguridad                   | `ls -lh /var/backups/octogas`                              |
+| Avisos a Bing (IndexNow)              | `journalctl -u octogas-refresh \| grep IndexNow`           |
 
 ### Volver a la versión anterior de la web
 
