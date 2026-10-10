@@ -26,7 +26,8 @@ export function normalizePlaceName(raw: string): string {
 
 /** Provincia lista para mostrar (reordenada; el dato del INE viene en mayúsculas). */
 export function displayProvince(raw: string): string {
-    return titleCase(normalizePlaceName(raw));
+    // "SANTA CRUZ DE TENERIFE" -> "Santa Cruz de Tenerife" (no "De").
+    return titleCase(normalizePlaceName(raw)).replace(/(?<=\s)(De|Del)(?=\s)/g, (w) => w.toLowerCase());
 }
 
 /** Municipio listo para mostrar (reordenado; el dato ya viene bien capitalizado). */

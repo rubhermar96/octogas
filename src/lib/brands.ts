@@ -42,10 +42,15 @@ export function normalizeBrand(rotulo: string | null | undefined): string {
         if (pattern.test(raw)) return name;
     }
 
-    // Sin marca conocida: pasamos a formato Título (primera letra de cada palabra).
+    // Sin marca conocida: pasamos a formato Título (primera letra de cada palabra). Con
+    // \b\w las letras con tilde contaban como separador ("GóMez", "PetroespañA"); ahora
+    // se distinguen letras Unicode, y "de", "del" e "y" van en minúscula si no abren.
     return raw
         .toLowerCase()
-        .replace(/\b\w/g, (c) => c.toUpperCase());
+        .replace(/(^|[^\p{L}\d'’])(\p{L})/gu, (_, sep, ch) => sep + ch.toUpperCase())
+        .replace(/(?<=\s)(De|Del|Y)(?=\s)/g, (w) => w.toLowerCase())
+        // Elisiones catalanas: "L'Hospitalet", "D'Or".
+        .replace(/(^|\s)([LD]['’])(\p{L})/gu, (_, sep, art, ch) => sep + art + ch.toUpperCase());
 }
 
 /** Color corporativo aproximado por marca: { fondo, texto }. */

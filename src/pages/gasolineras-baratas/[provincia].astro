@@ -10,6 +10,9 @@ import { placeSlug, displayProvince, displayCity } from "../../lib/placeName";
 import PriceHistoryChart from "../../components/Station/PriceHistoryChart";
 import { loadAggHistory, scopeKey } from "../../lib/aggHistory";
 import { loadMissingStations } from "../../lib/missingStations";
+import { provinceInsights, provinceInsightContext, type ProvinceInsightInput } from "../../lib/provinceInsights";
+import { displayAddress } from "../../lib/format";
+import { isGeneric } from "../../lib/insightText";
 import type { GasStation } from "../../types/gasolinera";
 
 interface Muni {
@@ -34,6 +37,10 @@ export async function getStaticPaths() {
     // mantiene unos días (ver missingStations.ts) y se enlaza al final de la lista.
     const missingCities: Record<string, Set<string>> = {};
     for (const s of loadMissingStations(stations)) (missingCities[s.province] ??= new Set()).add(s.city);
+
+    // Texto propio de cada provincia (src/lib/provinceInsights.ts): medias y puesto de
+    // todas las provincias para compararlas.
+    const insightFor = provinceInsightContext(stations);
 
     return Object.entries(groups).map(([provinceName, list]) => {
         // Municipios de la provincia con su nº de estaciones y precio mínimo SP95.
@@ -63,15 +70,16 @@ export async function getStaticPaths() {
         }
         return {
             params: { provincia: placeSlug(provinceName) },
-            props: { provinceName, stations: list, munis },
+            props: { provinceName, stations: list, munis, insightInput: insightFor(provinceName) },
         };
     });
 }
 
-const { provinceName, stations, munis } = Astro.props as {
+const { provinceName, stations, munis, insightInput } = Astro.props as {
     provinceName: string;
     stations: GasStation[];
     munis: Muni[];
+    insightInput: ProvinceInsightInput;
 };
 
 const provLabel = displayProvince(provinceName);
@@ -108,6 +116,13 @@ const fuelAverages = (
 const cheapestSp95 = stations
     .filter((s) => s.prices.sp95 != null)
     .sort((a, b) => a.prices.sp95! - b.prices.sp95!)[0];
+// Nombre legible (la marca, o la dirección si no tiene rótulo), no el rótulo en mayúsculas.
+const cheapestLabel = cheapestSp95 ? (isGeneric(cheapestSp95) ? displayAddress(cheapestSp95.address) : cheapestSp95.brand) : "";
+// En los textos (descripción y preguntas frecuentes), coma decimal.
+const fmtText = (n: number | null) => (n != null ? n.toLocaleString("es-ES", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "—");
+
+// Texto propio de la provincia, sacado de sus datos (ver src/lib/provinceInsights.ts).
+const insights = provinceInsights({ ...insightInput, history: aggHist });
 
 const updated = new Date().toLocaleDateString("es-ES", {
     day: "numeric",
@@ -116,27 +131,29 @@ const updated = new Date().toLocaleDateString("es-ES", {
 });
 
 const pageTitle = `Gasolineras baratas en ${provLabel} — Precios de hoy por municipio | OCTO`;
-const pageDescription = `Compara el precio de la gasolina 95 y el diésel en ${stations.length} gasolineras de la provincia de ${provLabel}. La más barata desde ${fmt(minSp95)} €/L. Encuentra tu municipio. Datos oficiales actualizados.`;
+const pageDescription = `Compara el precio de la gasolina 95 y el diésel en ${stations.length} gasolineras de la provincia de ${provLabel}. La más barata desde ${fmtText(minSp95)} €/L. Encuentra tu municipio. Datos oficiales actualizados.`;
 
 const faq = [
     {
         q: `¿Cuál es la gasolinera más barata de ${provLabel}?`,
         a: cheapestSp95
-            ? `Ahora mismo la más barata para Gasolina 95 en la provincia de ${provLabel} es ${cheapestSp95.name} en ${cheapestSp95.city}, a ${fmt(minSp95)} €/L.`
+            ? `Ahora mismo la más barata para gasolina 95 en la provincia de ${provLabel} es ${cheapestLabel}, en ${displayCity(cheapestSp95.city)}, a ${fmtText(minSp95)} €/L.`
             : `Consulta el listado de municipios para ver las gasolineras más baratas de ${provLabel}.`,
     },
     {
         q: `¿Cuánto cuesta la gasolina 95 en ${provLabel}?`,
-        a: `El precio medio de la Gasolina 95 en ${provLabel} es de ${fmt(avgSp95)} €/L, con un mínimo de ${fmt(minSp95)} €/L.`,
+        a: `El precio medio de la gasolina 95 en ${provLabel} es de ${fmtText(avgSp95)} €/L, con un mínimo de ${fmtText(minSp95)} €/L.`,
     },
     {
         q: `¿Cuánto cuesta el diésel en ${provLabel}?`,
-        a: `El precio medio del Gasóleo A (diésel) en ${provLabel} es de ${fmt(avgDiesel)} €/L, con un mínimo de ${fmt(minDiesel)} €/L.`,
+        a: `El precio medio del gasóleo A (diésel) en ${provLabel} es de ${fmtText(avgDiesel)} €/L, con un mínimo de ${fmtText(minDiesel)} €/L.`,
     },
     {
         q: `¿Cuántas gasolineras hay en ${provLabel}?`,
         a: `Hay ${stations.length} estaciones de servicio repartidas en ${munis.length} municipios de la provincia de ${provLabel}.`,
     },
+    // Puesto en España, municipios más baratos, tendencia y GLP (cuando hay dato).
+    ...insights.faq,
 ];
 
 const faqJsonLd = {
@@ -206,10 +223,21 @@ const breadcrumbJsonLd = {
                 cheapestSp95 && (
                     <div class="cheapest hover-lift">
                         <span class="cheapest-tag">Más barata SP95</span>
-                        <a class="cheapest-name" href={stationUrl(cheapestSp95)}>{cheapestSp95.name}</a>
+                        <a class="cheapest-name" href={stationUrl(cheapestSp95)}>{cheapestLabel}</a>
                         <span class="cheapest-meta">{displayCity(cheapestSp95.city)} · {fmt(minSp95)} €/L</span>
                         <div class="cheapest-compare"><CompareToggle stationId={cheapestSp95.id} /></div>
                     </div>
+                )
+            }
+
+            {
+                insights.paragraphs.length > 0 && (
+                    <section class="insights">
+                        <h2>Cómo están los precios en {provLabel}</h2>
+                        {insights.paragraphs.map((p) => (
+                            <p>{p.map((part) => (typeof part === "string" ? part : <a href={part.href}>{part.text}</a>))}</p>
+                        ))}
+                    </section>
                 )
             }
 
@@ -342,6 +370,29 @@ const breadcrumbJsonLd = {
     }
     /* Toda la tarjeta lleva a la ficha (el enlace del nombre se estira sobre ella con
        ::after) y el botón de comparar queda por encima. */
+    /* Texto propio de la provincia (provinceInsights). */
+    .insights {
+        margin: 0 0 3rem;
+    }
+    .insights h2 {
+        margin-bottom: 1rem;
+    }
+    .insights p {
+        max-width: 72ch;
+        margin-bottom: 0.9rem;
+        line-height: 1.7;
+        color: var(--text-muted);
+    }
+    .insights a {
+        color: var(--text);
+        font-weight: 600;
+        text-decoration: underline;
+        text-decoration-color: var(--primary);
+        text-underline-offset: 3px;
+    }
+    .insights a:hover {
+        color: var(--primary);
+    }
     .cheapest {
         position: relative;
         display: flex;
