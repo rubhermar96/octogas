@@ -675,6 +675,131 @@
     margin-right: auto;
 }
 
+/* ===== Capitales de provincia ===== */
+/* 12 tarjetas: 4 columnas en escritorio, 3 en tableta y 2 en móvil (filas completas). */
+.capitalGrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.9rem;
+}
+
+@media (max-width: 900px) {
+    .capitalGrid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.capitalCard {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 1.1rem 1.25rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    text-decoration: none;
+}
+
+.capitalName {
+    font-family: var(--font-header);
+    font-weight: 700;
+    font-size: 1.05rem;
+    line-height: 1.2;
+}
+
+.capitalPrice {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.capitalPrice b {
+    font-family: var(--font-header);
+    font-size: 1.15rem;
+    color: var(--primary);
+}
+
+.capitalMeta {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.capitalChips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1.75rem;
+}
+
+.capitalChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--border);
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: border-color 0.2s ease, color 0.2s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.capitalChip span {
+    color: var(--primary);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+@media (hover: hover) {
+    .capitalChip:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        transform: translateY(-2px);
+    }
+}
+
+.capitalsMore {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: fit-content;
+    margin: 2rem auto 0;
+    color: var(--primary);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.capitalsMore :global(.material-symbols-outlined) {
+    font-size: 1.2rem;
+    transition: transform 0.2s ease;
+}
+
+.capitalsMore:hover :global(.material-symbols-outlined) {
+    transform: translateX(4px);
+}
+
+/* En móvil, dos tarjetas por fila. */
+@media (max-width: 560px) {
+    .capitalGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.6rem;
+    }
+    .capitalCard {
+        padding: 0.85rem 0.9rem;
+    }
+    .capitalName {
+        font-size: 0.95rem;
+    }
+    .capitalPrice {
+        white-space: nowrap;
+        font-size: 0.82rem;
+    }
+    .capitalPrice b {
+        font-size: 1.05rem;
+    }
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 900px) {
     .topFuelsLayout {

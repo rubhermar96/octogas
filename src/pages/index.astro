@@ -7,6 +7,7 @@ import NationalTopFuels, { type TopStation } from "../components/Home/NationalTo
 import Footer from "../components/Footer.astro";
 import { BRAND_LOGO_FILES } from "../lib/brandLogos";
 import { FUEL_ORDER } from "../lib/fuels";
+import { capitalsWithPrices } from "../lib/capitals";
 import type { GasStation, FuelType } from "../types/gasolinera";
 import styles from "../styles/Home.module.css";
 
@@ -37,6 +38,12 @@ const avgDiesel = avg(diesel);
 const minSp95 = sp95.length ? Math.min(...sp95) : 0;
 // Ahorro real (dato calculado, no inventado): diferencia entre la media y la más barata.
 const maxSavingSp95 = Math.max(0, avgSp95 - minSp95);
+
+// --- Capitales de provincia (enlazadas desde la portada, la página con más autoridad) ---
+// Las 12 más pobladas como tarjetas y el resto como enlaces compactos.
+const capitals = capitalsWithPrices(stations);
+const bigCapitals = capitals.slice(0, 12);
+const otherCapitals = capitals.slice(12);
 
 // --- Top 10 más baratas por combustible (España) ---
 // Solo ofrecemos un combustible si hay suficientes estaciones para que un "top 10"
@@ -220,6 +227,53 @@ const steps = [
                         <NationalTopFuels client:visible topByFuel={topByFuel} />
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <!-- ===== CAPITALES DE PROVINCIA ===== -->
+        <section class={styles.section} id="capitales">
+            <div class={styles.inner}>
+                <div class={styles.sectionHead} data-reveal>
+                    <span class={styles.eyebrow}>Por ciudades</span>
+                    <h2 class={styles.sectionTitle}>Gasolineras baratas en las capitales de provincia</h2>
+                    <p class={styles.sectionSubtitle}>
+                        La gasolina 95 más barata de hoy en cada capital. Entra en la tuya para ver todas
+                        sus gasolineras, el mapa y cómo han ido los precios.
+                    </p>
+                </div>
+                <div class={styles.capitalGrid} data-reveal-items>
+                    {
+                        bigCapitals.map((c) => (
+                            <a class={`${styles.capitalCard} hover-lift`} href={c.url}>
+                                <span class={styles.capitalName}>{c.label}</span>
+                                <span class={styles.capitalPrice}>
+                                    {c.minPrice != null ? (
+                                        <>
+                                            desde <b>{fmt(c.minPrice)}</b> €/L
+                                        </>
+                                    ) : (
+                                        "sin precios hoy"
+                                    )}
+                                </span>
+                                <span class={styles.capitalMeta}>{c.count === 1 ? "1 gasolinera" : `${c.count} gasolineras`}</span>
+                            </a>
+                        ))
+                    }
+                </div>
+                <div class={styles.capitalChips} data-reveal-items>
+                    {
+                        otherCapitals.map((c) => (
+                            <a class={styles.capitalChip} href={c.url}>
+                                {c.label}
+                                {c.minPrice != null && <span>{fmt(c.minPrice)}</span>}
+                            </a>
+                        ))
+                    }
+                </div>
+                <a class={styles.capitalsMore} href="/municipios/">
+                    Buscar cualquier municipio
+                    <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                </a>
             </div>
         </section>
 
