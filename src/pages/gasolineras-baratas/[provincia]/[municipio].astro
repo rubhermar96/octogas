@@ -19,6 +19,7 @@ import {
     type Averages,
     type MainFuel,
 } from "../../../lib/municipioInsights";
+import { loadMissingStations, lastSeenLabel, type MissingStation } from "../../../lib/missingStations";
 import type { GasStation } from "../../../types/gasolinera";
 
 interface Sibling {
@@ -67,52 +68,70 @@ export async function getStaticPaths() {
     }
     const findNearby = nearbyFinder(stations);
 
+    // Gasolineras que hoy no han publicado precios pero sí en los últimos días (ver
+    // src/lib/missingStations.ts): se listan en su municipio y, si son todas las del
+    // municipio, su página se mantiene con un aviso en vez de desaparecer.
+    const missingGroups: Record<string, Record<string, MissingStation[]>> = {};
+    for (const s of loadMissingStations(stations)) ((missingGroups[s.province] ??= {})[s.city] ??= []).push(s);
+
+    // Un municipio por URL (los nombres de hoy mandan si coinciden en slug).
+    const munis = new Map<string, { provinceName: string; municipalityName: string }>();
+    for (const g of [groups, missingGroups])
+        for (const provinceName in g)
+            for (const municipalityName in g[provinceName]) {
+                const key = `${placeSlug(provinceName)}|${placeSlug(municipalityName)}`;
+                if (!munis.has(key)) munis.set(key, { provinceName, municipalityName });
+            }
+
     const paths = [];
-    for (const provinceName in groups) {
-        for (const municipalityName in groups[provinceName]) {
-            const provSlug = placeSlug(provinceName);
-            const muniSlug = placeSlug(municipalityName);
-            if (!provSlug || !muniSlug) continue;
+    for (const { provinceName, municipalityName } of munis.values()) {
+        const provSlug = placeSlug(provinceName);
+        const muniSlug = placeSlug(municipalityName);
+        if (!provSlug || !muniSlug) continue;
 
-            const siblings = provinceMunis[provinceName]
-                .filter((m) => m.slug !== muniSlug)
-                .slice(0, 24);
+        const siblings = (provinceMunis[provinceName] ?? [])
+            .filter((m) => m.slug !== muniSlug)
+            .slice(0, 24);
 
-            const muniStations = groups[provinceName][municipalityName];
-            const located = muniStations.filter((s) => Number.isFinite(s.lat) && Number.isFinite(s.lng));
-            const nearby = located.length
-                ? findNearby(
-                      located.reduce((a, s) => a + s.lat, 0) / located.length,
-                      located.reduce((a, s) => a + s.lng, 0) / located.length,
-                      (s) => s.province === provinceName && s.city === municipalityName
-                  )
-                : [];
+        const muniStations = groups[provinceName]?.[municipalityName] ?? [];
+        const muniMissing = missingGroups[provinceName]?.[municipalityName] ?? [];
+        const located = (muniStations.length ? muniStations : muniMissing).filter(
+            (s) => Number.isFinite(s.lat) && Number.isFinite(s.lng)
+        );
+        const nearby = located.length
+            ? findNearby(
+                  located.reduce((a, s) => a + s.lat, 0) / located.length,
+                  located.reduce((a, s) => a + s.lng, 0) / located.length,
+                  (s) => s.province === provinceName && s.city === municipalityName
+              )
+            : [];
 
-            paths.push({
-                params: { provincia: provSlug, municipio: muniSlug },
-                props: {
-                    provinceName,
-                    municipalityName,
-                    provSlug,
-                    stations: muniStations,
-                    siblings,
-                    provinceAvg: provinceStats[provinceName].avg,
-                    provinceCount: provinceStats[provinceName].count,
-                    nationalAvg,
-                    nearby,
-                },
-            });
-        }
+        paths.push({
+            params: { provincia: provSlug, municipio: muniSlug },
+            props: {
+                provinceName,
+                municipalityName,
+                provSlug,
+                stations: muniStations,
+                missingStations: muniMissing,
+                siblings,
+                provinceAvg: provinceStats[provinceName]?.avg ?? {},
+                provinceCount: provinceStats[provinceName]?.count ?? 0,
+                nationalAvg,
+                nearby,
+            },
+        });
     }
     return paths;
 }
 
-const { provinceName, municipalityName, provSlug, stations, siblings, provinceAvg, provinceCount, nationalAvg, nearby } =
+const { provinceName, municipalityName, provSlug, stations, missingStations, siblings, provinceAvg, provinceCount, nationalAvg, nearby } =
     Astro.props as {
         provinceName: string;
         municipalityName: string;
         provSlug: string;
         stations: GasStation[];
+        missingStations: MissingStation[]; // hoy sin precios
         siblings: Sibling[];
         provinceAvg: Averages;
         provinceCount: number;
@@ -123,6 +142,8 @@ const { provinceName, municipalityName, provSlug, stations, siblings, provinceAv
 // Nombre de provincia en formato "Título" (el dato viene en mayúsculas).
 const provLabel = displayProvince(provinceName);
 const muniLabel = displayCity(municipalityName);
+// Ninguna gasolinera del municipio ha publicado precios hoy (la página se mantiene).
+const noPricesToday = stations.length === 0;
 
 const aggHist = (await loadAggHistory()).get(
     scopeKey("municipio", `${placeSlug(provinceName)}|${placeSlug(municipalityName)}`)
@@ -180,10 +201,17 @@ const insights = municipioInsights({
     nationalAvg,
     history: aggHist,
     nearby,
+    missing: missingStations,
+    dayLabel: lastSeenLabel,
 });
 
-const centerLat = stations.reduce((s, x) => s + x.lat, 0) / stations.length;
-const centerLng = stations.reduce((s, x) => s + x.lng, 0) / stations.length;
+const located = noPricesToday ? missingStations : stations;
+const centerLat = located.reduce((s, x) => s + x.lat, 0) / located.length;
+const centerLng = located.reduce((s, x) => s + x.lng, 0) / located.length;
+// Sin precios hoy, el mapa enseña sus gasolineras en gris y las alternativas cercanas.
+const mapStations = noPricesToday
+    ? [...missingStations.map((s) => ({ ...s, prices: {} })), ...nearby.map((a) => a.station)]
+    : stations;
 
 const explorerUrl = `/explorador/?mode=municipality&prov=${encodeURIComponent(
     provinceName
@@ -195,11 +223,23 @@ const updated = new Date().toLocaleDateString("es-ES", {
     year: "numeric",
 });
 
-const pageTitle = `Gasolineras baratas en ${muniLabel} (${provLabel}) — Precios hoy | OCTO`;
-const pageDescription = `Compara el precio de la gasolina 95 y el diésel en ${stations.length} gasolineras de ${muniLabel}, ${provLabel}. La más barata desde ${fmtText(minSp95)} €/L. Datos oficiales actualizados.`;
+const pageTitle = noPricesToday
+    ? `Gasolineras en ${muniLabel} (${provLabel}) — Sin precios hoy | OCTO`
+    : `Gasolineras baratas en ${muniLabel} (${provLabel}) — Precios hoy | OCTO`;
+const pageDescription = noPricesToday
+    ? `Hoy las gasolineras de ${muniLabel} (${provLabel}) no han publicado precios. Consulta cuándo lo hicieron por última vez y las más baratas a menos de 10 km.`
+    : `Compara el precio de la gasolina 95 y el diésel en ${stations.length} gasolineras de ${muniLabel}, ${provLabel}. La más barata desde ${fmtText(minSp95)} €/L. Datos oficiales actualizados.`;
 
 // --- Datos estructurados (FAQ + Breadcrumb) ---
-const faq = [
+const faq = noPricesToday
+    ? [
+          ...insights.faq,
+          {
+              q: `¿Con qué frecuencia se actualizan los precios?`,
+              a: `Los precios se actualizan a diario a partir de los datos oficiales del Ministerio para la Transición Ecológica.`,
+          },
+      ]
+    : [
     {
         q: `¿Cuál es la gasolinera más barata en ${muniLabel}?`,
         a: cheapestSp95Station
@@ -273,14 +313,25 @@ const breadcrumbJsonLd = {
             </nav>
 
             <header class="page-header">
-                <h1>Gasolineras baratas en {muniLabel}</h1>
-                <p class="subtitle">
-                    Precios de gasolina y diésel en {muniLabel}, {provLabel}.
-                    Comparamos {stations.length} estaciones de servicio para que encuentres la
-                    más barata. <span class="updated">Actualizado el {updated}.</span>
-                </p>
+                <h1>{noPricesToday ? `Gasolineras en ${muniLabel}` : `Gasolineras baratas en ${muniLabel}`}</h1>
+                {
+                    noPricesToday ? (
+                        <p class="subtitle">
+                            Hoy ninguna gasolinera de {muniLabel} ({provLabel}) ha publicado precios. Debajo tienes
+                            cuándo lo hicieron por última vez y las más baratas cerca.
+                            <span class="updated">Actualizado el {updated}.</span>
+                        </p>
+                    ) : (
+                        <p class="subtitle">
+                            Precios de gasolina y diésel en {muniLabel}, {provLabel}.
+                            Comparamos {stations.length} estaciones de servicio para que encuentres la
+                            más barata. <span class="updated">Actualizado el {updated}.</span>
+                        </p>
+                    )
+                }
             </header>
 
+            {!noPricesToday && (
             <section class="stats-bar" data-reveal-items aria-label="Precio medio por combustible">
                 <div class="stat">
                     <span class="stat-label">Estaciones</span>
@@ -295,8 +346,9 @@ const breadcrumbJsonLd = {
                     ))
                 }
             </section>
+            )}
 
-            <MunicipioTop client:load stations={stations} explorerUrl={explorerUrl} />
+            {!noPricesToday && <MunicipioTop client:load stations={stations} explorerUrl={explorerUrl} />}
 
             {
                 insights.paragraphs.length > 0 && (
@@ -320,9 +372,9 @@ const breadcrumbJsonLd = {
                 <div class="map-wrapper">
                     <MainMap
                         client:only="react"
-                        stations={stations}
+                        stations={mapStations}
                         initialCenter={[centerLat, centerLng]}
-                        initialZoom={13}
+                        initialZoom={noPricesToday ? 11 : 13}
                         disableGeolocation={true}
                     />
                 </div>
@@ -351,6 +403,16 @@ const breadcrumbJsonLd = {
                                     {s.prices.sp95 != null && <span class="sl-price">{fmt(s.prices.sp95)} €/L</span>}
                                 </span>
                                 <div class="sl-compare"><CompareToggle stationId={s.id} variant="square" /></div>
+                            </div>
+                        ))
+                    }
+                    {
+                        missingStations.map((s) => (
+                            <div class="station-link hover-lift">
+                                <a href={stationUrl(s)} class="sl-name">{/^n[ºo°]/i.test(s.brand) || /^\d/.test(s.brand) ? s.address : s.brand}</a>
+                                <span class="sl-meta">
+                                    <span class="sl-missing">Sin precios hoy</span>
+                                </span>
                             </div>
                         ))
                     }
@@ -695,6 +757,12 @@ const breadcrumbJsonLd = {
         position: relative;
         z-index: 1;
         display: flex;
+    }
+    .sl-missing {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        flex-shrink: 0;
+        padding: 0.4rem 0.3rem;
     }
     .sl-price {
         font-size: 0.78rem;

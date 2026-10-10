@@ -15,11 +15,15 @@ import { FUEL_LABELS, FUEL_ORDER } from "../../../../lib/fuels";
 import { BRAND_LOGO_FILES } from "../../../../lib/brandLogos";
 import { loadPriceHistory, type StationHistory } from "../../../../lib/history";
 import PriceHistoryChart from "../../../../components/Station/PriceHistoryChart";
+import { loadMissingStations, lastSeenLabel, type MissingStation } from "../../../../lib/missingStations";
 import type { GasStation, FuelType } from "../../../../types/gasolinera";
 
 export async function getStaticPaths() {
     const dataPath = path.resolve("public/data/stations.json");
     const stations = JSON.parse(fs.readFileSync(dataPath, "utf-8")) as GasStation[];
+    // Las que hoy no publican precios pero sí en los últimos días conservan su ficha
+    // (con aviso). Medias y cercanas salen solo de las de hoy.
+    const missing = loadMissingStations(stations);
 
     // Medias por municipio (para comparar el precio de la estación).
     const muniAgg = new Map<string, { sp95: number[]; diesel: number[]; count: number }>();
@@ -76,9 +80,9 @@ export async function getStaticPaths() {
     // tiene alguna registrada dos veces a pocos metros): llevarán su número oficial.
     const sameKey = (s: GasStation) => `${s.brand}|${s.address}|${s.city}|${s.margin ?? ""}`.toLowerCase();
     const sameCount = new Map<string, number>();
-    for (const s of stations) sameCount.set(sameKey(s), (sameCount.get(sameKey(s)) ?? 0) + 1);
+    for (const s of [...stations, ...missing]) sameCount.set(sameKey(s), (sameCount.get(sameKey(s)) ?? 0) + 1);
 
-    return stations.map((station) => {
+    return [...stations, ...missing].map((station) => {
         const agg = muniAgg.get(muniKey(station));
         return {
             params: {
@@ -94,12 +98,13 @@ export async function getStaticPaths() {
                 muniCount: agg?.count ?? 1,
                 history: history.get(station.id) ?? null,
                 showId: (sameCount.get(sameKey(station)) ?? 0) > 1,
+                lastSeen: (station as MissingStation).lastSeen ?? null,
             },
         };
     });
 }
 
-const { station, nearby, muniAvgSp95, muniAvgDiesel, muniCount, history, showId } = Astro.props as {
+const { station, nearby, muniAvgSp95, muniAvgDiesel, muniCount, history, showId, lastSeen } = Astro.props as {
     station: GasStation;
     nearby: GasStation[];
     muniAvgSp95: number | null;
@@ -107,7 +112,10 @@ const { station, nearby, muniAvgSp95, muniAvgDiesel, muniCount, history, showId 
     muniCount: number;
     history: StationHistory | null;
     showId: boolean;
+    lastSeen: string | null; // solo si hoy no ha publicado precios
 };
+// Hoy no viene en los datos del Ministerio: se enseñan sus últimos precios, con fecha.
+const lastSeenText = lastSeen ? lastSeenLabel(lastSeen) : null;
 
 const provLabel = displayProvince(station.province);
 const cityLabel = displayCity(station.city);
@@ -131,8 +139,9 @@ const cmp = (price: number | null, avg: number | null) => {
     const diffPct = ((price - avg) / avg) * 100;
     return { diffPct, cheaper: price < avg };
 };
-const sp95Cmp = cmp(station.prices.sp95, muniAvgSp95);
-const dieselCmp = cmp(station.prices.diesel, muniAvgDiesel);
+// Sin precios de hoy no se compara con la media de hoy.
+const sp95Cmp = lastSeen ? null : cmp(station.prices.sp95, muniAvgSp95);
+const dieselCmp = lastSeen ? null : cmp(station.prices.diesel, muniAvgDiesel);
 
 const updated = new Date().toLocaleDateString("es-ES", {
     day: "numeric",
@@ -142,7 +151,9 @@ const updated = new Date().toLocaleDateString("es-ES", {
 
 const h1 = brandLabel ? `Gasolinera ${brandLabel}` : "Gasolinera";
 const pageTitle = `${h1} en ${addressLabel}, ${cityLabel}${distinctText ? ` (${distinctText})` : ""} | OCTO`;
-const pageDescription = `Precios de hoy de ${brandLabel || "la gasolinera"} en ${addressLabel}, ${cityLabel} (${provLabel})${distinctText ? `, ${distinctText}` : ""}: gasolina 95 a ${fmt(station.prices.sp95)} €/L y diésel a ${fmt(station.prices.diesel)} €/L. Horario, mapa y gasolineras cercanas.`;
+const pageDescription = lastSeenText
+    ? `${brandLabel || "La gasolinera"} de ${addressLabel}, ${cityLabel} (${provLabel})${distinctText ? `, ${distinctText}` : ""}, no ha publicado precios hoy. Últimos precios, del ${lastSeenText}: gasolina 95 a ${fmt(station.prices.sp95)} €/L y diésel a ${fmt(station.prices.diesel)} €/L. Horario, mapa y gasolineras cercanas con precios de hoy.`
+    : `Precios de hoy de ${brandLabel || "la gasolinera"} en ${addressLabel}, ${cityLabel} (${provLabel})${distinctText ? `, ${distinctText}` : ""}: gasolina 95 a ${fmt(station.prices.sp95)} €/L y diésel a ${fmt(station.prices.diesel)} €/L. Horario, mapa y gasolineras cercanas.`;
 
 const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`;
 
@@ -166,8 +177,9 @@ const gasStationJsonLd = {
 const faq = [
     {
         q: `¿Cuánto cuesta la gasolina 95 en ${brandLabel || cityLabel}?`,
-        a:
-            station.prices.sp95 != null
+        a: lastSeenText
+            ? `Hoy no ha publicado precios. ${station.prices.sp95 != null ? `El último precio de la gasolina 95 fue ${fmt(station.prices.sp95)} €/L, el ${lastSeenText}.` : `Su última actualización fue el ${lastSeenText}.`}`
+            : station.prices.sp95 != null
                 ? `La Gasolina 95 está a ${fmt(station.prices.sp95)} €/L en ${addressLabel}, ${cityLabel}${sp95Cmp ? `, un ${Math.abs(sp95Cmp.diffPct).toFixed(1)}% ${sp95Cmp.cheaper ? "más barata" : "más cara"} que la media del municipio` : ""}.`
                 : `Esta estación no tiene precio de Gasolina 95 disponible actualmente.`,
     },
@@ -200,7 +212,8 @@ const breadcrumbJsonLd = {
     ],
 };
 
-const mapStations = [station, ...nearby];
+// En el mapa, sin precios viejos: el marcador sale gris ("sin dato").
+const mapStations = [lastSeen ? { ...station, prices: {} } : station, ...nearby];
 ---
 
 <Layout title={pageTitle} description={pageDescription}>
@@ -236,16 +249,27 @@ const mapStations = [station, ...nearby];
                         <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
                         {addressLabel}{station.postalCode ? `, ${station.postalCode}` : ""} {cityLabel} ({provLabel}){distinctText && ` · ${distinctText}`}
                     </p>
-                    <p class="updated">Precios actualizados el {updated}</p>
+                    <p class="updated">{lastSeenText ? `Sin precios hoy · últimos publicados el ${lastSeenText}` : `Precios actualizados el ${updated}`}</p>
                 </div>
                 <div class="head-actions">
                     <a class="route-btn btn-pop" href={mapsUrl} target="_blank" rel="noopener noreferrer">
                         <span class="material-symbols-outlined" aria-hidden="true">directions</span>
                         Cómo llegar
                     </a>
-                    <CompareToggle stationId={station.id} variant="large" />
+                    {/* El comparador trabaja con los precios de hoy. */}
+                    {!lastSeen && <CompareToggle stationId={station.id} variant="large" />}
                 </div>
             </header>
+
+            {
+                lastSeenText && (
+                    <p class="no-prices" role="status">
+                        Esta gasolinera no ha publicado precios hoy en el Ministerio para la Transición Ecológica.
+                        Debajo tienes los últimos que publicó, del {lastSeenText}, y las gasolineras más cercanas con
+                        precios de hoy.
+                    </p>
+                )
+            }
 
             {
                 station.saleType === "R" && (
@@ -254,11 +278,11 @@ const mapStations = [station, ...nearby];
             }
 
             <section class="prices-section" aria-label="Precios por combustible">
-                <h2>Precios de hoy</h2>
+                <h2>{lastSeenText ? `Últimos precios publicados (${lastSeenText})` : "Precios de hoy"}</h2>
                 <div class="price-grid" data-reveal-items>
                     {
                         availableFuels.map((f) => (
-                            <div class="price-card">
+                            <div class:list={["price-card", { stale: lastSeen }]}>
                                 <span class="ptype">{FUEL_LABELS[f]}</span>
                                 <span class="pval">{fmt(station.prices[f])} <small>€/L</small></span>
                             </div>
@@ -477,6 +501,19 @@ const mapStations = [station, ...nearby];
         filter: brightness(1.05);
     }
 
+    .no-prices {
+        background: rgba(56, 189, 248, 0.1);
+        border: 1px solid var(--secondary);
+        color: var(--text);
+        border-radius: 0.6rem;
+        padding: 0.8rem 1rem;
+        margin-bottom: 1.5rem;
+        line-height: 1.6;
+    }
+    /* Precios de otro día: atenuados para que no parezcan los de hoy. */
+    .price-card.stale {
+        opacity: 0.6;
+    }
     .restricted {
         background: rgba(251, 146, 60, 0.12);
         color: var(--accent);

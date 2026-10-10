@@ -35,6 +35,10 @@ export interface InsightInput {
     history?: ScopeHistory; // medias diarias del municipio (histórico real)
     /** Gasolineras de otros municipios a menos de NEARBY_KM del centro de este. */
     nearby: Alternative[];
+    /** Gasolineras del municipio que hoy no han publicado precios (último día visto). */
+    missing?: (GasStation & { lastSeen: string })[];
+    /** "6 de octubre": fecha legible de un día AAAA-MM-DD. */
+    dayLabel?: (day: string) => string;
     now?: number;
 }
 
@@ -139,6 +143,7 @@ function monthAgo(points: { t: number; price: number }[] | undefined, now: numbe
 const plain = (p: Paragraph) => p.map((x) => (typeof x === "string" ? x : x.text)).join("");
 
 export function municipioInsights(input: InsightInput): Insights {
+    if (input.stations.length === 0) return noPricesToday(input);
     const { muni, prov, slug, stations, provinceAvg, provinceCount, nationalAvg, history, nearby } = input;
     const now = input.now ?? Date.now();
     const n = stations.length;
@@ -336,6 +341,47 @@ export function municipioInsights(input: InsightInput): Insights {
         faq.push({ q: `¿Hay gasolineras más baratas cerca de ${muni}?`, a: text });
     }
 
+    return { paragraphs, faq };
+}
+
+/**
+ * Municipio cuyas gasolineras no han publicado precios hoy (la página se mantiene
+ * unos días, ver missingStations.ts): cuándo lo hicieron por última vez y dónde
+ * repostar más barato cerca mientras tanto.
+ */
+function noPricesToday(input: InsightInput): Insights {
+    const { muni, nearby } = input;
+    const missing = [...(input.missing ?? [])].sort((a, b) => b.lastSeen.localeCompare(a.lastSeen));
+    const day = input.dayLabel ?? ((d: string) => d);
+    const paragraphs: Paragraph[] = [];
+    const faq: Insights["faq"] = [];
+
+    if (missing.length === 1) {
+        paragraphs.push([`Hoy ninguna gasolinera de ${muni} ha publicado precios en el Ministerio: `, link(missing[0]), ` lo hizo por última vez el ${day(missing[0].lastSeen)}.`]);
+    } else if (missing.length > 1) {
+        paragraphs.push([`Hoy ninguna de las ${missing.length} gasolineras de ${muni} ha publicado precios en el Ministerio; la última actualización fue el ${day(missing[0].lastSeen)}.`]);
+    }
+
+    const cheapestNear = (f: MainFuel) =>
+        nearby.filter((a) => a.station.prices[f] != null).sort((a, b) => a.station.prices[f]! - b.station.prices[f]! || a.km - b.km)[0];
+    const sp95 = cheapestNear("sp95");
+    const diesel = cheapestNear("diesel");
+    const where = (a: Alternative) => `en ${displayCity(a.station.city)}, a ${km(a.km)}`;
+    if (sp95 && diesel && sp95.station.id === diesel.station.id) {
+        paragraphs.push([
+            `Mientras tanto, la gasolinera más barata a menos de ${NEARBY_KM} km es `,
+            link(sp95.station),
+            ` (${where(sp95)}), con la gasolina 95 a ${price(sp95.station.prices.sp95!)} y el diésel a ${price(sp95.station.prices.diesel!)}.`,
+        ]);
+    } else {
+        for (const [f, a] of [["sp95", sp95], ["diesel", diesel]] as [MainFuel, Alternative | undefined][]) {
+            if (!a) continue;
+            paragraphs.push([`${cap(FUEL[f].the)} más ${cheapAdj(f)} a menos de ${NEARBY_KM} km está en `, link(a.station), ` (${where(a)}), a ${price(a.station.prices[f]!)}.`]);
+        }
+    }
+    if (!sp95 && !diesel) paragraphs.push([`No hay otras gasolineras con precios de hoy a menos de ${NEARBY_KM} km de ${muni}.`]);
+
+    faq.push({ q: `¿Hay precios de hoy en las gasolineras de ${muni}?`, a: paragraphs.map(plain).join(" ") });
     return { paragraphs, faq };
 }
 

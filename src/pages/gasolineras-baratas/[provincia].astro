@@ -9,6 +9,7 @@ import { stationUrl, municipioUrl } from "../../lib/stationUrl";
 import { placeSlug, displayProvince, displayCity } from "../../lib/placeName";
 import PriceHistoryChart from "../../components/Station/PriceHistoryChart";
 import { loadAggHistory, scopeKey } from "../../lib/aggHistory";
+import { loadMissingStations } from "../../lib/missingStations";
 import type { GasStation } from "../../types/gasolinera";
 
 interface Muni {
@@ -16,6 +17,8 @@ interface Muni {
     slug: string;
     count: number;
     minSp95: number | null;
+    /** Hoy ninguna de sus gasolineras ha publicado precios (ver missingStations.ts). */
+    noPrices?: boolean;
 }
 
 export async function getStaticPaths() {
@@ -27,6 +30,10 @@ export async function getStaticPaths() {
         if (!s.province) continue;
         (groups[s.province] ??= []).push(s);
     }
+    // Municipios en los que hoy ninguna gasolinera ha publicado precios: su página se
+    // mantiene unos días (ver missingStations.ts) y se enlaza al final de la lista.
+    const missingCities: Record<string, Set<string>> = {};
+    for (const s of loadMissingStations(stations)) (missingCities[s.province] ??= new Set()).add(s.city);
 
     return Object.entries(groups).map(([provinceName, list]) => {
         // Municipios de la provincia con su nº de estaciones y precio mínimo SP95.
@@ -47,6 +54,13 @@ export async function getStaticPaths() {
             })
             .sort((a, b) => b.count - a.count);
 
+        const known = new Set(munis.map((m) => m.slug));
+        for (const name of missingCities[provinceName] ?? []) {
+            const slug = placeSlug(name);
+            if (known.has(slug)) continue;
+            known.add(slug);
+            munis.push({ name, slug, count: 0, minSp95: null, noPrices: true });
+        }
         return {
             params: { provincia: placeSlug(provinceName) },
             props: { provinceName, stations: list, munis },
@@ -215,7 +229,7 @@ const breadcrumbJsonLd = {
                                 <span class="muni-name">{displayCity(m.name)}</span>
                                 <span class="muni-meta">
                                     {m.minSp95 != null && <span class="muni-price">{fmt(m.minSp95)} €/L</span>}
-                                    <span class="muni-count">{m.count}</span>
+                                    {m.noPrices ? <span class="muni-missing">Sin precios hoy</span> : <span class="muni-count">{m.count}</span>}
                                 </span>
                             </a>
                         ))
@@ -425,6 +439,10 @@ const breadcrumbJsonLd = {
         font-size: 0.78rem;
         font-weight: 700;
         color: var(--primary);
+    }
+    .muni-missing {
+        font-size: 0.72rem;
+        color: var(--text-muted);
     }
     .muni-count {
         font-size: 0.7rem;
