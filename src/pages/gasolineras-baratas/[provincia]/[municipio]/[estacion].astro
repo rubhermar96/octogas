@@ -16,6 +16,8 @@ import { BRAND_LOGO_FILES } from "../../../../lib/brandLogos";
 import { loadPriceHistory, type StationHistory } from "../../../../lib/history";
 import PriceHistoryChart from "../../../../components/Station/PriceHistoryChart";
 import { loadMissingStations, lastSeenLabel, type MissingStation } from "../../../../lib/missingStations";
+import { stationInsights, stationInsightContext, type StationInsightInput } from "../../../../lib/stationInsights";
+import { openingHours } from "../../../../lib/insightText";
 import type { GasStation, FuelType } from "../../../../types/gasolinera";
 
 export async function getStaticPaths() {
@@ -24,6 +26,9 @@ export async function getStaticPaths() {
     // Las que hoy no publican precios pero sí en los últimos días conservan su ficha
     // (con aviso). Medias y cercanas salen solo de las de hoy.
     const missing = loadMissingStations(stations);
+    // Texto propio de cada ficha (src/lib/stationInsights.ts): se compara siempre con
+    // las gasolineras que tienen precios hoy.
+    const insightFor = stationInsightContext(stations);
 
     // Medias por municipio (para comparar el precio de la estación).
     const muniAgg = new Map<string, { sp95: number[]; diesel: number[]; count: number }>();
@@ -99,12 +104,18 @@ export async function getStaticPaths() {
                 history: history.get(station.id) ?? null,
                 showId: (sameCount.get(sameKey(station)) ?? 0) > 1,
                 lastSeen: (station as MissingStation).lastSeen ?? null,
+                insightInput: insightFor(station, {
+                    lastSeen: (station as MissingStation).lastSeen ?? null,
+                    muni: displayCity(station.city),
+                    prov: displayProvince(station.province),
+                    history: history.get(station.id) ?? null,
+                }),
             },
         };
     });
 }
 
-const { station, nearby, muniAvgSp95, muniAvgDiesel, muniCount, history, showId, lastSeen } = Astro.props as {
+const { station, nearby, muniAvgSp95, muniAvgDiesel, muniCount, history, showId, lastSeen, insightInput } = Astro.props as {
     station: GasStation;
     nearby: GasStation[];
     muniAvgSp95: number | null;
@@ -113,7 +124,9 @@ const { station, nearby, muniAvgSp95, muniAvgDiesel, muniCount, history, showId,
     history: StationHistory | null;
     showId: boolean;
     lastSeen: string | null; // solo si hoy no ha publicado precios
+    insightInput: StationInsightInput;
 };
+const insights = stationInsights(insightInput);
 // Hoy no viene en los datos del Ministerio: se enseñan sus últimos precios, con fecha.
 const lastSeenText = lastSeen ? lastSeenLabel(lastSeen) : null;
 
@@ -172,6 +185,8 @@ const gasStationJsonLd = {
     },
     geo: { "@type": "GeoCoordinates", latitude: station.lat, longitude: station.lng },
     url: new URL(stationUrl(station), Astro.site).href,
+    brand: brandLabel ? { "@type": "Brand", name: brandLabel } : undefined,
+    openingHours: openingHours(station.schedule),
 };
 
 const faq = [
@@ -187,6 +202,7 @@ const faq = [
         q: `¿Cuál es el horario de esta gasolinera?`,
         a: station.schedule ? `El horario es: ${station.schedule}.` : `El horario no está disponible.`,
     },
+    ...insights.faq,
     {
         q: `¿Cómo llego a esta gasolinera?`,
         a: `Está en ${addressLabel}, ${station.postalCode || ""} ${cityLabel} (${provLabel}). Puedes abrir la ruta en Google Maps desde el botón "Cómo llegar".`,
@@ -307,6 +323,17 @@ const mapStations = [lastSeen ? { ...station, prices: {} } : station, ...nearby]
                     )
                 }
             </section>
+
+            {
+                insights.paragraphs.length > 0 && (
+                    <section class="insights">
+                        <h2>{lastSeen ? "Qué sabemos de esta gasolinera" : "Cómo está de precio esta gasolinera"}</h2>
+                        {insights.paragraphs.map((p) => (
+                            <p>{p.map((part) => (typeof part === "string" ? part : <a href={part.href}>{part.text}</a>))}</p>
+                        ))}
+                    </section>
+                )
+            }
 
             <section class="history-section">
                 <h2>Evolución del precio</h2>
@@ -501,6 +528,29 @@ const mapStations = [lastSeen ? { ...station, prices: {} } : station, ...nearby]
         filter: brightness(1.05);
     }
 
+    /* Texto propio de la ficha (stationInsights). */
+    .insights {
+        margin: 0 0 2.5rem;
+    }
+    .insights h2 {
+        margin-bottom: 1rem;
+    }
+    .insights p {
+        max-width: 72ch;
+        margin-bottom: 0.9rem;
+        line-height: 1.7;
+        color: var(--text-muted);
+    }
+    .insights a {
+        color: var(--text);
+        font-weight: 600;
+        text-decoration: underline;
+        text-decoration-color: var(--primary);
+        text-underline-offset: 3px;
+    }
+    .insights a:hover {
+        color: var(--primary);
+    }
     .no-prices {
         background: rgba(56, 189, 248, 0.1);
         border: 1px solid var(--secondary);

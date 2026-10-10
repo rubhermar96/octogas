@@ -10,19 +10,31 @@ import type { ScopeHistory } from "./aggHistory";
 import { getDistance } from "./geo";
 import { displayAddress } from "./format";
 import { displayCity } from "./placeName";
-import { stationUrl } from "./stationUrl";
+import {
+    FUEL,
+    MAIN_FUELS as FUELS,
+    average,
+    cap,
+    cents,
+    cheapAdj,
+    euros,
+    is24h,
+    isGeneric,
+    km,
+    link,
+    pick,
+    plain,
+    price,
+    priced,
+    scheduleText,
+    versus,
+    type Alternative,
+    type Averages,
+    type MainFuel,
+    type Paragraph,
+} from "./insightText";
 
-/** Trozo de texto o enlace; un párrafo es una lista de trozos. */
-export type Part = string | { text: string; href: string };
-export type Paragraph = Part[];
-
-export type MainFuel = "sp95" | "diesel";
-export type Averages = Partial<Record<MainFuel, number>>;
-
-export interface Alternative {
-    station: GasStation;
-    km: number;
-}
+export type { Alternative, Averages, MainFuel, Part, Paragraph } from "./insightText";
 
 export interface InsightInput {
     muni: string; // nombre para mostrar
@@ -48,68 +60,7 @@ export interface Insights {
 }
 
 export const NEARBY_KM = 10;
-const FUELS: MainFuel[] = ["sp95", "diesel"];
 const DAY = 86_400_000;
-
-/** Nombre, artículo y género de cada combustible, para concordar las frases. */
-const FUEL = {
-    sp95: { name: "gasolina 95", the: "la gasolina 95", of: "de la gasolina 95", fem: true },
-    diesel: { name: "diésel", the: "el diésel", of: "del diésel", fem: false },
-} as const;
-const cheapAdj = (f: MainFuel) => (FUEL[f].fem ? "barata" : "barato");
-const dearAdj = (f: MainFuel) => (FUEL[f].fem ? "cara" : "caro");
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
-const nf3 = new Intl.NumberFormat("es-ES", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
-const nf2 = new Intl.NumberFormat("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const nf1 = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 1 });
-const price = (n: number) => `${nf3.format(n)} €/L`;
-const euros = (n: number) => `${nf2.format(n)} €`;
-const km = (n: number) => `${nf1.format(n)} km`;
-/** "3,2 céntimos", "1 céntimo", "4 céntimos". */
-const cents = (diff: number) => {
-    const c = Math.round(Math.abs(diff) * 1000) / 10;
-    return `${nf1.format(c)} ${c === 1 ? "céntimo" : "céntimos"}`;
-};
-
-const isGeneric = (s: GasStation) => /^n[ºo°]/i.test(s.brand) || /^\d/.test(s.brand);
-/** Enlace a la ficha: "Ballenoil, en Avenida Burgos, 36" o, sin marca, la dirección. */
-const link = (s: GasStation): Part => ({
-    text: isGeneric(s) ? displayAddress(s.address) : `${s.brand}, en ${displayAddress(s.address)}`,
-    href: stationUrl(s),
-});
-
-/** Variante de redacción estable para cada municipio. */
-function pick<T>(slug: string, salt: string, options: T[]): T {
-    let h = 0;
-    for (const c of slug + salt) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-    return options[h % options.length];
-}
-
-const priced = (list: GasStation[], f: MainFuel) =>
-    list.filter((s) => s.prices[f] != null).sort((a, b) => a.prices[f]! - b.prices[f]!);
-const average = (list: GasStation[], f: MainFuel) => {
-    const v = list.map((s) => s.prices[f]).filter((p): p is number => p != null);
-    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : undefined;
-};
-
-/** "1,5 céntimos más barata que" / "más cara que" / "igual que" (valor frente a referencia). */
-function versus(value: number, ref: number, f: MainFuel): string {
-    const d = value - ref;
-    if (Math.abs(d) < 0.0005) return "igual que";
-    return `${cents(d)} más ${d < 0 ? cheapAdj(f) : dearAdj(f)} que`;
-}
-
-/** Horario de la API ("L-D: 24H", "L-D: 06:00-22:00"...) en palabras. */
-function scheduleText(raw: string | undefined): string | undefined {
-    const t = raw?.trim();
-    if (!t) return undefined;
-    if (/^L-D:\s*24H$/i.test(t)) return "abre las 24 horas todos los días";
-    const m = t.match(/^L-D:\s*(\d{2}:\d{2})-(\d{2}:\d{2})$/);
-    if (m) return `abre todos los días de ${m[1]} a ${m[2]}`;
-    return `tiene este horario: ${t}`;
-}
-const is24h = (s: GasStation) => /^L-D:\s*24H$/i.test((s.schedule ?? "").trim());
 
 /** Calle de una dirección, sin número ni "S/N": clave para agrupar y texto para mostrar. */
 function street(address: string): { key: string; text: string } | undefined {
@@ -139,8 +90,6 @@ function monthAgo(points: { t: number; price: number }[] | undefined, now: numbe
     const days = (now - ref.t) / DAY;
     return days >= 21 && days <= 45 ? ref.price : undefined;
 }
-
-const plain = (p: Paragraph) => p.map((x) => (typeof x === "string" ? x : x.text)).join("");
 
 export function municipioInsights(input: InsightInput): Insights {
     if (input.stations.length === 0) return noPricesToday(input);
