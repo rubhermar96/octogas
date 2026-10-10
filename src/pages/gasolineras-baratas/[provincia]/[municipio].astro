@@ -11,6 +11,14 @@ import { stationUrl, provinceUrl } from "../../../lib/stationUrl";
 import { placeSlug, displayProvince, displayCity } from "../../../lib/placeName";
 import PriceHistoryChart from "../../../components/Station/PriceHistoryChart";
 import { loadAggHistory, scopeKey } from "../../../lib/aggHistory";
+import { displayAddress } from "../../../lib/format";
+import {
+    municipioInsights,
+    nearbyFinder,
+    type Alternative,
+    type Averages,
+    type MainFuel,
+} from "../../../lib/municipioInsights";
 import type { GasStation } from "../../../types/gasolinera";
 
 interface Sibling {
@@ -41,6 +49,24 @@ export async function getStaticPaths() {
             .sort((a, b) => b.count - a.count);
     }
 
+    // Referencias para el texto propio de cada municipio (src/lib/municipioInsights.ts):
+    // medias de su provincia y de España, y gasolineras cercanas de otros municipios.
+    const averagesOf = (list: GasStation[]): Averages => {
+        const out: Averages = {};
+        for (const f of ["sp95", "diesel"] as MainFuel[]) {
+            const v = list.map((s) => s.prices[f]).filter((p): p is number => p != null);
+            if (v.length) out[f] = v.reduce((a, b) => a + b, 0) / v.length;
+        }
+        return out;
+    };
+    const nationalAvg = averagesOf(stations);
+    const provinceStats: Record<string, { avg: Averages; count: number }> = {};
+    for (const province in groups) {
+        const list = Object.values(groups[province]).flat();
+        provinceStats[province] = { avg: averagesOf(list), count: list.length };
+    }
+    const findNearby = nearbyFinder(stations);
+
     const paths = [];
     for (const provinceName in groups) {
         for (const municipalityName in groups[provinceName]) {
@@ -52,14 +78,28 @@ export async function getStaticPaths() {
                 .filter((m) => m.slug !== muniSlug)
                 .slice(0, 24);
 
+            const muniStations = groups[provinceName][municipalityName];
+            const located = muniStations.filter((s) => Number.isFinite(s.lat) && Number.isFinite(s.lng));
+            const nearby = located.length
+                ? findNearby(
+                      located.reduce((a, s) => a + s.lat, 0) / located.length,
+                      located.reduce((a, s) => a + s.lng, 0) / located.length,
+                      (s) => s.province === provinceName && s.city === municipalityName
+                  )
+                : [];
+
             paths.push({
                 params: { provincia: provSlug, municipio: muniSlug },
                 props: {
                     provinceName,
                     municipalityName,
                     provSlug,
-                    stations: groups[provinceName][municipalityName],
+                    stations: muniStations,
                     siblings,
+                    provinceAvg: provinceStats[provinceName].avg,
+                    provinceCount: provinceStats[provinceName].count,
+                    nationalAvg,
+                    nearby,
                 },
             });
         }
@@ -67,13 +107,18 @@ export async function getStaticPaths() {
     return paths;
 }
 
-const { provinceName, municipalityName, provSlug, stations, siblings } = Astro.props as {
-    provinceName: string;
-    municipalityName: string;
-    provSlug: string;
-    stations: GasStation[];
-    siblings: Sibling[];
-};
+const { provinceName, municipalityName, provSlug, stations, siblings, provinceAvg, provinceCount, nationalAvg, nearby } =
+    Astro.props as {
+        provinceName: string;
+        municipalityName: string;
+        provSlug: string;
+        stations: GasStation[];
+        siblings: Sibling[];
+        provinceAvg: Averages;
+        provinceCount: number;
+        nationalAvg: Averages;
+        nearby: Alternative[];
+    };
 
 // Nombre de provincia en formato "Título" (el dato viene en mayúsculas).
 const provLabel = displayProvince(provinceName);
@@ -94,6 +139,9 @@ const avg = (key: FuelKey) => {
     return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
 };
 const fmt = (n: number | null) => (n != null ? n.toFixed(3) : "—");
+// En los textos (descripción y preguntas frecuentes), con coma decimal como en el resto
+// de la redacción; las cifras de la interfaz siguen con punto, como en toda la web.
+const fmtText = (n: number | null) => (n != null ? n.toLocaleString("es-ES", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "—");
 
 const minSp95 = min("sp95");
 const minDiesel = min("diesel");
@@ -115,6 +163,24 @@ const fuelAverages = (
 const cheapestSp95Station = stations
     .filter((s) => s.prices.sp95 != null)
     .sort((a, b) => a.prices.sp95! - b.prices.sp95!)[0];
+const cheapestSp95Label = cheapestSp95Station
+    ? /^n[ºo°]/i.test(cheapestSp95Station.brand) || /^\d/.test(cheapestSp95Station.brand)
+        ? `la gasolinera de ${displayAddress(cheapestSp95Station.address)}`
+        : `${cheapestSp95Station.brand}, en ${displayAddress(cheapestSp95Station.address)}`
+    : "";
+
+// Texto propio del municipio, sacado de sus datos (ver src/lib/municipioInsights.ts).
+const insights = municipioInsights({
+    muni: muniLabel,
+    prov: provLabel,
+    slug: placeSlug(municipalityName),
+    stations,
+    provinceAvg,
+    provinceCount,
+    nationalAvg,
+    history: aggHist,
+    nearby,
+});
 
 const centerLat = stations.reduce((s, x) => s + x.lat, 0) / stations.length;
 const centerLng = stations.reduce((s, x) => s + x.lng, 0) / stations.length;
@@ -130,28 +196,30 @@ const updated = new Date().toLocaleDateString("es-ES", {
 });
 
 const pageTitle = `Gasolineras baratas en ${muniLabel} (${provLabel}) — Precios hoy | OCTO`;
-const pageDescription = `Compara el precio de la gasolina 95 y el diésel en ${stations.length} gasolineras de ${muniLabel}, ${provLabel}. La más barata desde ${fmt(minSp95)} €/L. Datos oficiales actualizados.`;
+const pageDescription = `Compara el precio de la gasolina 95 y el diésel en ${stations.length} gasolineras de ${muniLabel}, ${provLabel}. La más barata desde ${fmtText(minSp95)} €/L. Datos oficiales actualizados.`;
 
 // --- Datos estructurados (FAQ + Breadcrumb) ---
 const faq = [
     {
         q: `¿Cuál es la gasolinera más barata en ${muniLabel}?`,
         a: cheapestSp95Station
-            ? `Actualmente la más barata para Gasolina 95 es ${cheapestSp95Station.name} (${cheapestSp95Station.address}), a ${fmt(minSp95)} €/L.`
+            ? `Actualmente la más barata para gasolina 95 es ${cheapestSp95Label}, a ${fmtText(minSp95)} €/L.`
             : `Consulta el listado actualizado de gasolineras en ${muniLabel} para ver la más barata.`,
     },
     {
         q: `¿Cuánto cuesta la gasolina 95 en ${muniLabel}?`,
-        a: `El precio medio de la Gasolina 95 en ${muniLabel} es de ${fmt(avgSp95)} €/L, siendo el más bajo ${fmt(minSp95)} €/L.`,
+        a: `El precio medio de la gasolina 95 en ${muniLabel} es de ${fmtText(avgSp95)} €/L, y el más bajo, ${fmtText(minSp95)} €/L.`,
     },
     {
         q: `¿Cuánto cuesta el diésel en ${muniLabel}?`,
-        a: `El precio medio del Gasóleo A (diésel) en ${muniLabel} es de ${fmt(avgDiesel)} €/L, con un mínimo de ${fmt(minDiesel)} €/L.`,
+        a: `El precio medio del gasóleo A (diésel) en ${muniLabel} es de ${fmtText(avgDiesel)} €/L, con un mínimo de ${fmtText(minDiesel)} €/L.`,
     },
     {
         q: `¿Cuántas gasolineras hay en ${muniLabel}?`,
         a: `Hay ${stations.length} estaciones de servicio con precios disponibles en ${muniLabel}.`,
     },
+    // Zona más barata, tendencia del mes y alternativas cercanas (cuando hay dato).
+    ...insights.faq,
     {
         q: `¿Con qué frecuencia se actualizan los precios?`,
         a: `Los precios se actualizan a diario a partir de los datos oficiales del Ministerio para la Transición Ecológica.`,
@@ -173,17 +241,18 @@ const breadcrumbJsonLd = {
     "@type": "BreadcrumbList",
     itemListElement: [
         { "@type": "ListItem", position: 1, name: "Inicio", item: new URL("/", Astro.site).href },
+        // Las mismas migas que se ven en la página: Inicio › Provincia › Municipio.
         {
             "@type": "ListItem",
             position: 2,
-            name: "Buscar municipio",
-            item: new URL("/municipios/", Astro.site).href,
+            name: provLabel,
+            item: new URL(provinceUrl(provinceName), Astro.site).href,
         },
         {
             "@type": "ListItem",
             position: 3,
-            name: `${muniLabel} (${provLabel})`,
-            item: Astro.url.href,
+            name: muniLabel,
+            item: new URL(Astro.url.pathname, Astro.site).href,
         },
     ],
 };
@@ -228,6 +297,17 @@ const breadcrumbJsonLd = {
             </section>
 
             <MunicipioTop client:load stations={stations} explorerUrl={explorerUrl} />
+
+            {
+                insights.paragraphs.length > 0 && (
+                    <section class="insights">
+                        <h2>Cómo están los precios en {muniLabel}</h2>
+                        {insights.paragraphs.map((p) => (
+                            <p>{p.map((part) => (typeof part === "string" ? part : <a href={part.href}>{part.text}</a>))}</p>
+                        ))}
+                    </section>
+                )
+            }
 
             <section class="chart-section">
                 <h2>Evolución del precio medio en {muniLabel}</h2>
@@ -496,6 +576,29 @@ const breadcrumbJsonLd = {
 
     .chart-section {
         margin-bottom: 3rem;
+    }
+    /* Texto propio del municipio (municipioInsights). */
+    .insights {
+        margin: 2.5rem 0 3rem;
+    }
+    .insights h2 {
+        margin-bottom: 1rem;
+    }
+    .insights p {
+        max-width: 72ch;
+        margin-bottom: 0.9rem;
+        line-height: 1.7;
+        color: var(--text-muted);
+    }
+    .insights a {
+        color: var(--text);
+        font-weight: 600;
+        text-decoration: underline;
+        text-decoration-color: var(--primary);
+        text-underline-offset: 3px;
+    }
+    .insights a:hover {
+        color: var(--primary);
     }
     .map-section {
         height: 460px;

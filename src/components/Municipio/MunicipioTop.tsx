@@ -3,9 +3,13 @@ import type { GasStation, FuelType } from '../../types/gasolinera';
 import { FUEL_LABELS } from '../../lib/fuels';
 import { stationUrl } from '../../lib/stationUrl';
 import { displayCity } from '../../lib/placeName';
+import { displayAddress } from '../../lib/format';
 import BrandLogo from '../Explorer/BrandLogo';
 import CompareButton from '../Explorer/CompareButton';
 import styles from './MunicipioTop.module.css';
+
+// Sin rótulo de marca (p. ej. «Nº 10.935»): se muestra como independiente.
+const isGenericBrand = (brand: string) => /^n[ºo°]/i.test(brand) || /^\d/.test(brand);
 
 interface Props {
     stations: GasStation[];
@@ -52,9 +56,9 @@ const MunicipioTop: React.FC<Props> = ({ stations, explorerUrl }) => {
                         <span className={styles.rank}>{i + 1}</span>
                         <BrandLogo brand={s.brand} size={36} />
                         <a className={styles.info} href={stationUrl(s)} title="Ver ficha de la gasolinera">
-                            <span className={styles.name}>{s.name}</span>
+                            <span className={styles.name}>{isGenericBrand(s.brand) ? 'Gasolinera independiente' : s.brand}</span>
                             <span className={styles.addr}>
-                                {s.address}, {displayCity(s.city)}
+                                {displayAddress(s.address)}, {displayCity(s.city)}
                             </span>
                         </a>
                         <div className={styles.priceCol}>
