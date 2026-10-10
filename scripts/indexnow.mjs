@@ -15,7 +15,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const ENDPOINT = 'https://api.indexnow.org/indexnow';
+// INDEXNOW_ENDPOINT solo para pruebas (un servidor falso que responda errores).
+const ENDPOINT = process.env.INDEXNOW_ENDPOINT ?? 'https://api.indexnow.org/indexnow';
 const MAX_PER_REQUEST = 10_000; // límite del protocolo
 const ROTATION_DAYS = 7;
 
@@ -45,6 +46,37 @@ function sitemapUrls(dir) {
         for (const [, u] of fs.readFileSync(file, 'utf8').matchAll(/<loc>([^<]+)<\/loc>/g)) urls.add(u);
     }
     return urls;
+}
+
+/**
+ * Envía una tanda. Reintenta (3 intentos, esperando 20 s y 40 s) los fallos que pueden
+ * ser pasajeros: red, 429 (demasiadas peticiones), 5xx y 403 (el primer envío con una
+ * clave recién publicada a veces se rechaza antes de que el buscador la verifique).
+ * 200 y 202 son éxito (202: recibido, la clave se verificará después).
+ */
+async function send(body) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        let problem;
+        try {
+            const res = await fetch(ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                body: JSON.stringify(body),
+                signal: AbortSignal.timeout(30_000),
+            });
+            if (res.status === 200 || res.status === 202) return true;
+            problem = `respuesta ${res.status}: ${(await res.text()).slice(0, 200)}`;
+            if (!(res.status === 403 || res.status === 429 || res.status >= 500)) {
+                log(`AVISO: ${problem} (${body.urlList.length} URL, no se reintenta).`);
+                return false;
+            }
+        } catch (err) {
+            problem = `no se pudo contactar con ${ENDPOINT}: ${err.message}`;
+        }
+        log(`AVISO: intento ${attempt} de 3 fallido, ${problem}`);
+        if (attempt < 3) await new Promise((r) => setTimeout(r, attempt * 20_000));
+    }
+    return false;
 }
 
 /** Turno (0-6) de una URL: estable, para repartir el sitio entre los días de la semana. */
@@ -85,23 +117,7 @@ async function main() {
 
     let ok = true;
     for (let i = 0; i < urls.length; i += MAX_PER_REQUEST) {
-        const urlList = urls.slice(i, i + MAX_PER_REQUEST);
-        try {
-            const res = await fetch(ENDPOINT, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json; charset=utf-8' },
-                body: JSON.stringify({ host, key, keyLocation: `https://${host}/${key}.txt`, urlList }),
-                signal: AbortSignal.timeout(30_000),
-            });
-            // 200 y 202 son éxito (202: recibido, la clave se verificará después).
-            if (res.status !== 200 && res.status !== 202) {
-                ok = false;
-                log(`AVISO: respuesta ${res.status} al enviar ${urlList.length} URL: ${(await res.text()).slice(0, 200)}`);
-            }
-        } catch (err) {
-            ok = false;
-            log(`AVISO: no se pudo contactar con ${ENDPOINT}: ${err.message}`);
-        }
+        if (!(await send({ host, key, keyLocation: `https://${host}/${key}.txt`, urlList: urls.slice(i, i + MAX_PER_REQUEST) }))) ok = false;
     }
     if (ok && daily && stateFile) fs.writeFileSync(stateFile, JSON.stringify({ ...state, lastDaily: today }) + '\n');
     log(`${ok ? 'avisadas' : 'aviso con errores:'} ${urls.length} URL de ${host} (${summary}).`);
