@@ -23,6 +23,10 @@ export default defineConfig({
     }),
   ],
   output: 'static',
+  // Una sola versión de cada URL: con barra final, como el canonical y el sitemap.
+  // Los enlaces internos se escriben así (scripts/check-site.mjs lo comprueba) y Nginx
+  // redirige con 301 la versión sin barra.
+  trailingSlash: 'always',
   // Astro 7 cambió el valor por defecto a 'jsx' (reglas de espacios de React): un
   // enlace escrito en una línea nueva se pegaría a la palabra anterior ("y en
   // laPolítica de cookies"). true mantiene el comportamiento con el que se

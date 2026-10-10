@@ -69,7 +69,7 @@ const features = [
         title: "Explorador de precios",
         desc: "Todas las gasolineras de España en un mapa interactivo. Filtra por combustible y marca, ordena por precio o cercanía y encuentra la más barata cerca de ti.",
         badge: `${nf.format(totalStations)} gasolineras en el mapa`,
-        href: "/municipios",
+        href: "/municipios/",
         cta: "Explorar el mapa",
         size: "big",
     },
@@ -79,7 +79,7 @@ const features = [
         title: "Comparador",
         desc: "Pon hasta 4 gasolineras una al lado de otra y compáralas precio a precio: 95, 98, diésel, GLP y más.",
         badge: maxSavingSp95 > 0.01 ? `Ahorra hasta ${maxSavingSp95.toFixed(2)} €/L` : undefined,
-        href: "/comparador",
+        href: "/comparador/",
         cta: "Abrir comparador",
     },
     {
@@ -88,7 +88,7 @@ const features = [
         title: "Planificador de viajes",
         desc: "Calcula tu ruta y descubre dónde repostar más barato por el camino según tu consumo, depósito y peajes.",
         badge: undefined,
-        href: "/rutas",
+        href: "/rutas/",
         cta: "Planificar ruta",
     },
     {
@@ -97,7 +97,7 @@ const features = [
         title: "Fichas por provincia y gasolinera",
         desc: `Más de ${nf.format(totalStations)} fichas con precios, horario, mapa, evolución histórica y gasolineras cercanas. Páginas por provincia y municipio de toda España.`,
         badge: `${totalProvinces} provincias · ${nf.format(totalMunis)} municipios`,
-        href: "/municipios",
+        href: "/municipios/",
         cta: "Ver por provincia",
         size: "wide",
     },
@@ -211,7 +211,7 @@ const steps = [
                             Elige el combustible y mira el top 10 nacional al instante: gasolina,
                             diésel, GLP y más. Datos oficiales actualizados a diario.
                         </p>
-                        <a class={`${styles.topFuelsCta} btn-pop`} href="/municipios">
+                        <a class={`${styles.topFuelsCta} btn-pop`} href="/municipios/">
                             <span class="material-symbols-outlined" aria-hidden="true">search</span>
                             Buscar en tu zona
                         </a>

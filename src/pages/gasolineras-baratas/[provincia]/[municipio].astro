@@ -119,7 +119,7 @@ const cheapestSp95Station = stations
 const centerLat = stations.reduce((s, x) => s + x.lat, 0) / stations.length;
 const centerLng = stations.reduce((s, x) => s + x.lng, 0) / stations.length;
 
-const explorerUrl = `/explorador?mode=municipality&prov=${encodeURIComponent(
+const explorerUrl = `/explorador/?mode=municipality&prov=${encodeURIComponent(
     provinceName
 )}&city=${encodeURIComponent(municipalityName)}`;
 
@@ -177,7 +177,7 @@ const breadcrumbJsonLd = {
             "@type": "ListItem",
             position: 2,
             name: "Buscar municipio",
-            item: new URL("/municipios", Astro.site).href,
+            item: new URL("/municipios/", Astro.site).href,
         },
         {
             "@type": "ListItem",
@@ -283,7 +283,7 @@ const breadcrumbJsonLd = {
                         <h2>Gasolineras en otros municipios de {provLabel}</h2>
                         <div class="sibling-grid" data-reveal-items>
                             {siblings.map((m) => (
-                                <a href={`/gasolineras-baratas/${provSlug}/${m.slug}`} class="sibling-link hover-lift">
+                                <a href={`/gasolineras-baratas/${provSlug}/${m.slug}/`} class="sibling-link hover-lift">
                                     {displayCity(m.name)}
                                     <span>{m.count}</span>
                                 </a>

@@ -22,17 +22,18 @@ export function stationSlug(s: StationLike): string {
     return `${base}-${s.id}`.replace(/-+/g, '-');
 }
 
-/** Ruta canónica de la ficha de una gasolinera. */
+/** Ruta canónica de la ficha de una gasolinera. Todas las rutas de páginas llevan
+ *  barra final, como el canonical y el sitemap (el servidor redirige la otra versión). */
 export function stationUrl(s: StationLike): string {
-    return `/gasolineras-baratas/${placeSlug(s.province)}/${placeSlug(s.city)}/${stationSlug(s)}`;
+    return `/gasolineras-baratas/${placeSlug(s.province)}/${placeSlug(s.city)}/${stationSlug(s)}/`;
 }
 
 /** Ruta de la página de una provincia. */
 export function provinceUrl(province: string): string {
-    return `/gasolineras-baratas/${placeSlug(province)}`;
+    return `/gasolineras-baratas/${placeSlug(province)}/`;
 }
 
 /** Ruta de la página de un municipio. */
 export function municipioUrl(province: string, city: string): string {
-    return `/gasolineras-baratas/${placeSlug(province)}/${placeSlug(city)}`;
+    return `/gasolineras-baratas/${placeSlug(province)}/${placeSlug(city)}/`;
 }

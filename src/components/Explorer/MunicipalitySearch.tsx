@@ -62,7 +62,7 @@ const MunicipalitySearch: React.FC = () => {
 
     const handleSelect = (loc: LocationItem) => {
         // Vamos a la pantalla de resumen del municipio (precios medios + top 10).
-        window.location.href = `/gasolineras-baratas/${loc.provinceSlug}/${loc.citySlug}`;
+        window.location.href = `/gasolineras-baratas/${loc.provinceSlug}/${loc.citySlug}/`;
     };
 
     return (

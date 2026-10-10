@@ -1,6 +1,7 @@
 // Revisa la web generada (dist/) antes de publicarla. Falla (código de salida 1) si
-// encuentra enlaces internos rotos o páginas sin título, sin descripción, sin h1, con
-// varios h1 o con un título repetido. Lo ejecuta la integración continua tras el build.
+// encuentra enlaces internos rotos o sin barra final, o páginas sin título, sin
+// descripción, sin h1, con varios h1 o con un título repetido. Lo ejecuta la
+// integración continua tras el build.
 //
 // Uso: node scripts/check-site.mjs [carpeta] [--min-pages N]   (carpeta por defecto: dist)
 //
@@ -29,14 +30,16 @@ const files = [];
     }
 })(DIST);
 
-// ¿Existe la página o fichero al que apunta un enlace interno?
-const exists = (href) => {
-    const target = path.join(DIST, decodeURIComponent(href.split(/[?#]/)[0]));
-    return (
-        (fs.existsSync(target) && fs.statSync(target).isFile()) ||
-        fs.existsSync(path.join(target, 'index.html')) ||
-        fs.existsSync(target + '.html')
-    );
+// ¿A qué apunta un enlace interno? 'ok', 'sin-barra' (una página enlazada sin la barra
+// final: el canonical y el sitemap la llevan y el servidor redirige a esa versión, así
+// que el enlace costaría una redirección) o 'roto'.
+const linkStatus = (href) => {
+    const pathname = decodeURIComponent(href.split(/[?#]/)[0]);
+    const target = path.join(DIST, pathname);
+    if (fs.existsSync(target) && fs.statSync(target).isFile()) return 'ok';
+    if (fs.existsSync(path.join(target, 'index.html'))) return pathname.endsWith('/') ? 'ok' : 'sin-barra';
+    if (fs.existsSync(target + '.html')) return 'ok';
+    return 'roto';
 };
 
 const problems = new Map(); // tipo → [páginas]
@@ -60,8 +63,10 @@ for (const file of files) {
 
     for (const [, href] of html.matchAll(/href="(\/[^"]*)"/g)) {
         if (href.startsWith('//')) continue;
-        if (!checked.has(href)) checked.set(href, exists(href));
-        if (!checked.get(href)) add(`enlace roto ${href}`, page);
+        if (!checked.has(href)) checked.set(href, linkStatus(href));
+        const status = checked.get(href);
+        if (status === 'roto') add(`enlace roto ${href}`, page);
+        if (status === 'sin-barra') add('enlaces sin barra final', `${page} → ${href}`);
     }
 }
 for (const [title, pages] of titles) if (pages.length > 1) add(`título repetido «${title}»`, pages.join(' · '));
@@ -75,7 +80,7 @@ if (problems.size === 0) {
     process.exit(0);
 }
 for (const [kind, pages] of problems) {
-    const line = `${kind}: ${pages.length} página(s), p. ej. ${pages.slice(0, 3).join(' | ')}`;
+    const line = `${kind}: ${pages.length} caso(s), p. ej. ${pages.slice(0, 3).join(' | ')}`;
     console.error(inCI ? `::error title=Revisión de la web::${line}` : `✗ ${line}`);
 }
 process.exit(1);

@@ -53,7 +53,7 @@ const orgJsonLd = {
         "@type": "SearchAction",
         target: {
             "@type": "EntryPoint",
-            urlTemplate: new URL("/municipios?q={search_term_string}", Astro.site).href,
+            urlTemplate: new URL("/municipios/?q={search_term_string}", Astro.site).href,
         },
         "query-input": "required name=search_term_string",
     },
@@ -163,9 +163,9 @@ const orgJsonLd = {
             </button>
             <div class={styles.menuNav}>
                 <a href="/" class={styles.menuLink}>Inicio</a>
-                <a href="/municipios" class={styles.menuLink}>Explorador</a>
-                <a href="/rutas" class={styles.menuLink}>Planificar viaje</a>
-                <a href="/comparador" class={styles.menuLink}>Comparador</a>
+                <a href="/municipios/" class={styles.menuLink}>Explorador</a>
+                <a href="/rutas/" class={styles.menuLink}>Planificar viaje</a>
+                <a href="/comparador/" class={styles.menuLink}>Comparador</a>
             </div>
         </nav>
 
@@ -206,8 +206,8 @@ const orgJsonLd = {
                         >
                     </a>
                     <a
-                        href="/municipios"
-                        class={`${styles.navItem} ${(Astro.url.pathname === "/municipios" || Astro.url.pathname === "/explorador") ? styles.active : ""}`}
+                        href="/municipios/"
+                        class={`${styles.navItem} ${(Astro.url.pathname === "/municipios/" || Astro.url.pathname === "/explorador/") ? styles.active : ""}`}
                     >
                         <span
                             class={`material-symbols-outlined ${styles.navIcon}`} aria-hidden="true"
@@ -218,8 +218,8 @@ const orgJsonLd = {
                         >
                     </a>
                     <a
-                        href="/rutas"
-                        class={`${styles.navItem} ${Astro.url.pathname === "/rutas" ? styles.active : ""}`}
+                        href="/rutas/"
+                        class={`${styles.navItem} ${Astro.url.pathname === "/rutas/" ? styles.active : ""}`}
                     >
                         <span
                             class={`material-symbols-outlined ${styles.navIcon}`} aria-hidden="true"
@@ -228,8 +228,8 @@ const orgJsonLd = {
                         <span class={styles.navLabel}>Planificar viaje</span>
                     </a>
                     <a
-                        href="/comparador"
-                        class={`${styles.navItem} ${Astro.url.pathname === "/comparador" ? styles.active : ""}`}
+                        href="/comparador/"
+                        class={`${styles.navItem} ${Astro.url.pathname === "/comparador/" ? styles.active : ""}`}
                     >
                         <span
                             class={`material-symbols-outlined ${styles.navIcon}`} aria-hidden="true"
