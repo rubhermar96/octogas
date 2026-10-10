@@ -26,7 +26,10 @@ export function displayAddress(raw: string): string {
     return text
         .split(/\s+/)
         .map((word, i) => {
-            if (/^[a-zñ]{1,4}-?\d/i.test(word) || /^s[/.]n\W*$/i.test(word)) return word.toUpperCase();
+            // "Sin número": SN, S/N, S.N. → "S/N" (conservando la coma que lo siga).
+            const sn = word.match(/^s[/.]?n\.?([^\p{L}\d]*)$/iu);
+            if (sn) return `S/N${sn[1]}`;
+            if (/^[a-zñ]{1,4}-?\d/i.test(word)) return word.toUpperCase();
             const lower = word.toLowerCase();
             if (i > 0 && ADDRESS_MINOR_WORDS.has(lower)) return lower;
             return titleCase(lower);
