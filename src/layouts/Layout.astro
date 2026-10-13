@@ -273,14 +273,19 @@ const orgJsonLd = {
                     },
                     { rootMargin: "0px 0px -6% 0px" }
                 );
+                // Primero se miden todos y luego se marcan: medir después de cambiar una
+                // clase obligaría al navegador a recalcular los estilos en cada vuelta.
                 var fold = window.innerHeight;
-                document
-                    .querySelectorAll("[data-reveal], [data-reveal-children] > *, [data-reveal-items] > *")
-                    .forEach(function (el) {
-                        if (el.getBoundingClientRect().top < fold) return;
-                        el.classList.add("reveal-wait");
-                        io.observe(el);
-                    });
+                var below = Array.prototype.filter.call(
+                    document.querySelectorAll("[data-reveal], [data-reveal-children] > *, [data-reveal-items] > *"),
+                    function (el) {
+                        return el.getBoundingClientRect().top >= fold;
+                    }
+                );
+                below.forEach(function (el) {
+                    el.classList.add("reveal-wait");
+                    io.observe(el);
+                });
                 root.classList.add("motion-ready");
             })();
         </script>

@@ -138,22 +138,23 @@
     .heroStats,
     .heroSelectorWrap,
     .scrollIndicator {
-        animation: heroIn 0.9s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+        /* Rápida: mientras dura, la portada no está "completa" para Google. */
+        animation: heroIn 0.65s cubic-bezier(0.22, 1, 0.36, 1) backwards;
     }
     .slogan {
-        animation-delay: 0.12s;
+        animation-delay: 0.08s;
     }
     .heroLead {
-        animation-delay: 0.24s;
+        animation-delay: 0.16s;
     }
     .heroStats {
-        animation-delay: 0.36s;
+        animation-delay: 0.24s;
     }
     .heroSelectorWrap {
-        animation-delay: 0.48s;
+        animation-delay: 0.32s;
     }
     .scrollIndicator {
-        animation-delay: 0.8s;
+        animation-delay: 0.6s;
     }
 }
 
