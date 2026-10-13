@@ -97,7 +97,7 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
         <aside className={styles.sidebar}>
             <div className={styles.header}>
                 <a href="/" className={styles.brand} title="Volver al inicio">
-                    <img src="/images/logo-octo.webp" alt="OCTO" className={styles.brandLogo} width={540} height={201} />
+                    <img src="/images/logo-octo-300.webp" alt="OCTO" className={styles.brandLogo} width={300} height={111} />
                     <span className={styles.title}>Estaciones</span>
                 </a>
             </div>

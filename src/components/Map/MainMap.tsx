@@ -1,9 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
-import 'leaflet/dist/leaflet.css';
-import 'react-leaflet-cluster/dist/assets/MarkerCluster.css';
-import 'react-leaflet-cluster/dist/assets/MarkerCluster.Default.css';
+import { injectMapCss } from './mapCss';
 import styles from './MainMap.module.css';
 import type { GasStation, FuelType } from '../../types/gasolinera';
 import { stationIcon, StationPopup } from './StationMarker';
@@ -24,6 +22,9 @@ let DefaultIcon = L.icon({
 });
 
 L.Marker.prototype.options.icon = DefaultIcon;
+
+// Antes de pintar el primer mapa (ver mapCss.ts).
+injectMapCss();
 
 // Icono "estás aquí" (punto azul con halo pulsante).
 const userLocationIcon = L.divIcon({

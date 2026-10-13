@@ -137,7 +137,7 @@ const orgJsonLd = {
             {!hideHeaderLogo && (
             <div class={styles.headerLeft} id="header-logo">
                 <a href="/">
-                    <img src="/images/logo-octo.webp" alt="OCTO" class={styles.headerLogo} width="540" height="201" />
+                    <img src="/images/logo-octo-300.webp" alt="OCTO" class={styles.headerLogo} width="300" height="111" />
                 </a>
             </div>
             )}
@@ -178,9 +178,9 @@ const orgJsonLd = {
                     <div class={styles.brandContainer}>
                         <div class={styles.logoBox}>
                             <img
-                                src="/images/logo-octo.webp"
-                                width="540"
-                                height="201"
+                                src="/images/logo-octo-300.webp"
+                                width="300"
+                                height="111"
                                 alt="OCTO Logo"
                                 class={styles.logoImage}
                             />
@@ -252,10 +252,11 @@ const orgJsonLd = {
         {ADSENSE_ID && <ConsentBanner />}
 
         <script is:inline>
-            // Animaciones de entrada (global.css): cada bloque marcado con data-reveal,
-            // data-reveal-children o data-reveal-items aparece al entrar en pantalla; los
-            // que entran a la vez, escalonados. Va en línea al final del body para
-            // enganchar el observador en cuanto existe el contenido.
+            // Animaciones de entrada (global.css): lo que ya está en pantalla entra solo
+            // con CSS al pintarse; cada bloque que queda más abajo (data-reveal,
+            // data-reveal-children o data-reveal-items) se oculta y aparece al llegar
+            // con el scroll, escalonado con los que entran a la vez. Va en línea al
+            // final del body para enganchar el observador en cuanto existe el contenido.
             (function () {
                 var root = document.documentElement;
                 if (!root.classList.contains("motion")) return;
@@ -265,15 +266,19 @@ const orgJsonLd = {
                         entries.forEach(function (e) {
                             if (!e.isIntersecting) return;
                             e.target.style.setProperty("--reveal-delay", Math.min(n++, 6) * 60 + "ms");
+                            e.target.classList.remove("reveal-wait");
                             e.target.classList.add("is-revealed");
                             io.unobserve(e.target);
                         });
                     },
                     { rootMargin: "0px 0px -6% 0px" }
                 );
+                var fold = window.innerHeight;
                 document
                     .querySelectorAll("[data-reveal], [data-reveal-children] > *, [data-reveal-items] > *")
                     .forEach(function (el) {
+                        if (el.getBoundingClientRect().top < fold) return;
+                        el.classList.add("reveal-wait");
                         io.observe(el);
                     });
                 root.classList.add("motion-ready");
