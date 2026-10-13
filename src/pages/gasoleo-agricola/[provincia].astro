@@ -1,0 +1,15 @@
+---
+// Gasolineras de una provincia que lo venden, de la más barata a la más cara (ver
+// src/lib/fuelPages.ts). Solo las provincias donde alguna lo vende hoy.
+import FuelPage from "../../components/FuelPage/FuelPage.astro";
+import { fuelData } from "../../lib/fuelPages";
+import { placeSlug } from "../../lib/placeName";
+
+export function getStaticPaths() {
+    return fuelData("dieselB").provinces.map((p) => ({ params: { provincia: placeSlug(p.name) }, props: { province: p.name } }));
+}
+
+const { province } = Astro.props as { province: string };
+---
+
+<FuelPage kind="dieselB" province={province} />

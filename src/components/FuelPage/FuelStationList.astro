@@ -1,0 +1,151 @@
+---
+/**
+ * Lista de gasolineras que venden un combustible, de la más barata a la más cara: nombre
+ * (a su ficha), dirección, municipio, si abre 24 horas, precio y botón de comparar. En
+ * móvil, cada gasolinera es una tarjeta.
+ */
+import CompareToggle from "../CompareToggle.astro";
+import { displayAddress } from "../../lib/format";
+import { displayCity, displayProvince } from "../../lib/placeName";
+import { is24h, isGeneric } from "../../lib/insightText";
+import { municipioUrl, stationUrl } from "../../lib/stationUrl";
+import type { FuelType, GasStation } from "../../types/gasolinera";
+
+interface Props {
+    stations: GasStation[];
+    fuel: FuelType;
+    /** Añade la provincia junto al municipio (listas de toda España). */
+    withProvince?: boolean;
+}
+
+const { stations, fuel, withProvince = false } = Astro.props;
+---
+
+<ol class="fuel-stations">
+    {
+        stations.map((s, i) => (
+            <li class="fs-row">
+                <span class="fs-rank">{i + 1}</span>
+                <div class="fs-main">
+                    <a class="fs-name" href={stationUrl(s)}>
+                        {isGeneric(s) ? displayAddress(s.address) : s.brand}
+                    </a>
+                    <span class="fs-where">
+                        {!isGeneric(s) && <>{displayAddress(s.address)} · </>}
+                        <a href={municipioUrl(s.province, s.city)}>{displayCity(s.city)}</a>
+                        {withProvince && displayProvince(s.province) !== displayCity(s.city) && <> ({displayProvince(s.province)})</>}
+                        {is24h(s) && <span class="fs-24h">24 h</span>}
+                    </span>
+                </div>
+                <span class="fs-price">
+                    {s.prices[fuel]!.toFixed(3)} <small>€/L</small>
+                </span>
+                <div class="fs-compare">
+                    <CompareToggle stationId={s.id} variant="square" />
+                </div>
+            </li>
+        ))
+    }
+</ol>
+
+<style>
+    .fuel-stations {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        border: 1px solid var(--border);
+        background: var(--surface);
+    }
+    .fs-row {
+        display: grid;
+        grid-template-columns: 2rem minmax(0, 1fr) auto auto;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.7rem 0.75rem 0.7rem 1rem;
+        border-bottom: 1px solid color-mix(in srgb, var(--border) 35%, transparent);
+    }
+    .fs-row:last-child {
+        border-bottom: none;
+    }
+    .fs-rank {
+        font-family: var(--font-header);
+        font-weight: 800;
+        color: var(--text-muted);
+        font-variant-numeric: tabular-nums;
+    }
+    .fs-main {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        min-width: 0;
+    }
+    .fs-name {
+        color: var(--text);
+        font-weight: 700;
+        text-decoration: underline;
+        text-decoration-color: var(--primary);
+        text-underline-offset: 3px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .fs-name:hover {
+        color: var(--primary);
+    }
+    .fs-where {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+    .fs-where a {
+        color: inherit;
+    }
+    .fs-where a:hover {
+        color: var(--primary);
+    }
+    .fs-24h {
+        display: inline-block;
+        margin-left: 0.4rem;
+        padding: 0 0.35rem;
+        border: 1px solid var(--secondary);
+        color: var(--secondary);
+        font-size: 0.68rem;
+        font-weight: 700;
+    }
+    .fs-price {
+        font-weight: 800;
+        color: var(--primary);
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+    .fs-price small {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+    .fs-compare {
+        display: flex;
+    }
+
+    @media (max-width: 560px) {
+        .fs-row {
+            grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+            gap: 0.25rem 0.6rem;
+            padding: 0.7rem 0.6rem 0.7rem 0.8rem;
+        }
+        .fs-rank {
+            grid-row: 1 / span 2;
+            align-self: start;
+        }
+        .fs-main {
+            grid-column: 2 / -1;
+        }
+        .fs-price {
+            grid-column: 2;
+            grid-row: 2;
+        }
+        .fs-compare {
+            grid-column: 3;
+            grid-row: 2;
+        }
+    }
+</style>

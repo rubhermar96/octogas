@@ -9,6 +9,7 @@ import { isGeneric } from "../lib/insightText";
 import { displayAddress } from "../lib/format";
 import { displayCity, displayProvince } from "../lib/placeName";
 import { stationUrl } from "../lib/stationUrl";
+import { fuelPageKind, fuelPageUrl } from "../lib/fuelPages";
 
 interface Props {
     rows: FuelRow[];
@@ -18,9 +19,17 @@ interface Props {
      *  (provincia) o municipio y provincia (España). */
     where: "address" | "city" | "cityProvince";
     single?: boolean;
+    /** Provincia (como viene en los datos) para enlazar el GLP y el gasóleo agrícola a
+     *  su página de la provincia; sin ella, a la de España. */
+    province?: string;
 }
 
-const { rows, place, where, single = false } = Astro.props;
+const { rows, place, where, single = false, province } = Astro.props;
+// GLP y gasóleo agrícola tienen página propia: el nombre lleva a ella.
+const fuelHref = (r: FuelRow) => {
+    const kind = fuelPageKind(r.fuel);
+    return kind ? fuelPageUrl(kind, province) : undefined;
+};
 const fmt = (n: number) => n.toFixed(3);
 
 const nameOf = (r: FuelRow) => (isGeneric(r.cheapest) ? displayAddress(r.cheapest.address) : r.cheapest.brand);
@@ -52,7 +61,7 @@ const subOf = (r: FuelRow) => {
                 <tbody>
                     {rows.map((r) => (
                         <tr>
-                            <th scope="row">{FUEL_TITLES[r.fuel]}</th>
+                            <th scope="row">{fuelHref(r) ? <a class="fuel-link" href={fuelHref(r)}>{FUEL_TITLES[r.fuel]}</a> : FUEL_TITLES[r.fuel]}</th>
                             {!single && (
                                 <td class="where">
                                     <a href={stationUrl(r.cheapest)}>{nameOf(r)}</a>
@@ -142,8 +151,15 @@ const subOf = (r: FuelRow) => {
         text-decoration-color: var(--primary);
         text-underline-offset: 3px;
     }
-    .where a:hover {
+    .where a:hover,
+    .fuel-link:hover {
         color: var(--primary);
+    }
+    .fuel-link {
+        color: var(--text);
+        text-decoration: underline;
+        text-decoration-color: var(--primary);
+        text-underline-offset: 3px;
     }
     .sub {
         display: block;

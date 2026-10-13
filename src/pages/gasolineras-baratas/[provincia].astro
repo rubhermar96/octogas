@@ -222,7 +222,7 @@ const breadcrumbJsonLd = {
                 )
             }
 
-            <FuelTable rows={fuelRows} place={`la provincia de ${provLabel}`} where="city" />
+            <FuelTable rows={fuelRows} place={`la provincia de ${provLabel}`} where="city" province={provinceName} />
 
             {
                 insights.paragraphs.length > 0 && (

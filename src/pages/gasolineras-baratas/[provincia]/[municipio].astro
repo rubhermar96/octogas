@@ -322,7 +322,7 @@ const breadcrumbJsonLd = {
 
             {!noPricesToday && <MunicipioTop client:load stations={stations} explorerUrl={explorerUrl} />}
 
-            {!noPricesToday && <FuelTable rows={fuelRows} place={muniLabel} where="address" single={stations.length === 1} />}
+            {!noPricesToday && <FuelTable rows={fuelRows} place={muniLabel} where="address" single={stations.length === 1} province={provinceName} />}
 
             {
                 insights.paragraphs.length > 0 && (

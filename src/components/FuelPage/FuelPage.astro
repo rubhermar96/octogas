@@ -1,0 +1,492 @@
+---
+/**
+ * Página de un combustible con página propia (GLP, gasóleo agrícola; ver fuelPages.ts):
+ * la de toda España (sin `province`) o la de una provincia.
+ */
+import Layout from "../../layouts/Layout.astro";
+import Footer from "../Footer.astro";
+import AdSlot from "../AdSlot.astro";
+import LazyMainMap from "../Map/LazyMainMap";
+import PriceHistoryChart from "../Station/PriceHistoryChart";
+import FuelStationList from "./FuelStationList.astro";
+import { loadAggHistory, scopeKey } from "../../lib/aggHistory";
+import { FUEL_PAGES, fuelData, fuelPageUrl, nationalTexts, provinceTexts, type FuelPageKind } from "../../lib/fuelPages";
+import { placeSlug } from "../../lib/placeName";
+import { provinceUrl } from "../../lib/stationUrl";
+import { price } from "../../lib/insightText";
+
+interface Props {
+    kind: FuelPageKind;
+    /** Nombre de la provincia como viene en los datos; sin él, la página de España. */
+    province?: string;
+}
+
+const { kind, province } = Astro.props;
+const data = fuelData(kind);
+const { config } = data;
+const f = config.fuel;
+const prov = province ? data.provinces.find((p) => p.name === province)! : undefined;
+const other: FuelPageKind = kind === "glp" ? "dieselB" : "glp";
+
+const agg = await loadAggHistory();
+const scope = prov ? scopeKey("province", placeSlug(prov.name)) : scopeKey("national", "");
+const points = agg.get(scope)?.[f];
+const texts = prov ? provinceTexts(data, prov, points) : nationalTexts(data, points);
+
+const stations = prov ? prov.stations : data.stations;
+const avg = prov ? prov.avg : data.avg;
+const min = stations[0].prices[f]!;
+const fmt = (n: number) => n.toFixed(3);
+const updated = new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
+
+const title = prov ? config.provinceTitle(prov.label) : config.nationalTitle;
+const h1 = prov ? config.provinceH1(prov.label) : config.nationalH1;
+const description = prov
+    ? `${stations.length === 1 ? "La gasolinera" : `Las ${stations.length} gasolineras`} de la provincia de ${prov.label} con ${config.short}, de la más barata a la más cara: desde ${price(min)} hoy (media ${price(avg)}). Mapa, horarios y evolución del precio. Datos oficiales, actualizados cada día.`
+    : `${config.the.charAt(0).toUpperCase() + config.the.slice(1)} cuesta hoy de media ${price(avg)} en España, y desde ${price(min)}. Las ${stations.length} gasolineras que lo venden, por provincias y de la más barata a la más cara. Datos oficiales, actualizados cada día.`;
+
+// En España, las 20 más baratas; en una provincia, todas.
+const listed = prov ? stations : stations.slice(0, 20);
+
+const located = stations.filter((s) => Number.isFinite(s.lat) && Number.isFinite(s.lng));
+const center: [number, number] = [
+    located.reduce((a, s) => a + s.lat, 0) / located.length,
+    located.reduce((a, s) => a + s.lng, 0) / located.length,
+];
+
+const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: texts.faq.map((x) => ({ "@type": "Question", name: x.q, acceptedAnswer: { "@type": "Answer", text: x.a } })),
+};
+const crumbs = [
+    { name: "Inicio", url: "/" },
+    { name: config.title.charAt(0).toUpperCase() + config.title.slice(1), url: fuelPageUrl(kind) },
+    ...(prov ? [{ name: prov.label, url: fuelPageUrl(kind, prov.name) }] : []),
+];
+const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.name, item: new URL(c.url, Astro.site).href })),
+};
+---
+
+<Layout title={title} description={description}>
+    <script type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} slot="head" />
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd)} slot="head" />
+
+    <div class="page-container">
+        <div class="content-wrapper" data-reveal-children>
+            <nav class="breadcrumb" aria-label="Migas de pan">
+                {
+                    crumbs.map((c, i) =>
+                        i === crumbs.length - 1 ? (
+                            <span class="current">{c.name}</span>
+                        ) : (
+                            <>
+                                <a href={c.url}>{c.name}</a>
+                                <span>›</span>
+                            </>
+                        )
+                    )
+                }
+            </nav>
+
+            <header class="page-header">
+                <h1>{h1}</h1>
+                <p class="subtitle">
+                    {
+                        prov
+                            ? stations.length === 1
+                                ? `La única gasolinera de la provincia de ${prov.label} que vende ${config.short} hoy, con su precio y su horario.`
+                                : `Las ${stations.length} gasolineras de la provincia de ${prov.label} que venden ${config.short}, de la más barata a la más cara.`
+                            : `Precio medio de hoy, las gasolineras más baratas de España y todas las provincias con ${config.short}.`
+                    }{" "}
+                    <span class="updated">Actualizado el {updated}.</span>
+                </p>
+            </header>
+
+            <section class="stats-bar" data-reveal-items aria-label="Resumen de precios">
+                <div class="stat">
+                    <span class="stat-label">Desde</span>
+                    <span class="stat-value">{fmt(min)} <small>€/L</small></span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">{prov ? `Media en ${prov.label}` : "Media en España"}</span>
+                    <span class="stat-value muted">{fmt(avg)} <small>€/L</small></span>
+                </div>
+                {
+                    prov && (
+                        <div class="stat">
+                            <span class="stat-label">Media en España</span>
+                            <span class="stat-value muted">{fmt(data.avg)} <small>€/L</small></span>
+                        </div>
+                    )
+                }
+                <div class="stat">
+                    <span class="stat-label">Gasolineras</span>
+                    <span class="stat-value muted">{stations.length}</span>
+                </div>
+            </section>
+
+            <section class="insights">
+                <h2>{prov ? `Cómo está ${config.the} en ${prov.label}` : `Cómo está ${config.the} en España`}</h2>
+                {texts.paragraphs.map((p) => <p>{p.map((part) => (typeof part === "string" ? part : <a href={part.href}>{part.text}</a>))}</p>)}
+                <p>{config.about}</p>
+            </section>
+
+            <section class="list-section">
+                <h2>
+                    {
+                        prov
+                            ? `Gasolineras con ${config.short} en ${prov.label}, de la más barata a la más cara`
+                            : `Las ${listed.length} gasolineras con ${config.short} más baratas de España`
+                    }
+                </h2>
+                <FuelStationList stations={listed} fuel={f} withProvince={!prov} />
+            </section>
+
+            {
+                !prov && (
+                    <section class="prov-section">
+                        <h2>{`${config.title.charAt(0).toUpperCase() + config.title.slice(1)} por provincias`}</h2>
+                        <table class="prov-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Provincia</th>
+                                    <th scope="col" class="num">Gasolineras</th>
+                                    <th scope="col" class="num">Desde</th>
+                                    <th scope="col" class="num">Media</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {data.provinces.map((p) => (
+                                    <tr>
+                                        <th scope="row">
+                                            <a href={fuelPageUrl(kind, p.name)}>{p.label}</a>
+                                        </th>
+                                        <td class="num">{p.stations.length}</td>
+                                        <td class="num price">{fmt(p.min)}</td>
+                                        <td class="num muted">{fmt(p.avg)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </section>
+                )
+            }
+
+            {
+                points?.length ? (
+                    <section class="chart-section">
+                        <h2>{prov ? `Evolución del precio medio en ${prov.label}` : "Evolución del precio medio en España"}</h2>
+                        <PriceHistoryChart client:visible history={{ [f]: points }} />
+                    </section>
+                ) : null
+            }
+
+            <AdSlot slot="" label="Publicidad" minHeight={120} />
+
+            {
+                prov && (
+                    <section class="map-section">
+                        <h2>{`Mapa de las gasolineras con ${config.short} en ${prov.label}`}</h2>
+                        <div class="map-wrapper">
+                            <LazyMainMap client:only="react" stations={stations} initialCenter={center} initialZoom={8} disableGeolocation={true} fuelType={f} />
+                        </div>
+                    </section>
+                )
+            }
+
+            <section class="faq" data-reveal-items>
+                <h2>Preguntas frecuentes</h2>
+                {
+                    texts.faq.map((x) => (
+                        <details class="faq-item">
+                            <summary>{x.q}</summary>
+                            <p>{x.a}</p>
+                        </details>
+                    ))
+                }
+            </section>
+
+            <section class="more">
+                <h2>{prov ? `${config.short.charAt(0).toUpperCase() + config.short.slice(1)} en otras provincias` : "Más precios"}</h2>
+                {
+                    prov && (
+                        <div class="chips" data-reveal-items>
+                            {data.provinces
+                                .filter((p) => p.name !== prov.name)
+                                .map((p) => (
+                                    <a class="chip" href={fuelPageUrl(kind, p.name)}>
+                                        {p.label}
+                                        <span>{p.stations.length}</span>
+                                    </a>
+                                ))}
+                        </div>
+                    )
+                }
+                <p class="more-links">
+                    {prov && (
+                        <>
+                            <a href={provinceUrl(prov.name)}>{`Todas las gasolineras de ${prov.label}`}</a>
+                            {" · "}
+                            <a href={fuelPageUrl(kind)}>{`Precio ${config.the === "el GLP" ? "del GLP" : "del gasóleo agrícola"} en España`}</a>
+                            {" · "}
+                        </>
+                    )}
+                    <a href={fuelPageUrl(other)}>{`Precio ${other === "glp" ? "del GLP" : "del gasóleo agrícola"}`}</a>
+                    {" · "}
+                    <a href="/precios-combustible-espana/">Precio de la gasolina y el diésel en España</a>
+                </p>
+            </section>
+        </div>
+    </div>
+
+    <Footer />
+</Layout>
+
+<style>
+    .page-container {
+        padding: 5rem 2rem 3rem;
+        min-height: 100vh;
+        background-color: var(--bg);
+        color: var(--text);
+    }
+    .content-wrapper {
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .breadcrumb a {
+        color: var(--text-muted);
+        text-decoration: none;
+    }
+    .breadcrumb a:hover {
+        color: var(--primary);
+    }
+    .breadcrumb .current {
+        color: var(--text);
+        font-weight: 600;
+    }
+    .page-header {
+        margin-bottom: 2rem;
+    }
+    h1 {
+        font-family: var(--font-header);
+        font-size: clamp(1.8rem, 4vw, 2.6rem);
+        margin-bottom: 0.75rem;
+        line-height: 1.1;
+    }
+    .subtitle {
+        color: var(--text-muted);
+        font-size: 1.05rem;
+        line-height: 1.6;
+        max-width: 760px;
+    }
+    .updated {
+        color: var(--primary);
+        font-weight: 600;
+    }
+    .stats-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2.5rem;
+    }
+    .stat {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 1.1rem 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .stat-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        font-weight: 700;
+    }
+    .stat-value {
+        font-family: var(--font-header);
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--primary);
+    }
+    .stat-value.muted {
+        color: var(--text);
+    }
+    .stat-value small {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+    section h2 {
+        font-family: var(--font-header);
+        font-size: 1.4rem;
+        margin-bottom: 1.25rem;
+    }
+    .insights {
+        margin-bottom: 3rem;
+    }
+    .insights p {
+        max-width: 72ch;
+        margin-bottom: 0.9rem;
+        line-height: 1.7;
+        color: var(--text-muted);
+    }
+    .insights a {
+        color: var(--text);
+        font-weight: 600;
+        text-decoration: underline;
+        text-decoration-color: var(--primary);
+        text-underline-offset: 3px;
+    }
+    .insights a:hover {
+        color: var(--primary);
+    }
+    .list-section,
+    .prov-section,
+    .chart-section,
+    .faq,
+    .more {
+        margin-bottom: 3rem;
+    }
+    .prov-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        font-size: 0.92rem;
+    }
+    .prov-table th,
+    .prov-table td {
+        padding: 0.6rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid color-mix(in srgb, var(--border) 35%, transparent);
+    }
+    .prov-table thead th {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--border);
+    }
+    .prov-table tbody tr:last-child th,
+    .prov-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .prov-table a {
+        color: var(--text);
+        font-weight: 600;
+        text-decoration: underline;
+        text-decoration-color: var(--primary);
+        text-underline-offset: 3px;
+    }
+    .prov-table a:hover {
+        color: var(--primary);
+    }
+    .num {
+        text-align: right !important;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+    .price {
+        font-weight: 800;
+        color: var(--primary);
+    }
+    .muted {
+        color: var(--text-muted);
+    }
+    .map-section {
+        margin-bottom: 3rem;
+    }
+    .map-wrapper {
+        height: 460px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+    .faq-item {
+        border: 1px solid var(--border);
+        margin-bottom: 0.75rem;
+        background: var(--surface);
+        overflow: hidden;
+    }
+    .faq-item summary {
+        padding: 1rem 1.25rem;
+        font-weight: 700;
+        cursor: pointer;
+        color: var(--text);
+        list-style: none;
+    }
+    .faq-item summary::-webkit-details-marker {
+        display: none;
+    }
+    .faq-item summary::after {
+        content: "+";
+        float: right;
+        color: var(--primary);
+        font-weight: 800;
+    }
+    .faq-item[open] summary::after {
+        content: "−";
+    }
+    .faq-item p {
+        padding: 0 1.25rem 1.1rem;
+        color: var(--text-muted);
+        line-height: 1.6;
+    }
+    .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.45rem 0.8rem;
+        border: 1px solid var(--border);
+        color: var(--text);
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .chip:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+    .chip span {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+    }
+    .more-links {
+        line-height: 1.9;
+        color: var(--text-muted);
+    }
+    .more-links a {
+        color: var(--primary);
+        font-weight: 600;
+    }
+
+    @media (max-width: 640px) {
+        .prov-table th,
+        .prov-table td {
+            padding: 0.55rem 0.6rem;
+        }
+        .map-wrapper {
+            height: 380px;
+        }
+    }
+</style>
