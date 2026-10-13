@@ -1,4 +1,11 @@
 User-agent: *
+# El explorador y el buscador de municipios con parámetros (?mode=…, ?q=…) son la misma
+# página que sin ellos: cada municipio enlaza a su versión filtrada del explorador y los
+# buscadores gastarían visitas en miles de copias en vez de en las fichas.
+Disallow: /explorador/?
+Disallow: /explorador?
+Disallow: /municipios/?
+Disallow: /municipios?
 Allow: /
 
 # Sitemap generado por @astrojs/sitemap
