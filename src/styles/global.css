@@ -4,10 +4,44 @@
    la página con borde de contraste (en vez de un tono de superficie
    distinto).
    ============================================================ */
+/* Fuentes de reserva con las medidas de las nuestras: mientras Unbounded y Geist se
+   descargan, el texto se pinta con Arial (o Liberation Sans/Arimo, que miden igual)
+   ajustada a su ancho y altura, y al cambiar a la fuente buena no se mueve nada
+   (cambios de diseño, CLS). Medidas sacadas de los propios ficheros con
+   @capsizecss/unpack: size-adjust = ancho medio de la fuente / el de Arial, y los
+   *-override = métrica de la fuente / size-adjust. */
+@font-face {
+    font-family: 'Unbounded Fallback';
+    src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold'), local('Arimo Bold'), local('Arimo-Bold');
+    font-weight: 700;
+    size-adjust: 131.88%;
+    ascent-override: 75.45%;
+    descent-override: 18.58%;
+    line-gap-override: 0%;
+}
+@font-face {
+    font-family: 'Geist Fallback';
+    src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('LiberationSans'), local('Arimo'), local('Arimo-Regular');
+    font-weight: 100 500;
+    size-adjust: 106.1%;
+    ascent-override: 86.71%;
+    descent-override: 20.73%;
+    line-gap-override: 9.42%;
+}
+@font-face {
+    font-family: 'Geist Fallback';
+    src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold'), local('Arimo Bold'), local('Arimo-Bold');
+    font-weight: 600 900;
+    size-adjust: 105%;
+    ascent-override: 87.62%;
+    descent-override: 20.95%;
+    line-gap-override: 9.52%;
+}
+
 :root {
     /* Fuentes */
-    --font-header: 'Unbounded', system-ui, sans-serif;
-    --font-body: 'Geist Sans', system-ui, sans-serif;
+    --font-header: 'Unbounded', 'Unbounded Fallback', system-ui, sans-serif;
+    --font-body: 'Geist Sans', 'Geist Fallback', system-ui, sans-serif;
 
     /* Colores (se reservan para acentos: CTAs, iconos, hover, highlights) */
     --primary: #34d399;
