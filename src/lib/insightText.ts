@@ -80,6 +80,54 @@ export function pick<T>(seed: string, salt: string, options: T[]): T {
 
 export const priced = (list: GasStation[], f: MainFuel) =>
     list.filter((s) => s.prices[f] != null).sort((a, b) => a.prices[f]! - b.prices[f]!);
+/**
+ * La más barata de una lista para gasolina 95 y para diésel, sin el punto final: la
+ * misma para los dos ("La más barata para los dos combustibles es X, con...") o una para
+ * cada uno. `intro`: "La más barata", "la más barata de ellas"... `place` añade dónde
+ * está cada una ("en Laguna de Duero"), para listas de más de un municipio.
+ */
+export function cheapestParts(list: GasStation[], intro: string, place?: (s: GasStation) => string): Part[] {
+    const found = MAIN_FUELS.map((f) => ({ f, s: priced(list, f)[0] })).filter((x) => x.s);
+    if (!found.length) return [];
+    const at = (s: GasStation) => (place ? `, ${place(s)}` : "");
+    if (found.length === 1) {
+        const { f, s } = found[0];
+        return [`${intro} para ${FUEL[f].name} es `, link(s), `${at(s)}, a ${price(s.prices[f]!)}`];
+    }
+    const [a, b] = found;
+    if (a.s.id === b.s.id)
+        return [`${intro} para los dos combustibles es `, link(a.s), `${at(a.s)}, con la gasolina 95 a ${price(a.s.prices.sp95!)} y el diésel a ${price(a.s.prices.diesel!)}`];
+    return [`${intro} para gasolina 95 es `, link(a.s), `${at(a.s)} (${price(a.s.prices.sp95!)}), y para diésel, `, link(b.s), `${at(b.s)} (${price(b.s.prices.diesel!)})`];
+}
+
+export interface BrandRank {
+    f: MainFuel;
+    lo: { brand: string; avg: number; count: number };
+    hi: { brand: string; avg: number; count: number };
+}
+
+/**
+ * La marca más barata y la más cara de media, para gasolina 95, diésel o los dos, en una
+ * frase que junta lo que coincide. `where`: " en Valladolid" o "" si ya se sabe dónde.
+ */
+export function brandRankText(ranking: BrandRank[], where: string): string | undefined {
+    if (!ranking.length) return undefined;
+    if (ranking.length === 1) {
+        const { f, lo, hi } = ranking[0];
+        return `De media, ${lo.brand} es la marca más barata para ${FUEL[f].name}${where} (${price(lo.avg)} en sus ${lo.count} gasolineras) y ${hi.brand} la más cara (${price(hi.avg)} en ${hi.count}).`;
+    }
+    const [a, b] = ranking;
+    const sameLo = a.lo.brand === b.lo.brand;
+    const sameHi = a.hi.brand === b.hi.brand;
+    if (sameLo && sameHi)
+        return `De media, ${a.lo.brand} es la marca más barata${where} y ${a.hi.brand} la más cara, tanto para gasolina 95 (${price(a.lo.avg)} frente a ${price(a.hi.avg)}) como para diésel (${price(b.lo.avg)} frente a ${price(b.hi.avg)}).`;
+    if (sameLo)
+        return `De media, ${a.lo.brand} es la marca más barata${where} tanto para gasolina 95 (${price(a.lo.avg)}) como para diésel (${price(b.lo.avg)}); la más cara es ${a.hi.brand} para gasolina 95 (${price(a.hi.avg)}) y ${b.hi.brand} para diésel (${price(b.hi.avg)}).`;
+    if (sameHi)
+        return `De media, ${a.hi.brand} es la marca más cara${where} tanto para gasolina 95 (${price(a.hi.avg)}) como para diésel (${price(b.hi.avg)}); la más barata es ${a.lo.brand} para gasolina 95 (${price(a.lo.avg)}) y ${b.lo.brand} para diésel (${price(b.lo.avg)}).`;
+    return `De media, ${a.lo.brand} es la marca más barata para gasolina 95${where} (${price(a.lo.avg)}) y ${a.hi.brand} la más cara (${price(a.hi.avg)}); para diésel, ${b.lo.brand} es la más barata (${price(b.lo.avg)}) y ${b.hi.brand} la más cara (${price(b.hi.avg)}).`;
+}
+
 export const average = (list: GasStation[], f: MainFuel) => {
     const v = list.map((s) => s.prices[f]).filter((p): p is number => p != null);
     return v.length ? v.reduce((a, b) => a + b, 0) / v.length : undefined;
@@ -117,7 +165,8 @@ function parseSchedule(raw: string): ScheduleSegment[] | undefined {
     return out;
 }
 
-const joinEs = (items: string[]) => (items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} y ${items[items.length - 1]}`);
+/** "a, b y c". */
+export const joinEs = (items: string[]) => (items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} y ${items[items.length - 1]}`);
 
 /** Horario en palabras: "abre de lunes a sábado de 06:00 a 22:00 y los domingos de 08:00 a 14:00". */
 export function scheduleText(raw: string | undefined): string | undefined {

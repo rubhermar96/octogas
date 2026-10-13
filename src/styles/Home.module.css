@@ -744,12 +744,6 @@
     transition: border-color 0.2s ease, color 0.2s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.capitalChip span {
-    color: var(--primary);
-    font-size: 0.8rem;
-    font-weight: 700;
-}
-
 @media (hover: hover) {
     .capitalChip:hover {
         border-color: var(--primary);

@@ -6,41 +6,65 @@ import AdSlot from "../components/AdSlot.astro";
 import Footer from "../components/Footer.astro";
 import PriceHistoryChart from "../components/Station/PriceHistoryChart";
 import { loadAggHistory, scopeKey } from "../lib/aggHistory";
-import type { GasStation } from "../types/gasolinera";
+import FuelTable from "../components/FuelTable.astro";
+import { fuelSummary, fuelFaq, priceOf } from "../lib/fuelSummary";
+import { FUEL_LABELS } from "../lib/fuels";
+import { FUEL_NAMES, isGeneric, joinEs } from "../lib/insightText";
+import { displayAddress } from "../lib/format";
+import { displayCity, displayProvince } from "../lib/placeName";
+import type { GasStation, FuelType } from "../types/gasolinera";
 
 const stations = JSON.parse(
     fs.readFileSync(path.resolve("public/data/stations.json"), "utf-8")
 ) as GasStation[];
 
 const provinces = new Set<string>();
-const sp95: number[] = [];
-const diesel: number[] = [];
-for (const s of stations) {
-    if (s.province) provinces.add(s.province);
-    if (s.prices.sp95 != null) sp95.push(s.prices.sp95);
-    if (s.prices.diesel != null) diesel.push(s.prices.diesel);
-}
-const mean = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+for (const s of stations) if (s.province) provinces.add(s.province);
 const fmt = (n: number) => n.toFixed(3);
-const avgSp95 = mean(sp95);
-const avgDiesel = mean(diesel);
+
+// Todos los combustibles: media, la más barata de España y cuántas gasolineras lo venden.
+const fuelRows = fuelSummary(stations);
+const fuelAverages = fuelRows
+    .filter((r) => (["sp95", "sp98", "diesel", "glp"] as FuelType[]).includes(r.fuel))
+    .map((r) => ({ label: FUEL_LABELS[r.fuel], avg: r.avg }));
+const avgText = joinEs(
+    (["sp95", "diesel", "sp98", "glp"] as FuelType[]).flatMap((f) => {
+        const r = fuelRows.find((x) => x.fuel === f);
+        return r ? [`${FUEL_NAMES[f]} a ${priceOf(f, r.avg)}`] : [];
+    })
+);
+// "Zaragoza" o "Fuenlabrada (Madrid)": la provincia solo si no se llama como el municipio.
+const placeOf = (s: GasStation) => {
+    const city = displayCity(s.city);
+    const prov = displayProvince(s.province);
+    return city === prov ? city : `${city} (${prov})`;
+};
 
 const agg = await loadAggHistory();
 const national = agg.get(scopeKey("national", "")) ?? {};
 
 const updated = new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
 
-const pageTitle = "Precio de la gasolina y el diésel en España hoy — Evolución | OCTO";
-const pageDescription = `Precio medio de la gasolina 95 (${fmt(avgSp95)} €/L) y el diésel (${fmt(avgDiesel)} €/L) en España hoy, con su evolución histórica. Datos oficiales de ${stations.length} gasolineras actualizados a diario.`;
+const pageTitle = "Precio de la gasolina, el diésel y el GLP hoy en España — Evolución | OCTO";
+const pageDescription = `Precio medio de hoy en España: ${avgText}. Con su evolución y la gasolinera más barata de cada combustible. Datos oficiales de ${stations.length.toLocaleString("es-ES")} gasolineras, actualizados a diario.`;
 
 const faq = [
     {
-        q: "¿Cuál es el precio medio de la gasolina en España hoy?",
-        a: `El precio medio de la Gasolina 95 en España es de ${fmt(avgSp95)} €/L y el del Gasóleo A (diésel) de ${fmt(avgDiesel)} €/L, según los datos oficiales de hoy.`,
+        q: "¿Cuál es el precio medio de la gasolina y el diésel en España hoy?",
+        a: `Según los datos oficiales de hoy, el precio medio en España es: ${avgText}.`,
     },
+    // La más barata de España según el combustible y una pregunta por combustible.
+    ...fuelFaq(fuelRows, {
+        label: "España",
+        at: "en España",
+        of: "España",
+        stations,
+        name: (s) =>
+            `${isGeneric(s) ? `la gasolinera de ${displayAddress(s.address)}` : `${s.brand}, en ${displayAddress(s.address)}`}, en ${placeOf(s)}`,
+    }),
     {
         q: "¿Cómo evoluciona el precio del combustible?",
-        a: "En la gráfica puedes ver la evolución del precio medio nacional de la gasolina 95 y el diésel. Registramos los precios a diario para mostrar la tendencia.",
+        a: "En la gráfica puedes ver la evolución del precio medio nacional de cada combustible. Registramos los precios a diario para mostrar la tendencia.",
     },
     {
         q: "¿De dónde salen los datos?",
@@ -68,25 +92,27 @@ const faqJsonLd = {
             <header class="page-header">
                 <h1>Precio de la gasolina y el diésel en España</h1>
                 <p class="subtitle">
-                    Precio medio nacional y su evolución, a partir de {stations.length} gasolineras de
-                    {provinces.size} provincias. <span class="updated">Actualizado el {updated}.</span>
+                    Precio medio nacional de gasolina, diésel, GLP y demás combustibles, y su evolución, a
+                    partir de {stations.length} gasolineras de {provinces.size} provincias. <span class="updated">Actualizado el {updated}.</span>
                 </p>
             </header>
 
             <section class="stats-bar" data-reveal-items>
-                <div class="stat">
-                    <span class="stat-label">Media Gasolina 95</span>
-                    <span class="stat-value">{fmt(avgSp95)} <small>€/L</small></span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Media Diésel</span>
-                    <span class="stat-value">{fmt(avgDiesel)} <small>€/L</small></span>
-                </div>
+                {
+                    fuelAverages.map((f) => (
+                        <div class="stat">
+                            <span class="stat-label">Media {f.label}</span>
+                            <span class="stat-value">{fmt(f.avg)} <small>€/L</small></span>
+                        </div>
+                    ))
+                }
                 <div class="stat">
                     <span class="stat-label">Gasolineras</span>
                     <span class="stat-value alt">{stations.length}</span>
                 </div>
             </section>
+
+            <FuelTable rows={fuelRows} place="España" where="cityProvince" />
 
             <section class="chart-section">
                 <h2>Evolución del precio medio en España</h2>

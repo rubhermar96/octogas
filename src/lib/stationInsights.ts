@@ -9,6 +9,7 @@ import type { FuelType, GasStation } from "../types/gasolinera";
 import type { StationHistory } from "./history";
 import { displayCity } from "./placeName";
 import { getDistance } from "./geo";
+import { FUEL_LIST_ORDER } from "./fuelSummary";
 import {
     FUEL,
     FUEL_NAMES,
@@ -19,6 +20,7 @@ import {
     euros,
     is24h,
     isGeneric,
+    joinEs,
     km,
     link,
     plain,
@@ -35,8 +37,6 @@ export const AROUND_KM = 5;
 /** Combustibles poco comunes: tenerlos es un dato útil para quien los busca. */
 export const RARE_FUELS: FuelType[] = ["glp", "gnc", "gnl", "hydrogen"];
 const DAY = 86_400_000;
-/** Orden al enumerar lo que vende: gasolinas, gasóleos y gases. */
-const LIST_ORDER: FuelType[] = ["sp95", "sp95Premium", "sp98", "diesel", "dieselPremium", "dieselB", "glp", "gnc", "gnl", "hydrogen"];
 
 export interface StationInsightInput {
     station: GasStation;
@@ -140,78 +140,122 @@ export function stationInsights(input: StationInsightInput): Insights {
         }
     }
 
-    // --- 3. La más barata a menos de AROUND_KM (con precios de hoy) ---
+    // --- 3. La más barata a menos de AROUND_KM (con precios de hoy), para gasolina 95 y
+    //        diésel ---
     const where = (a: Alternative) =>
         a.station.city === station.city ? `a ${km(a.km)}` : `en ${displayCity(a.station.city)}, a ${km(a.km)}`;
-    const candidates = around.filter((a) => a.station.prices[main] != null);
-    const cheapest = [...candidates].sort((a, b) => a.station.prices[main]! - b.station.prices[main]! || a.km - b.km)[0];
+    const nearFuels = MAIN_FUELS.filter((f) => !active || mine(f) != null).map((f) => {
+        const candidates = around.filter((a) => a.station.prices[f] != null);
+        const cheapest = [...candidates].sort((a, b) => a.station.prices[f]! - b.station.prices[f]! || a.km - b.km)[0];
+        const p = mine(f);
+        const status = !candidates.length ? "none" : !active ? "today" : p! <= cheapest.station.prices[f]! + 0.0005 ? "best" : "beaten";
+        return { f, candidates, cheapest, status };
+    });
     let nearText: Paragraph | undefined;
-    if (!candidates.length) {
-        nearText = [`No hay otras gasolineras con ${FUEL[main].name} a menos de ${AROUND_KM} km.`];
-    } else if (!active) {
+    const [n1, n2] = nearFuels;
+    if (nearFuels.length && nearFuels.every((x) => x.status === "none")) {
+        nearText = [`No hay otras gasolineras con ${joinEs(nearFuels.map((x) => FUEL[x.f].name))} a menos de ${AROUND_KM} km.`];
+    } else if (n2 && n1.status === "best" && n2.status === "best") {
+        const c = Math.max(n1.candidates.length, n2.candidates.length);
         nearText = [
-            `Con precios de hoy, ${FUEL[main].the} más ${cheapAdj(main)} a menos de ${AROUND_KM} km está en `,
-            link(cheapest.station),
-            ` (${where(cheapest)}), a ${price(cheapest.station.prices[main]!)}.`,
+            `Es la más barata para gasolina 95 y diésel en ${AROUND_KM} km a la redonda: ${
+                c === 1 ? "la otra gasolinera cercana no mejora" : `ninguna de las ${c} gasolineras cercanas mejora`
+            } sus precios.`,
+        ];
+    } else if (n2 && n1.status === n2.status && (n1.status === "beaten" || n1.status === "today") && n1.cheapest.station.id === n2.cheapest.station.id) {
+        const s = n1.cheapest.station;
+        nearText = [
+            n1.status === "today" ? `Con precios de hoy, la más barata a menos de ${AROUND_KM} km para gasolina 95 y diésel es ` : `La más barata a menos de ${AROUND_KM} km para gasolina 95 y diésel es `,
+            link(s),
+            ` (${where(n1.cheapest)}), con la gasolina 95 a ${price(s.prices.sp95!)} y el diésel a ${price(s.prices.diesel!)}`,
+            n1.status === "beaten" ? `: ${cents(mine("sp95")! - s.prices.sp95!)} y ${cents(mine("diesel")! - s.prices.diesel!)} menos por litro que aquí.` : ".",
         ];
     } else {
-        const p = mine(main)!;
-        if (p <= cheapest.station.prices[main]! + 0.0005) {
-            nearText = [
-                `Es la más barata para ${FUEL[main].name} en ${AROUND_KM} km a la redonda: ${
-                    candidates.length === 1 ? "la otra gasolinera cercana no mejora" : `ninguna de las ${candidates.length} gasolineras cercanas mejora`
-                } su precio.`,
-            ];
-        } else {
-            const diff = p - cheapest.station.prices[main]!;
-            nearText = [
-                `La más barata para ${FUEL[main].name} a menos de ${AROUND_KM} km es `,
-                link(cheapest.station),
-                ` (${where(cheapest)}), a ${price(cheapest.station.prices[main]!)}: ${cents(diff)} menos por litro, ${euros(diff * 50)} en un depósito de 50 litros.`,
-            ];
-            const closest = candidates
-                .filter((a) => a.station.prices[main]! < p - 0.0005)
-                .sort((a, b) => a.km - b.km)[0];
-            if (closest && closest.station.id !== cheapest.station.id && closest.km < cheapest.km - 0.3) {
-                nearText.push(` La más cercana que la mejora está ${where(closest)}: `, link(closest.station), `, a ${price(closest.station.prices[main]!)}.`);
+        nearText = [];
+        for (const { f, candidates, cheapest, status } of nearFuels) {
+            if (nearText.length) nearText.push(" ");
+            if (status === "none") nearText.push(`No hay otras gasolineras con ${FUEL[f].name} a menos de ${AROUND_KM} km.`);
+            else if (status === "today")
+                nearText.push(
+                    `Con precios de hoy, ${FUEL[f].the} más ${cheapAdj(f)} a menos de ${AROUND_KM} km está en `,
+                    link(cheapest.station),
+                    ` (${where(cheapest)}), a ${price(cheapest.station.prices[f]!)}.`
+                );
+            else if (status === "best")
+                nearText.push(
+                    `Es la más barata para ${FUEL[f].name} en ${AROUND_KM} km a la redonda: ${
+                        candidates.length === 1 ? "la otra gasolinera cercana no mejora" : `ninguna de las ${candidates.length} gasolineras cercanas mejora`
+                    } su precio.`
+                );
+            else {
+                const p = mine(f)!;
+                const diff = p - cheapest.station.prices[f]!;
+                nearText.push(
+                    `La más barata para ${FUEL[f].name} a menos de ${AROUND_KM} km es `,
+                    link(cheapest.station),
+                    ` (${where(cheapest)}), a ${price(cheapest.station.prices[f]!)}: ${cents(diff)} menos por litro, ${euros(diff * 50)} en un depósito de 50 litros.`
+                );
+                const closest = candidates.filter((a) => a.station.prices[f]! < p - 0.0005).sort((a, b) => a.km - b.km)[0];
+                if (closest && closest.station.id !== cheapest.station.id && closest.km < cheapest.km - 0.3)
+                    nearText.push(` La más cercana que la mejora está ${where(closest)}: `, link(closest.station), `, a ${price(closest.station.prices[f]!)}.`);
             }
         }
     }
-    if (nearText) {
+    if (nearText?.length) {
         paragraphs.push(nearText);
         faq.push({ q: `¿Hay gasolineras más baratas cerca de esta?`, a: plain(nearText) });
     }
 
-    // --- 4. Su propio histórico: cambios de precio este mes y mínimo registrado ---
-    const pts = history?.[main];
-    if (active && pts && pts.length) {
-        const sorted = [...pts].sort((a, b) => a.t - b.t);
+    // --- 4. Su propio histórico: cambios de precio este mes y mínimo registrado, para
+    //        gasolina 95 y diésel ---
+    if (active) {
         const monthAgo = now - 30 * DAY;
-        const before = sorted.filter((x) => x.t <= monthAgo);
-        const sentences: string[] = [];
-        if (before.length) {
-            const from = before[before.length - 1].price;
-            const to = mine(main)!;
-            const changes = sorted.filter((x) => x.t > monthAgo).length;
-            if (changes === 0) sentences.push(`Lleva más de un mes sin cambiar el precio ${FUEL[main].of}.`);
-            else
-                sentences.push(
-                    `En los últimos 30 días ha cambiado ${changes === 1 ? "una vez" : `${changes} veces`} el precio ${FUEL[main].of}${
-                        Math.abs(to - from) < 0.0005 ? ` y está igual que hace un mes (${price(to)})` : `: ha pasado de ${price(from)} a ${price(to)}`
-                    }.`
-                );
+        const changeSentences: string[] = [];
+        const lows: { f: MainFuel; price: number; t: number }[] = [];
+        for (const f of MAIN_FUELS) {
+            const pts = history?.[f];
+            const to = mine(f);
+            if (!pts?.length || to == null) continue;
+            const sorted = [...pts].sort((a, b) => a.t - b.t);
+            const before = sorted.filter((x) => x.t <= monthAgo);
+            if (before.length) {
+                const from = before[before.length - 1].price;
+                const changes = sorted.filter((x) => x.t > monthAgo).length;
+                const times = changes === 1 ? "una vez" : `${changes} veces`;
+                const same = Math.abs(to - from) < 0.0005;
+                // La segunda frase, más corta: "El del diésel, 3 veces: de ... a ...".
+                if (!changeSentences.length) {
+                    if (changes === 0) changeSentences.push(`Lleva más de un mes sin cambiar el precio ${FUEL[f].of}.`);
+                    else
+                        changeSentences.push(
+                            `En los últimos 30 días ha cambiado ${times} el precio ${FUEL[f].of}${same ? ` y está igual que hace un mes (${price(to)})` : `: ha pasado de ${price(from)} a ${price(to)}`}.`
+                        );
+                } else if (changes === 0) changeSentences.push(`El ${FUEL[f].of} no ha cambiado en todo el mes.`);
+                else changeSentences.push(`El ${FUEL[f].of}, ${times}${same ? `, y está igual que hace un mes (${price(to)})` : `: de ${price(from)} a ${price(to)}`}.`);
+            }
+            // Precio vigente en cada momento de los últimos 30 días (el de hace un mes y los
+            // cambios posteriores): el más bajo, si es menor que el de hoy.
+            const window = [...(before.length ? [{ ...before[before.length - 1], t: monthAgo }] : []), ...sorted.filter((x) => x.t > monthAgo)];
+            if (window.length) {
+                const low = window.reduce((a, b) => (b.price < a.price ? b : a));
+                if (low.price < to - 0.0005) lows.push({ f, price: low.price, t: low.t });
+            }
         }
-        // Precio vigente en cada momento de los últimos 30 días (el de hace un mes y los
-        // cambios posteriores): el más bajo, si es menor que el de hoy.
-        const window = [...(before.length ? [{ ...before[before.length - 1], t: monthAgo }] : []), ...sorted.filter((x) => x.t > monthAgo)];
-        if (window.length) {
-            const low = window.reduce((a, b) => (b.price < a.price ? b : a));
-            if (low.price < mine(main)! - 0.0005)
-                sentences.push(
-                    low.t === monthAgo
-                        ? `Hace un mes estaba más barata: ${price(low.price)}.`
-                        : `Su precio más bajo de los últimos 30 días fue ${price(low.price)}, el ${dateEs(low.t)}.`
-                );
+        const sentences = [...changeSentences];
+        if (lows.length === 1) {
+            const low = lows[0];
+            // Si vende los dos, hay que decir de cuál se habla.
+            const both = MAIN_FUELS.every((f) => mine(f) != null && history?.[f]?.length);
+            sentences.push(
+                low.t === monthAgo
+                    ? `Hace un mes estaba más barata${both ? ` en ${FUEL[low.f].name}` : ""}: ${price(low.price)}.`
+                    : both
+                      ? `El precio más bajo ${FUEL[low.f].of} en los últimos 30 días fue ${price(low.price)}, el ${dateEs(low.t)}.`
+                      : `Su precio más bajo de los últimos 30 días fue ${price(low.price)}, el ${dateEs(low.t)}.`
+            );
+        } else if (lows.length === 2) {
+            const when = (t: number) => (t === monthAgo ? "hace un mes" : `el ${dateEs(t)}`);
+            sentences.push(`Sus precios más bajos del último mes: ${joinEs(lows.map((l) => `${price(l.price)} en ${FUEL[l.f].name} (${when(l.t)})`))}.`);
         }
         if (sentences.length) paragraphs.push([sentences.join(" ")]);
     }
@@ -221,9 +265,13 @@ export function stationInsights(input: StationInsightInput): Insights {
         const sentences: string[] = [];
         const p = mine(main);
         const b = brandInProvince;
-        if (p != null && b && b.count >= 3 && b.avg[main] != null)
+        // Gasolina 95 y diésel frente a la media de su marca en la provincia.
+        const vsBrand = b && b.count >= 3 ? MAIN_FUELS.filter((f) => mine(f) != null && b.avg[f] != null) : [];
+        if (b && vsBrand.length)
             sentences.push(
-                `Es una de las ${b.count} gasolineras ${station.brand} de la provincia de ${prov}, y su ${FUEL[main].name} está ${versus(p, b.avg[main]!, main)} la media de la marca allí (${price(b.avg[main]!)}).`
+                `Es una de las ${b.count} gasolineras ${station.brand} de la provincia de ${prov}, y su ${FUEL[vsBrand[0]].name} está ${versus(mine(vsBrand[0])!, b.avg[vsBrand[0]]!, vsBrand[0])} la media de la marca allí (${price(b.avg[vsBrand[0]]!)})${
+                    vsBrand[1] ? `; su ${FUEL[vsBrand[1]].name}, ${versus(mine(vsBrand[1])!, b.avg[vsBrand[1]]!, vsBrand[1])} la media (${price(b.avg[vsBrand[1]]!)})` : ""
+                }.`
             );
         const sameBrand = muniStations.filter((s) => s.brand === station.brand && s.prices[main] != null);
         if (p != null && sameBrand.length >= 2) {
@@ -238,7 +286,7 @@ export function stationInsights(input: StationInsightInput): Insights {
     }
 
     // --- 6. Qué vende y cuándo abre ---
-    const fuels = LIST_ORDER.filter((f) => station.prices[f] != null);
+    const fuels = FUEL_LIST_ORDER.filter((f) => station.prices[f] != null);
     const sentences: string[] = [];
     if (fuels.length) {
         const names = fuels.map((f) => FUEL_NAMES[f]);

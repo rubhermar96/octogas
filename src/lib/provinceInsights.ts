@@ -15,8 +15,10 @@ import {
     FUEL_NAMES,
     MAIN_FUELS,
     average,
+    brandRankText,
     cents,
     cheapAdj,
+    cheapestParts,
     dearAdj,
     euros,
     is24h,
@@ -105,56 +107,76 @@ export function provinceInsights(input: ProvinceInsightInput): Insights {
         faq.push({ q: `¿Es cara la gasolina en ${prov}?`, a: text });
     }
 
-    // --- 2. Frente a las provincias más cercanas ---
-    const main: MainFuel = avg.sp95 != null ? "sp95" : "diesel";
-    const near = neighbors.filter((p) => p.avg[main] != null && avg[main] != null);
-    if (near.length) {
-        const mine = avg[main]!;
-        const cheaperThan = near.filter((p) => p.avg[main]! > mine + 0.0005);
-        const dearerThan = near.filter((p) => p.avg[main]! < mine - 0.0005);
-        const item = (p: ProvinceRef): Part[] => [provLink(p), ` (${price(p.avg[main]!)})`];
-        const parts: Part[] = [`Frente a las provincias más cercanas, repostar ${FUEL[main].name} en ${prov} sale `];
-        if (cheaperThan.length) parts.push("más barato que en ", ...joinParts(cheaperThan.map(item)));
-        if (cheaperThan.length && dearerThan.length) parts.push(", y ");
-        if (dearerThan.length) parts.push("más caro que en ", ...joinParts(dearerThan.map(item)));
-        if (!cheaperThan.length && !dearerThan.length) parts.push("prácticamente igual que en ", ...joinParts(near.map(item)));
-        parts.push(".");
-        paragraphs.push(parts);
+    // --- 2. Frente a las provincias más cercanas (gasolina 95 y diésel; los enlaces, en
+    //        la primera frase) ---
+    const nearParts: Part[] = [];
+    MAIN_FUELS.forEach((f) => {
+        const near = neighbors.filter((p) => p.avg[f] != null && avg[f] != null);
+        if (!near.length) return;
+        const first = !nearParts.length;
+        const mine = avg[f]!;
+        const cheaperThan = near.filter((p) => p.avg[f]! > mine + 0.0005);
+        const dearerThan = near.filter((p) => p.avg[f]! < mine - 0.0005);
+        const item = (p: ProvinceRef): Part[] => [first ? provLink(p) : displayProvince(p.name), ` (${price(p.avg[f]!)})`];
+        nearParts.push(first ? `Frente a las provincias más cercanas, repostar ${FUEL[f].name} en ${prov} sale ` : ` Con ${FUEL[f].name}, sale `);
+        if (cheaperThan.length) nearParts.push("más barato que en ", ...joinParts(cheaperThan.map(item)));
+        if (cheaperThan.length && dearerThan.length) nearParts.push(", y ");
+        if (dearerThan.length) nearParts.push("más caro que en ", ...joinParts(dearerThan.map(item)));
+        if (!cheaperThan.length && !dearerThan.length) nearParts.push("prácticamente igual que en ", ...joinParts(near.map(item)));
+        nearParts.push(".");
+    });
+    if (nearParts.length) paragraphs.push(nearParts);
+
+    // --- 3. Diferencia entre la gasolinera más barata y la más cara, para gasolina 95 y
+    //        diésel ---
+    const spreads = MAIN_FUELS.flatMap((f) => {
+        const l = priced(stations, f);
+        const d = l.length >= 2 ? l[l.length - 1].prices[f]! - l[0].prices[f]! : 0;
+        return d >= 0.005 ? [{ f, d, lo: l[0], hi: l[l.length - 1] }] : [];
+    });
+    if (spreads.length === 1) {
+        const { f, d, lo, hi } = spreads[0];
+        paragraphs.push([
+            `Entre la gasolinera más barata de la provincia (`,
+            link(lo),
+            `, en ${displayCity(lo.city)}, a ${price(lo.prices[f]!)}) y la más cara (${price(hi.prices[f]!)}) hay ${cents(d)} por litro de ${FUEL[f].name}: ${euros(d * 50)} en un depósito de 50 litros.`,
+        ]);
+    } else if (spreads.length === 2) {
+        const [a, b] = spreads;
+        paragraphs.push([
+            `Entre la gasolinera más barata de la provincia y la más cara hay ${cents(a.d)} por litro de gasolina 95 y ${cents(b.d)} de diésel: ${euros(a.d * 50)} y ${euros(b.d * 50)} en un depósito de 50 litros. `,
+            ...cheapestParts(stations, "La más barata", (s) => `en ${displayCity(s.city)}`),
+            ".",
+        ]);
     }
 
-    // --- 3. Diferencia entre la gasolinera más barata y la más cara ---
-    const list = priced(stations, main);
-    if (list.length >= 2) {
-        const lo = list[0];
-        const hi = list[list.length - 1];
-        const diff = hi.prices[main]! - lo.prices[main]!;
-        if (diff >= 0.005)
-            paragraphs.push([
-                `Entre la gasolinera más barata de la provincia (`,
-                link(lo),
-                `, en ${displayCity(lo.city)}, a ${price(lo.prices[main]!)}) y la más cara (${price(hi.prices[main]!)}) hay ${cents(diff)} por litro de ${FUEL[main].name}: ${euros(diff * 50)} en un depósito de 50 litros.`,
-            ]);
-    }
-
-    // --- 4. Municipios más baratos y más caros de media (con 2 gasolineras o más) ---
+    // --- 4. Municipios más baratos y más caros de media (con 2 gasolineras o más), para
+    //        gasolina 95 y para diésel ---
     const byCity = new Map<string, GasStation[]>();
     for (const s of stations) (byCity.get(s.city) ?? byCity.set(s.city, []).get(s.city)!).push(s);
-    const munis = [...byCity.entries()]
-        .filter(([, l]) => l.filter((s) => s.prices[main] != null).length >= 2)
-        .map(([city, l]) => ({ city, avg: average(l, main)! }))
-        .sort((a, b) => a.avg - b.avg);
-    if (munis.length >= 4) {
+    const muniParts = MAIN_FUELS.flatMap((f) => {
+        const munis = [...byCity.entries()]
+            .filter(([, l]) => l.filter((s) => s.prices[f] != null).length >= 2)
+            .map(([city, l]) => ({ city, avg: average(l, f)! }))
+            .sort((a, b) => a.avg - b.avg);
+        if (munis.length < 4) return [];
         const item = (m: { city: string; avg: number }): Part[] => [
             { text: displayCity(m.city), href: municipioUrl(provinceName, m.city) },
             ` (${price(m.avg)})`,
         ];
         const cheap = munis.slice(0, 3);
         const dear = munis.slice(-2).reverse().filter((m) => !cheap.includes(m));
-        const p: Paragraph = [`Por municipios, ${FUEL[main].the} más ${cheapAdj(main)} de media está en `, ...joinParts(cheap.map(item))];
-        if (dear.length) p.push(`; ${FUEL[main].fem ? "la" : "el"} más ${dearAdj(main)}, en `, ...joinParts(dear.map(item)));
+        const p: Paragraph = [
+            f === "sp95" ? `Por municipios, ${FUEL[f].the} más ${cheapAdj(f)} de media está en ` : `En ${FUEL[f].name}, los municipios más baratos de media son `,
+            ...joinParts(cheap.map(item)),
+        ];
+        if (dear.length) p.push(f === "sp95" ? `; ${FUEL[f].fem ? "la" : "el"} más ${dearAdj(f)}, en ` : "; los más caros, ", ...joinParts(dear.map(item)));
         p.push(".");
-        paragraphs.push(p);
-        faq.push({ q: `¿En qué municipios de ${prov} está la gasolina más barata?`, a: plain(p) });
+        return [p];
+    });
+    if (muniParts.length) {
+        paragraphs.push(...muniParts);
+        faq.push({ q: `¿En qué municipios de ${prov} están la gasolina y el diésel más baratos?`, a: muniParts.map(plain).join(" ") });
     }
 
     // --- 5. Tendencia: media de hoy frente a la de hace un mes (histórico real) ---
@@ -173,21 +195,30 @@ export function provinceInsights(input: ProvinceInsightInput): Insights {
     if (trends.length) {
         const text = `En el último mes, en la provincia de ${prov} ${trends.join(", y ")}.`;
         paragraphs.push([text]);
-        faq.push({ q: `¿Está subiendo o bajando la gasolina en ${prov}?`, a: text });
+        faq.push({ q: `¿Están subiendo o bajando la gasolina y el diésel en ${prov}?`, a: text });
     }
 
     // --- 6. Marcas: la más extendida y la más barata y más cara de media ---
     const byBrand = new Map<string, GasStation[]>();
     for (const s of stations) if (!isGeneric(s)) (byBrand.get(s.brand) ?? byBrand.set(s.brand, []).get(s.brand)!).push(s);
-    const brands = [...byBrand.entries()].map(([brand, l]) => ({ brand, count: l.length, avg: average(l, main) }));
-    const top = [...brands].sort((a, b) => b.count - a.count)[0];
-    const ranked = brands.filter((b) => b.count >= 3 && b.avg != null).sort((a, b) => a.avg! - b.avg!);
+    const top = [...byBrand.entries()].map(([brand, l]) => ({ brand, count: l.length })).sort((a, b) => b.count - a.count)[0];
     const brandSentences: string[] = [];
     if (top && top.count >= 3 && n >= 10) brandSentences.push(`${top.brand} es la marca con más gasolineras en la provincia (${top.count} de ${n}).`);
-    if (ranked.length >= 2 && ranked[ranked.length - 1].avg! - ranked[0].avg! >= 0.005)
-        brandSentences.push(
-            `De media, ${ranked[0].brand} es la más barata para ${FUEL[main].name} (${price(ranked[0].avg!)} en ${ranked[0].count} gasolineras) y ${ranked[ranked.length - 1].brand} la más cara (${price(ranked[ranked.length - 1].avg!)} en ${ranked[ranked.length - 1].count}).`
-        );
+    // La más barata y la más cara de media (con 3 gasolineras o más), para cada combustible.
+    const ranking = MAIN_FUELS.flatMap((f) => {
+        const ranked = [...byBrand.entries()]
+            .map(([brand, l]) => ({ brand, count: l.filter((s) => s.prices[f] != null).length, avg: average(l, f) }))
+            .filter((b) => b.count >= 3 && b.avg != null)
+            .sort((a, b) => a.avg! - b.avg!);
+        const lo = ranked[0];
+        const hi = ranked[ranked.length - 1];
+        return ranked.length >= 2 && hi.avg! - lo.avg! >= 0.005 ? [{ f, lo, hi }] : [];
+    });
+    const rankText = brandRankText(
+        ranking.map(({ f, lo, hi }) => ({ f, lo: { ...lo, avg: lo.avg! }, hi: { ...hi, avg: hi.avg! } })),
+        ""
+    );
+    if (rankText) brandSentences.push(rankText);
     if (brandSentences.length) paragraphs.push([brandSentences.join(" ")]);
 
     // --- 7. 24 horas y combustibles alternativos ---
@@ -199,8 +230,6 @@ export function provinceInsights(input: ProvinceInsightInput): Insights {
         // "hay 14 gasolineras con GLP (autogás), 2 con GNC y 1 con hidrógeno"
         const items = alt.map((x, k) => `${x.c}${k === 0 ? (x.c === 1 ? " gasolinera" : " gasolineras") : ""} con ${FUEL_NAMES[x.f]}`);
         extra.push(`En combustibles alternativos, hay ${items.length < 2 ? items[0] : `${items.slice(0, -1).join(", ")} y ${items[items.length - 1]}`}.`);
-        const glp = alt.find((x) => x.f === "glp");
-        if (glp) faq.push({ q: `¿Dónde repostar GLP en ${prov}?`, a: `Hay ${glp.c === 1 ? "una gasolinera" : `${glp.c} gasolineras`} con GLP (autogás) en la provincia de ${prov}. Puedes verlas en el explorador eligiendo GLP como combustible.` });
     }
     if (extra.length) paragraphs.push([extra.join(" ")]);
 

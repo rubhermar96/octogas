@@ -67,8 +67,9 @@ export interface CapitalInfo {
     label: string;
     url: string;
     count: number;
-    /** Gasolina 95 más barata hoy (o diésel si ninguna vende gasolina 95). */
-    minPrice: number | null;
+    /** Gasolina 95 y diésel más baratos hoy. */
+    minSp95: number | null;
+    minDiesel: number | null;
 }
 
 /**
@@ -88,12 +89,16 @@ export function capitalsWithPrices(stations: GasStation[]): CapitalInfo[] {
             console.warn(`[capitales] Sin gasolineras hoy en ${label} (${province}): no sale en la portada.`);
             continue;
         }
-        const prices = list.map((s) => s.prices.sp95 ?? s.prices.diesel).filter((p): p is number => p != null);
+        const minOf = (f: "sp95" | "diesel") => {
+            const v = list.map((s) => s.prices[f]).filter((p): p is number => p != null);
+            return v.length ? Math.min(...v) : null;
+        };
         out.push({
             label,
             url: municipioUrl(list[0].province, list[0].city),
             count: list.length,
-            minPrice: prices.length ? Math.min(...prices) : null,
+            minSp95: minOf("sp95"),
+            minDiesel: minOf("diesel"),
         });
     }
     return out;

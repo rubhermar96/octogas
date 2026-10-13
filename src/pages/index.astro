@@ -6,7 +6,7 @@ import ExplorerSelector from "../components/Explorer/ExplorerSelector";
 import NationalTopFuels, { type TopStation } from "../components/Home/NationalTopFuels";
 import Footer from "../components/Footer.astro";
 import { BRAND_LOGO_FILES } from "../lib/brandLogos";
-import { FUEL_ORDER } from "../lib/fuels";
+import { FUEL_LABELS, FUEL_ORDER } from "../lib/fuels";
 import { capitalsWithPrices } from "../lib/capitals";
 import type { GasStation, FuelType } from "../types/gasolinera";
 import styles from "../styles/Home.module.css";
@@ -237,8 +237,9 @@ const steps = [
                     <span class={styles.eyebrow}>Por ciudades</span>
                     <h2 class={styles.sectionTitle}>Gasolineras baratas en las capitales de provincia</h2>
                     <p class={styles.sectionSubtitle}>
-                        La gasolina 95 más barata de hoy en cada capital. Entra en la tuya para ver todas
-                        sus gasolineras, el mapa y cómo han ido los precios.
+                        La gasolina 95 y el diésel más baratos de hoy en cada capital, en €/L. Entra en la
+                        tuya para ver todas sus gasolineras y el resto de combustibles, el mapa y cómo han
+                        ido los precios.
                     </p>
                 </div>
                 <div class={styles.capitalGrid} data-reveal-items>
@@ -246,15 +247,16 @@ const steps = [
                         bigCapitals.map((c) => (
                             <a class={`${styles.capitalCard} hover-lift`} href={c.url}>
                                 <span class={styles.capitalName}>{c.label}</span>
-                                <span class={styles.capitalPrice}>
-                                    {c.minPrice != null ? (
-                                        <>
-                                            desde <b>{fmt(c.minPrice)}</b> €/L
-                                        </>
-                                    ) : (
-                                        "sin precios hoy"
-                                    )}
-                                </span>
+                                {c.minSp95 != null && (
+                                    <span class={styles.capitalPrice}>
+                                        {FUEL_LABELS.sp95} <b>{fmt(c.minSp95)}</b>
+                                    </span>
+                                )}
+                                {c.minDiesel != null && (
+                                    <span class={styles.capitalPrice}>
+                                        {FUEL_LABELS.diesel} <b>{fmt(c.minDiesel)}</b>
+                                    </span>
+                                )}
                                 <span class={styles.capitalMeta}>{c.count === 1 ? "1 gasolinera" : `${c.count} gasolineras`}</span>
                             </a>
                         ))
@@ -265,7 +267,6 @@ const steps = [
                         otherCapitals.map((c) => (
                             <a class={styles.capitalChip} href={c.url}>
                                 {c.label}
-                                {c.minPrice != null && <span>{fmt(c.minPrice)}</span>}
                             </a>
                         ))
                     }

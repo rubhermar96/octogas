@@ -1,0 +1,201 @@
+---
+/**
+ * Tabla "Precio de cada combustible hoy": para cada combustible que se vende en la zona,
+ * la gasolinera más barata, su precio, la media y cuántas lo venden (ver fuelSummary.ts).
+ * Con una sola gasolinera queda en combustible y precio.
+ */
+import { FUEL_TITLES, FUEL_UNIT, type FuelRow } from "../lib/fuelSummary";
+import { isGeneric } from "../lib/insightText";
+import { displayAddress } from "../lib/format";
+import { displayCity, displayProvince } from "../lib/placeName";
+import { stationUrl } from "../lib/stationUrl";
+
+interface Props {
+    rows: FuelRow[];
+    /** "Valladolid", "la provincia de Valladolid", "España". */
+    place: string;
+    /** Qué se enseña bajo la más barata: su dirección (municipio), su municipio
+     *  (provincia) o municipio y provincia (España). */
+    where: "address" | "city" | "cityProvince";
+    single?: boolean;
+}
+
+const { rows, place, where, single = false } = Astro.props;
+const fmt = (n: number) => n.toFixed(3);
+
+const nameOf = (r: FuelRow) => (isGeneric(r.cheapest) ? displayAddress(r.cheapest.address) : r.cheapest.brand);
+const subOf = (r: FuelRow) => {
+    const s = r.cheapest;
+    if (where === "address") return isGeneric(s) ? "" : displayAddress(s.address);
+    if (where === "city") return displayCity(s.city);
+    // La provincia solo si no se llama como el municipio ("Zaragoza", no "Zaragoza (Zaragoza)").
+    const city = displayCity(s.city);
+    const prov = displayProvince(s.province);
+    return city === prov ? city : `${city} (${prov})`;
+};
+---
+
+{
+    rows.length > 0 && (
+        <section class="fuel-table">
+            <h2>Precio de cada combustible hoy en {place}</h2>
+            <table class:list={{ single }}>
+                <thead>
+                    <tr>
+                        <th scope="col">Combustible</th>
+                        {!single && <th scope="col">Más barata hoy</th>}
+                        <th scope="col" class="num">Precio</th>
+                        {!single && <th scope="col" class="num">Media</th>}
+                        {!single && <th scope="col" class="num">Gasolineras</th>}
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map((r) => (
+                        <tr>
+                            <th scope="row">{FUEL_TITLES[r.fuel]}</th>
+                            {!single && (
+                                <td class="where">
+                                    <a href={stationUrl(r.cheapest)}>{nameOf(r)}</a>
+                                    {subOf(r) && <span class="sub">{subOf(r)}</span>}
+                                    <span class="m-meta">
+                                        Media {fmt(r.avg)} · {r.count === 1 ? "1 gasolinera" : `${r.count} gasolineras`}
+                                    </span>
+                                </td>
+                            )}
+                            <td class="num price">
+                                {fmt(r.min)} <small>{FUEL_UNIT[r.fuel]}</small>
+                            </td>
+                            {!single && <td class="num avg">{fmt(r.avg)}</td>}
+                            {!single && <td class="num count">{r.count}</td>}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </section>
+    )
+}
+
+<style>
+    .fuel-table {
+        margin: 2.5rem 0 3rem;
+    }
+    .fuel-table h2 {
+        font-family: var(--font-header);
+        font-size: 1.4rem;
+        margin-bottom: 1.25rem;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        font-size: 0.92rem;
+    }
+    table.single {
+        max-width: 520px;
+    }
+    th,
+    td {
+        padding: 0.7rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid color-mix(in srgb, var(--border) 35%, transparent);
+        vertical-align: top;
+    }
+    thead th {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        font-weight: 700;
+        border-bottom: 1px solid var(--border);
+    }
+    tbody tr:last-child th,
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+    tbody th {
+        font-weight: 700;
+        color: var(--text);
+    }
+    .num {
+        text-align: right;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+    .price {
+        font-weight: 800;
+        color: var(--primary);
+    }
+    .price small {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+    .avg,
+    .count {
+        color: var(--text-muted);
+    }
+    .where a {
+        color: var(--text);
+        font-weight: 600;
+        text-decoration: underline;
+        text-decoration-color: var(--primary);
+        text-underline-offset: 3px;
+    }
+    .where a:hover {
+        color: var(--primary);
+    }
+    .sub {
+        display: block;
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        margin-top: 0.15rem;
+    }
+    /* Media y nº de gasolineras: columnas propias en escritorio, una línea en móvil. */
+    .m-meta {
+        display: none;
+    }
+
+    @media (max-width: 640px) {
+        thead {
+            display: none;
+        }
+        tr {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            column-gap: 0.75rem;
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid color-mix(in srgb, var(--border) 35%, transparent);
+        }
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+        th,
+        td {
+            padding: 0;
+            border: none;
+        }
+        tbody th {
+            grid-column: 1;
+            grid-row: 1;
+        }
+        .price {
+            grid-column: 2;
+            grid-row: 1;
+        }
+        .where {
+            grid-column: 1 / -1;
+            margin-top: 0.3rem;
+        }
+        .avg,
+        .count {
+            display: none;
+        }
+        .m-meta {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.2rem;
+        }
+    }
+</style>

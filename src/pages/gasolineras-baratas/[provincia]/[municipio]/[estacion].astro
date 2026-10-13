@@ -18,6 +18,7 @@ import PriceHistoryChart from "../../../../components/Station/PriceHistoryChart"
 import { loadMissingStations, lastSeenLabel, type MissingStation } from "../../../../lib/missingStations";
 import { stationInsights, stationInsightContext, type StationInsightInput } from "../../../../lib/stationInsights";
 import { openingHours } from "../../../../lib/insightText";
+import { FUEL_LIST_ORDER, FUEL_THE, FUEL_UNIT, fuelPriceList, fuelSummary, priceOf } from "../../../../lib/fuelSummary";
 import type { GasStation, FuelType } from "../../../../types/gasolinera";
 
 export async function getStaticPaths() {
@@ -162,11 +163,14 @@ const updated = new Date().toLocaleDateString("es-ES", {
     year: "numeric",
 });
 
-const h1 = brandLabel ? `Gasolinera ${brandLabel}` : "Gasolinera";
+// "Gasolinera Repsol", pero no "Gasolinera Gasolinera Valladolid Pisuerga".
+const h1 = brandLabel ? (/^gasolinera\b/i.test(brandLabel) ? brandLabel : `Gasolinera ${brandLabel}`) : "Gasolinera";
 const pageTitle = `${h1} en ${addressLabel}, ${cityLabel}${distinctText ? ` (${distinctText})` : ""} | OCTO`;
+// Los combustibles que vende (gasolina 95, diésel, 98 y GLP primero), no solo la 95.
+const ownPrices = fuelPriceList(fuelSummary([station]), false);
 const pageDescription = lastSeenText
-    ? `${brandLabel || "La gasolinera"} de ${addressLabel}, ${cityLabel} (${provLabel})${distinctText ? `, ${distinctText}` : ""}, no ha publicado precios hoy. Últimos precios, del ${lastSeenText}: gasolina 95 a ${fmt(station.prices.sp95)} €/L y diésel a ${fmt(station.prices.diesel)} €/L. Horario, mapa y gasolineras cercanas con precios de hoy.`
-    : `Precios de hoy de ${brandLabel || "la gasolinera"} en ${addressLabel}, ${cityLabel} (${provLabel})${distinctText ? `, ${distinctText}` : ""}: gasolina 95 a ${fmt(station.prices.sp95)} €/L y diésel a ${fmt(station.prices.diesel)} €/L. Horario, mapa y gasolineras cercanas.`;
+    ? `${brandLabel || "La gasolinera"} de ${addressLabel}, ${cityLabel} (${provLabel})${distinctText ? `, ${distinctText}` : ""}, no ha publicado precios hoy.${ownPrices ? ` Últimos precios, del ${lastSeenText}: ${ownPrices}.` : ""} Horario, mapa y gasolineras cercanas con precios de hoy.`
+    : `Precios de hoy de ${brandLabel || "la gasolinera"} en ${addressLabel}, ${cityLabel} (${provLabel})${distinctText ? `, ${distinctText}` : ""}${ownPrices ? `: ${ownPrices}` : ""}. Horario, mapa y gasolineras cercanas.`;
 
 const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`;
 
@@ -189,14 +193,23 @@ const gasStationJsonLd = {
     openingHours: openingHours(station.schedule),
 };
 
+// Precio de cada combustible que vende (con la comparación con la media del municipio en
+// gasolina 95 y diésel), para la primera pregunta frecuente.
+const pctText = (c: { diffPct: number; cheaper: boolean } | null, fem: boolean) =>
+    c ? ` (un ${Math.abs(c.diffPct).toLocaleString("es-ES", { maximumFractionDigits: 1 })} % ${c.cheaper ? (fem ? "más barata" : "más barato") : fem ? "más cara" : "más caro"} que la media de ${cityLabel})` : "";
+const priceItems = FUEL_LIST_ORDER.filter((f) => station.prices[f] != null).map(
+    (f) => `${FUEL_THE[f]} a ${priceOf(f, station.prices[f]!)}${f === "sp95" ? pctText(sp95Cmp, true) : f === "diesel" ? pctText(dieselCmp, false) : ""}`
+);
+const priceList = priceItems.length < 2 ? priceItems.join("") : `${priceItems.slice(0, -1).join(", ")} y ${priceItems[priceItems.length - 1]}`;
+
 const faq = [
     {
-        q: `¿Cuánto cuesta la gasolina 95 en ${brandLabel || cityLabel}?`,
+        q: `¿Cuánto cuesta el combustible en ${brandLabel ? `${brandLabel} de ${addressLabel}` : `la gasolinera de ${addressLabel}`}?`,
         a: lastSeenText
-            ? `Hoy no ha publicado precios. ${station.prices.sp95 != null ? `El último precio de la gasolina 95 fue ${fmt(station.prices.sp95)} €/L, el ${lastSeenText}.` : `Su última actualización fue el ${lastSeenText}.`}`
-            : station.prices.sp95 != null
-                ? `La Gasolina 95 está a ${fmt(station.prices.sp95)} €/L en ${addressLabel}, ${cityLabel}${sp95Cmp ? `, un ${Math.abs(sp95Cmp.diffPct).toFixed(1)}% ${sp95Cmp.cheaper ? "más barata" : "más cara"} que la media del municipio` : ""}.`
-                : `Esta estación no tiene precio de Gasolina 95 disponible actualmente.`,
+            ? `Hoy no ha publicado precios. ${priceList ? `Los últimos, del ${lastSeenText}: ${priceList}.` : `Su última actualización fue el ${lastSeenText}.`}`
+            : priceList
+              ? `Hoy tiene ${priceList}.`
+              : `Hoy no tiene precios disponibles.`,
     },
     {
         q: `¿Cuál es el horario de esta gasolinera?`,
@@ -300,7 +313,7 @@ const mapStations = [lastSeen ? { ...station, prices: {} } : station, ...nearby]
                         availableFuels.map((f) => (
                             <div class:list={["price-card", { stale: lastSeen }]}>
                                 <span class="ptype">{FUEL_LABELS[f]}</span>
-                                <span class="pval">{fmt(station.prices[f])} <small>€/L</small></span>
+                                <span class="pval">{fmt(station.prices[f])} <small>{FUEL_UNIT[f]}</small></span>
                             </div>
                         ))
                     }

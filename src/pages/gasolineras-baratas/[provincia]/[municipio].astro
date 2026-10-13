@@ -12,6 +12,10 @@ import { placeSlug, displayProvince, displayCity } from "../../../lib/placeName"
 import PriceHistoryChart from "../../../components/Station/PriceHistoryChart";
 import { loadAggHistory, scopeKey } from "../../../lib/aggHistory";
 import { displayAddress } from "../../../lib/format";
+import FuelTable from "../../../components/FuelTable.astro";
+import { fuelSummary, fuelFaq, fuelFamilies, fuelPriceList } from "../../../lib/fuelSummary";
+import { FUEL_LABELS } from "../../../lib/fuels";
+import { isGeneric } from "../../../lib/insightText";
 import {
     municipioInsights,
     nearbyFinder,
@@ -20,7 +24,7 @@ import {
     type MainFuel,
 } from "../../../lib/municipioInsights";
 import { loadMissingStations, lastSeenLabel, type MissingStation } from "../../../lib/missingStations";
-import type { GasStation } from "../../../types/gasolinera";
+import type { GasStation, FuelType } from "../../../types/gasolinera";
 
 interface Sibling {
     name: string;
@@ -149,46 +153,14 @@ const aggHist = (await loadAggHistory()).get(
     scopeKey("municipio", `${placeSlug(provinceName)}|${placeSlug(municipalityName)}`)
 ) ?? {};
 
-// --- Estadísticas para contenido y FAQ ---
-type FuelKey = "sp95" | "sp98" | "diesel" | "glp";
-const min = (key: FuelKey) => {
-    const vals = stations.map((s) => s.prices[key]).filter((p): p is number => p != null);
-    return vals.length ? Math.min(...vals) : null;
-};
-const avg = (key: FuelKey) => {
-    const vals = stations.map((s) => s.prices[key]).filter((p): p is number => p != null);
-    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-};
+// --- Precios por combustible: tabla, descripción y preguntas frecuentes (todos los
+//     combustibles que se venden, no solo la gasolina 95) ---
+const fuelRows = fuelSummary(stations);
 const fmt = (n: number | null) => (n != null ? n.toFixed(3) : "—");
-// En los textos (descripción y preguntas frecuentes), con coma decimal como en el resto
-// de la redacción; las cifras de la interfaz siguen con punto, como en toda la web.
-const fmtText = (n: number | null) => (n != null ? n.toLocaleString("es-ES", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "—");
-
-const minSp95 = min("sp95");
-const minDiesel = min("diesel");
-const avgSp95 = avg("sp95");
-const avgDiesel = avg("diesel");
-
-// Precio medio de cada combustible disponible en el municipio.
-const fuelAverages = (
-    [
-        ["sp95", "SP95"],
-        ["sp98", "SP98"],
-        ["diesel", "Diésel"],
-        ["glp", "GLP"],
-    ] as [FuelKey, string][]
-)
-    .map(([key, label]) => ({ key, label, avg: avg(key) }))
-    .filter((x) => x.avg != null);
-
-const cheapestSp95Station = stations
-    .filter((s) => s.prices.sp95 != null)
-    .sort((a, b) => a.prices.sp95! - b.prices.sp95!)[0];
-const cheapestSp95Label = cheapestSp95Station
-    ? /^n[ºo°]/i.test(cheapestSp95Station.brand) || /^\d/.test(cheapestSp95Station.brand)
-        ? `la gasolinera de ${displayAddress(cheapestSp95Station.address)}`
-        : `${cheapestSp95Station.brand}, en ${displayAddress(cheapestSp95Station.address)}`
-    : "";
+// Precio medio de los combustibles principales, en la barra de cifras.
+const fuelAverages = fuelRows
+    .filter((r) => (["sp95", "sp98", "diesel", "glp"] as FuelType[]).includes(r.fuel))
+    .map((r) => ({ label: FUEL_LABELS[r.fuel], avg: r.avg }));
 
 // Texto propio del municipio, sacado de sus datos (ver src/lib/municipioInsights.ts).
 const insights = municipioInsights({
@@ -225,10 +197,12 @@ const updated = new Date().toLocaleDateString("es-ES", {
 
 const pageTitle = noPricesToday
     ? `Gasolineras en ${muniLabel} (${provLabel}) — Sin precios hoy | OCTO`
-    : `Gasolineras baratas en ${muniLabel} (${provLabel}) — Precios hoy | OCTO`;
+    : `Gasolineras baratas en ${muniLabel} (${provLabel}) — Gasolina y diésel hoy | OCTO`;
 const pageDescription = noPricesToday
     ? `Hoy las gasolineras de ${muniLabel} (${provLabel}) no han publicado precios. Consulta cuándo lo hicieron por última vez y las más baratas a menos de 10 km.`
-    : `Compara el precio de la gasolina 95 y el diésel en ${stations.length} gasolineras de ${muniLabel}, ${provLabel}. La más barata desde ${fmtText(minSp95)} €/L. Datos oficiales actualizados.`;
+    : stations.length === 1
+      ? `Precios de hoy en la única gasolinera de ${muniLabel} (${provLabel}): ${fuelPriceList(fuelRows, false)}. Datos oficiales, actualizados cada día.`
+      : `Precios de hoy en las ${stations.length} gasolineras de ${muniLabel} (${provLabel}): ${fuelPriceList(fuelRows)}. Datos oficiales, actualizados cada día.`;
 
 // --- Datos estructurados (FAQ + Breadcrumb) ---
 const faq = noPricesToday
@@ -240,23 +214,19 @@ const faq = noPricesToday
           },
       ]
     : [
-    {
-        q: `¿Cuál es la gasolinera más barata en ${muniLabel}?`,
-        a: cheapestSp95Station
-            ? `Actualmente la más barata para gasolina 95 es ${cheapestSp95Label}, a ${fmtText(minSp95)} €/L.`
-            : `Consulta el listado actualizado de gasolineras en ${muniLabel} para ver la más barata.`,
-    },
-    {
-        q: `¿Cuánto cuesta la gasolina 95 en ${muniLabel}?`,
-        a: `El precio medio de la gasolina 95 en ${muniLabel} es de ${fmtText(avgSp95)} €/L, y el más bajo, ${fmtText(minSp95)} €/L.`,
-    },
-    {
-        q: `¿Cuánto cuesta el diésel en ${muniLabel}?`,
-        a: `El precio medio del gasóleo A (diésel) en ${muniLabel} es de ${fmtText(avgDiesel)} €/L, con un mínimo de ${fmtText(minDiesel)} €/L.`,
-    },
+    // La más barata según el combustible y una pregunta por cada combustible que se vende.
+    ...fuelFaq(fuelRows, {
+        label: muniLabel,
+        at: `en ${muniLabel}`,
+        of: muniLabel,
+        stations,
+        name: (s) => (isGeneric(s) ? `la gasolinera de ${displayAddress(s.address)}` : `${s.brand}, en ${displayAddress(s.address)}`),
+    }),
     {
         q: `¿Cuántas gasolineras hay en ${muniLabel}?`,
-        a: `Hay ${stations.length} estaciones de servicio con precios disponibles en ${muniLabel}.`,
+        a: stations.length === 1
+            ? `Hay una estación de servicio con precios disponibles en ${muniLabel}.`
+            : `Hay ${stations.length} estaciones de servicio con precios disponibles en ${muniLabel}.`,
     },
     // Zona más barata, tendencia del mes y alternativas cercanas (cuando hay dato).
     ...insights.faq,
@@ -323,9 +293,11 @@ const breadcrumbJsonLd = {
                         </p>
                     ) : (
                         <p class="subtitle">
-                            Precios de gasolina y diésel en {muniLabel}, {provLabel}.
-                            Comparamos {stations.length} estaciones de servicio para que encuentres la
-                            más barata. <span class="updated">Actualizado el {updated}.</span>
+                            Precios de {fuelFamilies(fuelRows)} en {muniLabel}, {provLabel}.
+                            {stations.length === 1
+                                ? "Tiene una sola estación de servicio: aquí ves sus precios de hoy y las alternativas cercanas."
+                                : `Comparamos sus ${stations.length} estaciones de servicio para que encuentres la más barata para tu combustible.`}{" "}
+                            <span class="updated">Actualizado el {updated}.</span>
                         </p>
                     )
                 }
@@ -349,6 +321,8 @@ const breadcrumbJsonLd = {
             )}
 
             {!noPricesToday && <MunicipioTop client:load stations={stations} explorerUrl={explorerUrl} />}
+
+            {!noPricesToday && <FuelTable rows={fuelRows} place={muniLabel} where="address" single={stations.length === 1} />}
 
             {
                 insights.paragraphs.length > 0 && (
@@ -398,10 +372,13 @@ const breadcrumbJsonLd = {
                     {
                         stations.map((s) => (
                             <div class="station-link hover-lift">
-                                <a href={stationUrl(s)} class="sl-name">{/^n[ºo°]/i.test(s.brand) || /^\d/.test(s.brand) ? s.address : s.brand}</a>
-                                <span class="sl-meta">
-                                    {s.prices.sp95 != null && <span class="sl-price">{fmt(s.prices.sp95)} €/L</span>}
-                                </span>
+                                <div class="sl-main">
+                                    <a href={stationUrl(s)} class="sl-name">{isGeneric(s) ? displayAddress(s.address) : s.brand}</a>
+                                    <span class="sl-prices">
+                                        {s.prices.sp95 != null && <span><b>{FUEL_LABELS.sp95}</b> {fmt(s.prices.sp95)}</span>}
+                                        {s.prices.diesel != null && <span><b>{FUEL_LABELS.diesel}</b> {fmt(s.prices.diesel)}</span>}
+                                    </span>
+                                </div>
                                 <div class="sl-compare"><CompareToggle stationId={s.id} variant="square" /></div>
                             </div>
                         ))
@@ -409,10 +386,10 @@ const breadcrumbJsonLd = {
                     {
                         missingStations.map((s) => (
                             <div class="station-link hover-lift">
-                                <a href={stationUrl(s)} class="sl-name">{/^n[ºo°]/i.test(s.brand) || /^\d/.test(s.brand) ? s.address : s.brand}</a>
-                                <span class="sl-meta">
+                                <div class="sl-main">
+                                    <a href={stationUrl(s)} class="sl-name">{isGeneric(s) ? displayAddress(s.address) : s.brand}</a>
                                     <span class="sl-missing">Sin precios hoy</span>
-                                </span>
+                                </div>
                             </div>
                         ))
                     }
@@ -737,9 +714,15 @@ const breadcrumbJsonLd = {
         border-color: var(--primary);
         transform: translateY(-1px);
     }
-    .sl-name {
+    .sl-main {
         flex: 1;
         min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        padding: 0.15rem 0;
+    }
+    .sl-name {
         color: inherit;
         text-decoration: none;
         font-size: 0.88rem;
@@ -761,14 +744,22 @@ const breadcrumbJsonLd = {
     .sl-missing {
         font-size: 0.75rem;
         color: var(--text-muted);
-        flex-shrink: 0;
-        padding: 0.4rem 0.3rem;
     }
-    .sl-price {
+    /* Gasolina 95 y diésel de cada una: los dos combustibles más repostados. */
+    .sl-prices {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.1rem 0.75rem;
         font-size: 0.78rem;
         font-weight: 700;
         color: var(--primary);
-        flex-shrink: 0;
+        font-variant-numeric: tabular-nums;
+    }
+    .sl-prices b {
+        font-size: 0.68rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        margin-right: 0.15rem;
     }
 
     .siblings {
