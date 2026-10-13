@@ -11,10 +11,6 @@ import "@fontsource/unbounded/700.css";
 import "../styles/global.css";
 import styles from "../styles/Layout.module.css";
 import iconFontUrl from "../assets/fonts/material-symbols-outlined.woff2?url";
-// Las dos fuentes de casi todo el texto que se ve al cargar (titulares y cuerpo), para
-// precargarlas: llegan antes de pintar más a menudo y no hay cambio de fuente.
-import headerFontUrl from "@fontsource/unbounded/files/unbounded-latin-700-normal.woff2?url";
-import bodyFontUrl from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2?url";
 
 import { SITE, GOOGLE_SITE_VERIFICATION, ADSENSE_ID } from "../consts";
 import ConsentBanner from "../components/ConsentBanner.astro";
@@ -130,8 +126,6 @@ const orgJsonLd = {
         <!-- Iconos: fuente propia con solo los que usamos (global.css; con un icono
              nuevo, npm run icons). Precargada para que no tarden en aparecer. -->
         <link rel="preload" href={iconFontUrl} as="font" type="font/woff2" crossorigin />
-        <link rel="preload" href={headerFontUrl} as="font" type="font/woff2" crossorigin />
-        <link rel="preload" href={bodyFontUrl} as="font" type="font/woff2" crossorigin />
 
         <slot name="head" />
     </head>
