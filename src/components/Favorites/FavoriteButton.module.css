@@ -1,0 +1,96 @@
+/* Botón "Guardar" (Mis gasolineras). Mismas formas que el de comparar
+   (CompareButton.module.css), en el verde de la marca para distinguirlos. */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.btn :global(.material-symbols-outlined) {
+    font-size: 1.05rem;
+}
+
+.btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--on-primary);
+}
+
+.btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* Solo icono, para el popup del mapa (siempre blanco: colores claros fijos). */
+.btn.icon {
+    padding: 0.25rem;
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #64748b;
+}
+
+.btn.icon:hover:not(:disabled) {
+    border-color: #059669;
+    color: #059669;
+}
+
+.btn.icon.active {
+    background: #059669;
+    border-color: #059669;
+    color: #fff;
+}
+
+.btn.icon :global(.material-symbols-outlined) {
+    font-size: 0.95rem;
+}
+
+/* Pastilla pequeña bajo el nombre, en el listado del explorador. */
+.btn.mini {
+    gap: 0.25rem;
+    padding: 0.25rem 0.55rem;
+    font-size: 0.7rem;
+    margin-top: 0.3rem;
+}
+
+.btn.mini :global(.material-symbols-outlined) {
+    font-size: 0.8rem;
+}
+
+/* Grande, en la ficha junto a "Cómo llegar" y "Comparar". */
+.btn.large {
+    flex-shrink: 0;
+    gap: 0.4rem;
+    padding: 0.7rem 1.2rem;
+    border-color: var(--primary);
+    background: transparent;
+    color: var(--primary);
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.btn.large.active {
+    background: var(--primary);
+    color: var(--on-primary);
+}
+
+.btn.large :global(.material-symbols-outlined) {
+    font-size: 1.25rem;
+}
+
+.btn:active:not(:disabled) {
+    transform: scale(0.94);
+}

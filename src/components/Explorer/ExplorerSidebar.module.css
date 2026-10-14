@@ -470,3 +470,10 @@
 .emptyState span:last-child {
     font-size: 0.875rem;
 }
+
+/* Comparar y Guardar, juntos bajo el nombre de la gasolinera. */
+.miniActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.4rem;
+}

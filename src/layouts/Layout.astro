@@ -64,6 +64,10 @@ const orgJsonLd = {
         <meta charset="utf-8" />
         <meta content="width=device-width, initial-scale=1.0" name="viewport" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
+        <!-- Instalable como app (Mis gasolineras): manifiesto e icono para iPhone. -->
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <meta name="apple-mobile-web-app-title" content="OCTO" />
         <script is:inline>
             // Antes de pintar: el tema guardado (si no, cada página se pintaba oscura y
             // cambiaba a clara un instante después) y las animaciones de entrada
@@ -75,6 +79,13 @@ const orgJsonLd = {
                 try {
                     if (localStorage.getItem("theme") === "light") root.setAttribute("data-theme", "light");
                 } catch (e) {}
+                // Aviso de "instalar app" de Chrome/Edge: se guarda para el botón de Mis
+                // gasolineras (InstallApp.tsx). Allí no sale además la barra del navegador.
+                window.addEventListener("beforeinstallprompt", function (e) {
+                    if (location.pathname === "/mis-gasolineras/") e.preventDefault();
+                    window.__octoInstall = e;
+                    window.dispatchEvent(new Event("octo-installable"));
+                });
                 if ("IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
                     root.classList.add("motion");
                     setTimeout(function () {
@@ -164,6 +175,7 @@ const orgJsonLd = {
                 <a href="/municipios/" class={styles.menuLink}>Explorador</a>
                 <a href="/rutas/" class={styles.menuLink}>Planificar viaje</a>
                 <a href="/comparador/" class={styles.menuLink}>Comparador</a>
+                <a href="/mis-gasolineras/" class={styles.menuLink}>Mis gasolineras</a>
             </div>
         </nav>
 
@@ -234,6 +246,16 @@ const orgJsonLd = {
                             >balance</span
                         >
                         <span class={styles.navLabel}>Comparador</span>
+                    </a>
+                    <a
+                        href="/mis-gasolineras/"
+                        class={`${styles.navItem} ${Astro.url.pathname === "/mis-gasolineras/" ? styles.active : ""}`}
+                    >
+                        <span
+                            class={`material-symbols-outlined ${styles.navIcon}`} aria-hidden="true"
+                            >bookmarks</span
+                        >
+                        <span class={styles.navLabel}>Mis gasolineras</span>
                     </a>
                 </nav>
             </aside>

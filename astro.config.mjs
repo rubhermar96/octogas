@@ -9,7 +9,7 @@ import sitemap from '@astrojs/sitemap';
 export const SITE_URL = 'https://octogas.es';
 
 // Páginas con noindex={true} en su <Layout> (si añades otra, inclúyela aquí).
-const NOINDEX_PATHS = ['/404', '/privacidad/', '/cookies/', '/aviso-legal/'];
+const NOINDEX_PATHS = ['/404', '/privacidad/', '/cookies/', '/aviso-legal/', '/mis-gasolineras/'];
 
 // https://astro.build/config
 export default defineConfig({

@@ -6,6 +6,7 @@ import MainMap from "../../../../components/Map/LazyMainMap";
 import AdSlot from "../../../../components/AdSlot.astro";
 import Footer from "../../../../components/Footer.astro";
 import CompareToggle from "../../../../components/CompareToggle.astro";
+import FavoriteToggle from "../../../../components/Favorites/FavoriteToggle.astro";
 import { slugify } from "../../../../lib/slug";
 import { stationSlug, stationUrl, provinceUrl, municipioUrl } from "../../../../lib/stationUrl";
 import { placeSlug, displayProvince, displayCity } from "../../../../lib/placeName";
@@ -287,6 +288,7 @@ const mapStations = [lastSeen ? { ...station, prices: {} } : station, ...nearby]
                     </a>
                     {/* El comparador trabaja con los precios de hoy. */}
                     {!lastSeen && <CompareToggle stationId={station.id} variant="large" />}
+                    <FavoriteToggle stationId={station.id} />
                 </div>
             </header>
 
@@ -816,6 +818,13 @@ const mapStations = [lastSeen ? { ...station, prices: {} } : station, ...nearby]
         .head-actions > :global(*) {
             flex: 1;
             justify-content: center;
+        }
+        /* "Cómo llegar" y "Comparar" en una fila; "Guardar", debajo a todo el ancho. */
+        .head-actions {
+            flex-wrap: wrap;
+        }
+        .head-actions > :global([data-favorite-id]) {
+            flex: 1 0 100%;
         }
         section h2 {
             font-size: 1.2rem;

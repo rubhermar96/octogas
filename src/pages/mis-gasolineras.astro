@@ -1,0 +1,86 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Footer from "../components/Footer.astro";
+import MyStations from "../components/Favorites/MyStations";
+import InstallApp from "../components/Favorites/InstallApp";
+import { MAX_FAVORITES } from "../lib/favorites";
+---
+
+{/* Página personal (lo guardado vive en el navegador): fuera de Google y del sitemap. */}
+<Layout
+    title="Mis gasolineras | OCTO"
+    description="El precio de hoy de las gasolineras que has guardado, de la más barata a la más cara."
+    noindex
+>
+    <div class="page-container">
+        <div class="content-wrapper">
+            <header class="page-header">
+                <h1>Mis gasolineras</h1>
+                <p class="subtitle">
+                    El precio de hoy de las gasolineras que has guardado, de la más barata a la más cara para
+                    tu combustible. Se guardan en este dispositivo, sin registrarte (hasta {MAX_FAVORITES}).
+                </p>
+            </header>
+
+            <section class="list">
+                <MyStations client:only="react" />
+            </section>
+
+            <InstallApp client:only="react" />
+
+            <section class="how">
+                <h2>Cómo guardar una gasolinera</h2>
+                <p>
+                    Pulsa <b>Guardar</b> en su ficha, o en su tarjeta del <a href="/municipios/">explorador</a>. Si
+                    usas OCTO en varios dispositivos, cada uno tiene su propia lista.
+                </p>
+            </section>
+        </div>
+    </div>
+    <Footer />
+</Layout>
+
+<style>
+    .page-container {
+        padding: 5rem 2rem 3rem;
+        min-height: 100vh;
+        background-color: var(--bg);
+        color: var(--text);
+    }
+    .content-wrapper {
+        max-width: 1100px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+    }
+    h1 {
+        font-family: var(--font-header);
+        font-size: clamp(1.8rem, 4vw, 2.6rem);
+        margin-bottom: 0.75rem;
+        line-height: 1.1;
+    }
+    .subtitle {
+        color: var(--text-muted);
+        font-size: 1.05rem;
+        line-height: 1.6;
+        max-width: 760px;
+    }
+    .list {
+        min-height: 8rem;
+    }
+    .how h2 {
+        font-family: var(--font-header);
+        font-size: 1.2rem;
+        margin-bottom: 0.6rem;
+    }
+    .how p {
+        color: var(--text-muted);
+        line-height: 1.6;
+        max-width: 72ch;
+    }
+    .how a {
+        color: var(--primary);
+        font-weight: 600;
+    }
+</style>

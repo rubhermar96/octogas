@@ -7,6 +7,7 @@ import { stationUrl } from '../../lib/stationUrl';
 import { displayCity } from '../../lib/placeName';
 import BrandLogo from './BrandLogo';
 import CompareButton from './CompareButton';
+import FavoriteButton from '../Favorites/FavoriteButton';
 import BrandFilter, { type BrandOption } from './BrandFilter';
 import styles from './ExplorerSidebar.module.css';
 
@@ -201,7 +202,10 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
                                                     {station.name}
                                                 </a>
                                             </h3>
-                                            <CompareButton stationId={station.id} variant="mini" />
+                                            <div className={styles.miniActions}>
+                                                <CompareButton stationId={station.id} variant="mini" />
+                                                <FavoriteButton stationId={station.id} variant="mini" />
+                                            </div>
                                         </div>
                                     </div>
                                     <div className={styles.priceTag}>

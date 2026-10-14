@@ -1,0 +1,57 @@
+---
+/**
+ * Botón "Guardar" de la ficha (página estática): mismo aspecto que FavoriteButton
+ * (React) sin montar una isla. Su script lo sincroniza con la lista guardada (y con
+ * los FavoriteButton de las islas, vía el mismo evento de src/lib/favorites).
+ */
+import styles from "./FavoriteButton.module.css";
+
+interface Props {
+    stationId: string;
+}
+
+const { stationId } = Astro.props;
+---
+
+<button
+    type="button"
+    class:list={[styles.btn, styles.large]}
+    data-favorite-id={stationId}
+    aria-pressed="false"
+    aria-label="Guardar en Mis gasolineras"
+    title="Guardar en Mis gasolineras"
+>
+    <span class="material-symbols-outlined" aria-hidden="true" data-favorite-icon>bookmark_add</span>
+    <span data-favorite-text>Guardar</span>
+</button>
+
+<script>
+    import { getFavoriteIds, toggleFavorite, onFavoritesChange, MAX_FAVORITES } from "../../lib/favorites";
+    import styles from "./FavoriteButton.module.css";
+
+    function sync(ids: string[]) {
+        for (const btn of document.querySelectorAll<HTMLButtonElement>("button[data-favorite-id]")) {
+            const on = ids.includes(btn.dataset.favoriteId!);
+            btn.classList.toggle(styles.active, on);
+            btn.setAttribute("aria-pressed", String(on));
+            btn.setAttribute("aria-label", on ? "Quitar de Mis gasolineras" : "Guardar en Mis gasolineras");
+            btn.title = on ? "Guardada en Mis gasolineras" : "Guardar en Mis gasolineras";
+            const icon = btn.querySelector("[data-favorite-icon]");
+            if (icon) icon.textContent = on ? "bookmark_added" : "bookmark_add";
+            const text = btn.querySelector("[data-favorite-text]");
+            if (text) text.textContent = on ? "Guardada" : "Guardar";
+        }
+    }
+
+    document.addEventListener("click", (e) => {
+        const btn = (e.target as Element | null)?.closest<HTMLButtonElement>("button[data-favorite-id]");
+        if (!btn) return;
+        e.preventDefault();
+        if (toggleFavorite(btn.dataset.favoriteId!).full) {
+            alert(`Puedes guardar hasta ${MAX_FAVORITES} gasolineras. Quita alguna en Mis gasolineras.`);
+        }
+    });
+    onFavoritesChange(sync);
+    window.addEventListener("pageshow", () => sync(getFavoriteIds()));
+    sync(getFavoriteIds());
+</script>

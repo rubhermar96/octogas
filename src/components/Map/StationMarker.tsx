@@ -8,6 +8,7 @@ import { slugify } from '../../lib/slug';
 import { BRAND_LOGO_FILES } from '../../lib/brandLogos';
 import BrandLogo from '../Explorer/BrandLogo';
 import CompareButton from '../Explorer/CompareButton';
+import FavoriteButton from '../Favorites/FavoriteButton';
 import styles from './StationMarker.module.css';
 
 /**
@@ -65,6 +66,7 @@ export const StationPopup: React.FC<{ station: GasStation; fuelType: FuelType }>
                     {station.schedule || 'Horario no disponible'}
                 </span>
                 <div className={styles.popupActions}>
+                    <FavoriteButton stationId={station.id} variant="icon" />
                     <CompareButton stationId={station.id} variant="icon" />
                     <a
                         href={`https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`}

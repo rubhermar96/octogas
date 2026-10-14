@@ -1,0 +1,283 @@
+.wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.loading {
+    color: var(--text-muted);
+}
+
+/* --- Selector de combustible --- */
+.fuels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.fuelBtn {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.fuelBtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.fuelActive,
+.fuelActive:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--on-primary);
+}
+
+/* --- Tarjetas --- */
+.grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.grid.compact {
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+
+.card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 1.1rem 1.2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+.card.best {
+    border-color: var(--primary);
+    box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.bestTag {
+    align-self: flex-start;
+    padding: 0.15rem 0.5rem;
+    background: var(--primary);
+    color: var(--on-primary);
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.names {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.name {
+    color: var(--text);
+    font-weight: 800;
+    font-size: 1.05rem;
+    text-decoration: underline;
+    text-decoration-color: var(--primary);
+    text-underline-offset: 3px;
+}
+
+.name:hover {
+    color: var(--primary);
+}
+
+.where {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.price {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.priceValue {
+    white-space: nowrap;
+}
+
+.price b {
+    font-family: var(--font-header);
+    font-size: 1.45rem;
+    color: var(--primary);
+    line-height: 1.1;
+}
+
+.price small {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.priceFuel {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.noFuel {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.stale {
+    font-size: 0.78rem;
+    color: var(--accent);
+}
+
+.others {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.9rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.others b {
+    color: var(--text);
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: auto;
+}
+
+/* Los botones "mini" traen un margen para ir bajo un nombre: aquí van en fila. */
+.actions > button {
+    margin-top: 0;
+}
+
+.route {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.6rem;
+    background: var(--secondary);
+    color: var(--on-secondary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.route :global(.material-symbols-outlined) {
+    font-size: 0.95rem;
+}
+
+.gone {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.gone button {
+    margin-left: 0.25rem;
+    border: none;
+    background: none;
+    padding: 0;
+    color: var(--primary);
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    align-self: flex-start;
+    color: var(--primary);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.more :global(.material-symbols-outlined) {
+    font-size: 1.15rem;
+}
+
+/* --- Sin gasolineras guardadas --- */
+.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.5rem;
+    border: 1px dashed var(--border);
+    background: var(--surface);
+}
+
+.empty > :global(.material-symbols-outlined) {
+    font-size: 2rem;
+    color: var(--primary);
+}
+
+.empty p {
+    max-width: 60ch;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.emptyActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.primaryLink,
+.secondaryLink {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.7rem 1.1rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.primaryLink {
+    background: var(--primary);
+    color: var(--on-primary);
+}
+
+.secondaryLink {
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+.secondaryLink:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+@media (max-width: 560px) {
+    .grid,
+    .grid.compact {
+        grid-template-columns: 1fr;
+    }
+}

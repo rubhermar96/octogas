@@ -1,0 +1,24 @@
+{
+    "name": "OCTO — Gasolineras baratas",
+    "short_name": "OCTO",
+    "description": "Precio de hoy de tus gasolineras y las más baratas de España, con datos oficiales.",
+    "lang": "es",
+    "dir": "ltr",
+    "id": "/",
+    "start_url": "/mis-gasolineras/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#000000",
+    "theme_color": "#34d399",
+    "categories": ["travel", "utilities", "navigation"],
+    "icons": [
+        { "src": "/icons/octo-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+        { "src": "/icons/octo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+        { "src": "/icons/octo-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    ],
+    "shortcuts": [
+        { "name": "Mis gasolineras", "url": "/mis-gasolineras/", "icons": [{ "src": "/icons/octo-192.png", "sizes": "192x192" }] },
+        { "name": "Gasolineras cerca de mí", "url": "/explorador/?mode=location", "icons": [{ "src": "/icons/octo-192.png", "sizes": "192x192" }] },
+        { "name": "Comparador", "url": "/comparador/", "icons": [{ "src": "/icons/octo-192.png", "sizes": "192x192" }] }
+    ]
+}
