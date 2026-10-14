@@ -1,0 +1,43 @@
+/* Geist, la fuente del texto, con font-display: optional (Fontsource la trae con swap).
+   Con swap, si la fuente llega después de pintar, el texto cambia de fuente y se
+   mueve (PageSpeed lo cuenta como cambio de diseño, CLS). Con optional, si no ha
+   llegado casi al pintar, esa visita sigue con la de reserva (global.css, ajustada a
+   sus medidas) y la siguiente ya la tiene en caché. Los titulares (Unbounded) siguen
+   con swap: son la imagen de la marca.
+   Ficheros: @fontsource/geist-sans (solo el subconjunto latino, que incluye €, ñ y
+   las tildes); si cambian de nombre al actualizar el paquete, el build falla. */
+@font-face {
+    font-family: 'Geist Sans';
+    font-style: normal;
+    font-display: optional;
+    font-weight: 400;
+    src: url('../../node_modules/@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Geist Sans';
+    font-style: normal;
+    font-display: optional;
+    font-weight: 500;
+    src: url('../../node_modules/@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Geist Sans';
+    font-style: normal;
+    font-display: optional;
+    font-weight: 600;
+    src: url('../../node_modules/@fontsource/geist-sans/files/geist-sans-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Geist Sans';
+    font-style: normal;
+    font-display: optional;
+    font-weight: 700;
+    src: url('../../node_modules/@fontsource/geist-sans/files/geist-sans-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Geist Sans';
+    font-style: normal;
+    font-display: optional;
+    font-weight: 800;
+    src: url('../../node_modules/@fontsource/geist-sans/files/geist-sans-latin-800-normal.woff2') format('woff2');
+}

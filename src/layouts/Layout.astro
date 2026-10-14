@@ -1,12 +1,10 @@
 ---
 // Fuentes self-hosted (sin llamadas a Google Fonts -> mejor rendimiento y privacidad).
 // Pesos: solo los que se usan en el CSS (el 300 no se usaba; el 800 sí, y antes
-// el navegador lo sintetizaba a partir del 700 con peor resultado).
-import "@fontsource/geist-sans/400.css";
-import "@fontsource/geist-sans/500.css";
-import "@fontsource/geist-sans/600.css";
-import "@fontsource/geist-sans/700.css";
-import "@fontsource/geist-sans/800.css";
+// el navegador lo sintetizaba a partir del 700 con peor resultado). Geist se declara
+// en fonts.css (font-display: optional, para que el texto no cambie de fuente a
+// mitad de carga); Unbounded, la de los titulares, con el CSS de Fontsource (swap).
+import "../styles/fonts.css";
 import "@fontsource/unbounded/700.css";
 import "../styles/global.css";
 import styles from "../styles/Layout.module.css";

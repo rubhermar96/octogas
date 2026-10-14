@@ -168,6 +168,8 @@
 .logoImage {
     width: 100%;
     height: auto;
+    /* Reserva su hueco antes de que llegue la imagen (600×223). */
+    aspect-ratio: 600 / 223;
     filter: drop-shadow(0 0 20px rgba(54, 211, 153, 0.3));
 }
 
