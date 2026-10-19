@@ -10,7 +10,7 @@ import "../styles/global.css";
 import styles from "../styles/Layout.module.css";
 import iconFontUrl from "../assets/fonts/material-symbols-outlined.woff2?url";
 
-import { SITE, GOOGLE_SITE_VERIFICATION, ADSENSE_ID } from "../consts";
+import { SITE, GOOGLE_SITE_VERIFICATION, ADSENSE_ID, GA4_ID } from "../consts";
 import ConsentBanner from "../components/ConsentBanner.astro";
 
 interface Props {
@@ -267,9 +267,9 @@ const orgJsonLd = {
             </main>
         </div>
 
-        {/* Sin publicidad activa no hay cookies de terceros: no procede pedir
-            consentimiento. El banner vuelve solo al configurar PUBLIC_ADSENSE_ID. */}
-        {ADSENSE_ID && <ConsentBanner />}
+        {/* Aviso de cookies solo si hay cookies de terceros que lo requieran: Google
+            Analytics (GA4_ID) o publicidad (PUBLIC_ADSENSE_ID). Sin ninguno, no hay aviso. */}
+        {(ADSENSE_ID || GA4_ID) && <ConsentBanner />}
 
         <script is:inline>
             // Animaciones de entrada (global.css): lo que ya está en pantalla entra solo

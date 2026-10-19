@@ -1,25 +1,78 @@
 ---
-import { ADSENSE_ID } from "../consts";
+/**
+ * Aviso de cookies: solo existe si hay algo que lo requiera (Google Analytics con
+ * GA4_ID, o publicidad con ADSENSE_ID). Ni Analytics ni la publicidad se cargan hasta
+ * que el usuario acepta; rechazar es igual de fácil, y la decisión se puede cambiar
+ * desde "Preferencias de cookies" (pie de página), que vuelve a abrir este aviso.
+ */
+import { ADSENSE_ID, GA4_ID } from "../consts";
+
+const purposes = [GA4_ID && "saber cómo se usa la web (Google Analytics)", ADSENSE_ID && "mostrar publicidad"].filter(Boolean);
 ---
 
-<div id="cookie-consent" class="consent" hidden>
+<div id="cookie-consent" class="consent" role="dialog" aria-label="Aviso de cookies" hidden>
     <div class="consent-text">
         <strong>Usamos cookies</strong>
         <p>
-            Utilizamos cookies técnicas propias y, con tu permiso, cookies de terceros para mostrar
-            publicidad. Puedes aceptarlas o rechazarlas. <a href="/cookies/">Más información</a>.
+            Utilizamos cookies técnicas propias y, con tu permiso, cookies de Google para
+            {purposes.join(" y para ")}. Puedes aceptarlas o rechazarlas.
+            <a href="/cookies/">Más información</a>.
         </p>
     </div>
     <div class="consent-actions">
-        <button id="consent-reject" class="btn-reject">Rechazar</button>
-        <button id="consent-accept" class="btn-accept">Aceptar</button>
+        <button type="button" id="consent-reject" class="btn-reject">Rechazar</button>
+        <button type="button" id="consent-accept" class="btn-accept">Aceptar</button>
     </div>
 </div>
 
-<script define:vars={{ adsenseId: ADSENSE_ID }}>
+<script define:vars={{ adsenseId: ADSENSE_ID, ga4Id: GA4_ID }}>
     (function () {
         const KEY = "octo-consent";
         const banner = document.getElementById("cookie-consent");
+
+        // Google Analytics 4, solo con consentimiento. Envía la visita de cada página al
+        // cargarla; lib/track.ts añade algunas acciones (guardar, comparar, avisos...).
+        function loadAnalytics() {
+            if (!ga4Id || window.__octoGaLoaded) return;
+            window.__octoGaLoaded = true;
+            window["ga-disable-" + ga4Id] = false;
+            window.dataLayer = window.dataLayer || [];
+            window.gtag = function () {
+                window.dataLayer.push(arguments);
+            };
+            window.gtag("consent", "default", {
+                analytics_storage: "granted",
+                ad_storage: "denied",
+                ad_user_data: "denied",
+                ad_personalization: "denied",
+            });
+            window.gtag("js", new Date());
+            window.gtag("config", ga4Id);
+            const s = document.createElement("script");
+            s.async = true;
+            s.src = "https://www.googletagmanager.com/gtag/js?id=" + ga4Id;
+            document.head.appendChild(s);
+        }
+
+        // Al retirar el consentimiento: deja de medir y borra sus cookies (_ga, _ga_...).
+        function stopAnalytics() {
+            if (!ga4Id) return;
+            window["ga-disable-" + ga4Id] = true;
+            const host = location.hostname.replace(/^www\./, "");
+            document.cookie
+                .split(";")
+                .map(function (c) {
+                    return c.trim().split("=")[0];
+                })
+                .filter(function (name) {
+                    return /^_ga/.test(name);
+                })
+                .forEach(function (name) {
+                    ["", "; domain=" + host, "; domain=." + host].forEach(function (domain) {
+                        document.cookie = name + "=; Max-Age=0; path=/" + domain;
+                    });
+                });
+        }
 
         function loadAds() {
             if (!adsenseId || window.__octoAdsLoaded) return;
@@ -41,21 +94,45 @@ import { ADSENSE_ID } from "../consts";
             document.head.appendChild(s);
         }
 
-        const choice = localStorage.getItem(KEY);
+        function read() {
+            try {
+                return localStorage.getItem(KEY);
+            } catch (e) {
+                return null;
+            }
+        }
+        function save(value) {
+            try {
+                localStorage.setItem(KEY, value);
+            } catch (e) {}
+        }
+
+        const choice = read();
         if (choice === "granted") {
+            loadAnalytics();
             loadAds();
         } else if (choice !== "denied" && banner) {
             banner.hidden = false;
         }
 
         document.getElementById("consent-accept")?.addEventListener("click", function () {
-            localStorage.setItem(KEY, "granted");
+            save("granted");
             if (banner) banner.hidden = true;
+            loadAnalytics();
             loadAds();
         });
         document.getElementById("consent-reject")?.addEventListener("click", function () {
-            localStorage.setItem(KEY, "denied");
+            save("denied");
             if (banner) banner.hidden = true;
+            stopAnalytics();
+        });
+        // "Preferencias de cookies" (pie de página): vuelve a mostrar el aviso.
+        document.addEventListener("click", function (e) {
+            const opener = e.target && e.target.closest && e.target.closest("[data-consent-open]");
+            if (!opener || !banner) return;
+            e.preventDefault();
+            banner.hidden = false;
+            document.getElementById("consent-accept")?.focus();
         });
     })();
 </script>
@@ -116,11 +193,10 @@ import { ADSENSE_ID } from "../consts";
     }
     .btn-reject {
         background: transparent;
-        color: var(--text-muted);
+        color: var(--text);
     }
     .btn-reject:hover {
-        color: var(--text);
-        border-color: var(--text-muted);
+        border-color: var(--text);
     }
     .btn-accept {
         background-color: var(--primary);

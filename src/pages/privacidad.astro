@@ -1,11 +1,12 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Footer from "../components/Footer.astro";
-import { ADSENSE_ID, OWNER } from "../consts";
+import { ADSENSE_ID, GA4_ID, OWNER } from "../consts";
 
 // Mientras no haya publicidad activa (PUBLIC_ADSENSE_ID vacío), los textos lo
 // dicen expresamente; al activarla y reconstruir, cambian al estado "con ads".
 const adsActive = Boolean(ADSENSE_ID);
+const analyticsActive = Boolean(GA4_ID);
 ---
 
 <Layout
@@ -17,7 +18,7 @@ const adsActive = Boolean(ADSENSE_ID);
     <div class="legal" data-reveal-children>
         <a href="/" class="back">← Volver al inicio</a>
         <h1>Política de privacidad</h1>
-        <p class="updated">Última actualización: 1 de octubre de 2026</p>
+        <p class="updated">Última actualización: 19 de octubre de 2026</p>
 
         <p>
             En OCTO nos tomamos en serio tu privacidad. Esta política explica qué datos tratamos,
@@ -64,8 +65,9 @@ const adsActive = Boolean(ADSENSE_ID);
             </li>
             <li>
                 <strong>Preferencias en tu dispositivo:</strong> el tema (claro/oscuro), el ancho
-                del panel, las gasolineras que añades al comparador y tu decisión sobre cookies se
-                guardan en el <em>almacenamiento local</em> de tu navegador, no en servidor. Base
+                del panel, las gasolineras que añades al comparador o guardas en «Mis gasolineras»,
+                tu combustible y tu decisión sobre cookies se guardan en el <em>almacenamiento
+                local</em> de tu navegador, no en servidor. Base
                 jurídica: interés legítimo en recordar tus preferencias y correcto funcionamiento
                 del servicio (cookies técnicas).
             </li>
@@ -85,6 +87,27 @@ const adsActive = Boolean(ADSENSE_ID);
                 identificativos</strong>. Base jurídica: ejecución de la función que solicitas
                 (interés legítimo).
             </li>
+            <li>
+                <strong>Avisos de precio (opcional):</strong> si los activas en «Mis gasolineras»,
+                tu navegador crea una suscripción de notificaciones (una dirección de su servicio
+                de notificaciones y unas claves para cifrar los mensajes) y la guardamos en
+                nuestro servidor junto con el combustible, el precio que eliges y los números de
+                las gasolineras que tienes guardadas, solo para enviarte los avisos. No incluye
+                datos identificativos. Base jurídica: tu consentimiento (permiso de notificaciones
+                del navegador), que puedes retirar en cualquier momento con «Desactivar» o
+                bloqueando las notificaciones.
+            </li>
+            {analyticsActive && (
+                <li>
+                    <strong>Estadísticas de uso (opcional):</strong> si aceptas las cookies de
+                    analítica, usamos Google Analytics 4 para saber cómo se usa el Sitio: páginas
+                    visitadas, cómo llegaste (por ejemplo, desde un buscador), tipo de dispositivo y
+                    navegador, ubicación aproximada (ciudad o país) y algunas acciones, como guardar o
+                    comparar gasolineras. Google Analytics 4 no registra ni almacena direcciones IP. Base
+                    jurídica: tu consentimiento, que puedes retirar en «Preferencias de cookies», al pie
+                    de cualquier página. Detalle en la <a href="/cookies/">Política de cookies</a>.
+                </li>
+            )}
             {adsActive && (
                 <li>
                     <strong>Publicidad y medición de terceros:</strong> previo tu consentimiento,
@@ -118,9 +141,20 @@ const adsActive = Boolean(ADSENSE_ID);
                 OSRM — reciben las coordenadas de tu trayecto.
             </li>
             <li>
+                <strong>Notificaciones (solo si activas los avisos de precio):</strong> el servicio
+                de notificaciones de tu navegador (Google, Mozilla, Apple o Microsoft) entrega los
+                avisos; el contenido va cifrado y solo tu navegador puede leerlo.
+            </li>
+            <li>
                 <strong>Navegación externa:</strong> enlaces a Google Maps, Apple Maps y Waze, que
                 se abren solo cuando tú los pulsas.
             </li>
+            {analyticsActive && (
+                <li>
+                    <strong>Estadísticas:</strong> Google Analytics 4 (Google Ireland Ltd. / Google
+                    LLC), previo consentimiento.
+                </li>
+            )}
             {adsActive && (
                 <li>
                     <strong>Publicidad:</strong> Google AdSense (Google Ireland Ltd. / Google LLC),
@@ -140,7 +174,10 @@ const adsActive = Boolean(ADSENSE_ID);
             Las preferencias guardadas en tu navegador permanecen hasta que las borras (por ejemplo,
             limpiando los datos del sitio). Los registros técnicos del servidor se borran a los
             14 días. Los enlaces cortos de rutas se conservan mientras el
-            enlace siga siendo útil. Los datos tratados por terceros se rigen por sus propios
+            enlace siga siendo útil. Los avisos de precio se conservan mientras estén activos: se
+            borran al desactivarlos o cuando tu navegador da de baja la suscripción.{analyticsActive
+                ? " Los datos de Google Analytics se conservan como máximo 14 meses."
+                : ""} Los datos tratados por terceros se rigen por sus propios
             plazos. Si nos escribes por correo, conservaremos tu mensaje el tiempo necesario para
             atender tu solicitud.
         </p>

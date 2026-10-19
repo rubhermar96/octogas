@@ -6,6 +6,7 @@
  * con el evento storage. Aquí vive también "mi combustible", el que se destaca.
  */
 import type { FuelType } from '../types/gasolinera';
+import { track } from './track';
 
 const KEY = 'octo-favorites';
 const EVENT = 'octo-favorites-change';
@@ -32,6 +33,11 @@ function save(ids: string[]): void {
         // Sin almacenamiento (modo privado estricto): la lista vive solo en esta página.
     }
     window.dispatchEvent(new CustomEvent(EVENT, { detail: ids }));
+    // Con un aviso de precio activo, la API pasa a vigilar la lista nueva (alerts.ts, que
+    // solo se descarga si hay aviso).
+    try {
+        if (localStorage.getItem('octo-alert')) void import('./alerts').then((m) => m.syncAlertStations(ids));
+    } catch {}
 }
 
 /** Guarda o quita una gasolinera. Devuelve si quedó guardada y si la lista estaba llena. */
@@ -41,11 +47,13 @@ export function toggleFavorite(id: string): { added: boolean; full: boolean } {
     if (idx >= 0) {
         ids.splice(idx, 1);
         save(ids);
+        track('quitar_gasolinera', { station_id: id });
         return { added: false, full: false };
     }
     if (ids.length >= MAX_FAVORITES) return { added: false, full: true };
     ids.push(id);
     save(ids);
+    track('guardar_gasolinera', { station_id: id });
     return { added: true, full: false };
 }
 

@@ -10,6 +10,7 @@ import {
     bigserial,
     primaryKey,
     index,
+    jsonb,
 } from "drizzle-orm/pg-core";
 
 /** Combustibles (mismas claves que el JSON de la web / MITECO). */
@@ -102,6 +103,27 @@ export const shortLinks = pgTable("short_links", {
     code: text("code").primaryKey(),
     url: text("url").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Avisos de precio (notificaciones push de "Mis gasolineras"): uno por navegador
+ * (su suscripción push), con el combustible, el precio máximo y las gasolineras
+ * guardadas. Sin cuentas: el navegador se identifica por su endpoint de push.
+ */
+export const pushAlerts = pgTable("push_alerts", {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    fuel: fuelEnum("fuel").notNull(),
+    maxPrice: real("max_price").notNull(),
+    stationIds: text("station_ids").array().notNull(),
+    /** Último precio avisado por gasolinera ({ "11330": 1.629 }): no se repite el aviso
+     *  hasta que baja otro céntimo o vuelve a pasar por encima del máximo. */
+    notified: jsonb("notified").$type<Record<string, number>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
 });
 
 export type FuelKey = (typeof fuelEnum.enumValues)[number];

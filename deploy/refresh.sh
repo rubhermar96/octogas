@@ -59,6 +59,11 @@ main() {
     # publicada.
     node --env-file-if-exists=.env scripts/indexnow.mjs --dist "$rel" --prev "$prev" \
         --state data-archive/indexnow-state.json || log "AVISO: IndexNow falló (la web está publicada igualmente)"
+
+    # Avisos de precio de "Mis gasolineras" (api/src/alerts/send.ts): después de publicar,
+    # porque la notificación abre la web con los precios nuevos. Si falla, solo queda en
+    # el registro.
+    npm --prefix api run --silent alerts || log "AVISO: el envío de avisos de precio falló"
     # Se conservan las 3 últimas publicaciones para poder volver atrás. Se ordena por
     # nombre (es la fecha): la fecha de modificación no sirve, cp -a conserva la de dist/.
     ls -1d "$WEB_ROOT"/releases/*/ | sort -r | tail -n +4 | xargs -r rm -rf

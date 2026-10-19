@@ -49,6 +49,8 @@ CONF
     echo "==> Dependencias"
     as_app bash -c "cd '$APP_DIR' && npm ci --no-audit --no-fund"
     as_app bash -c "cd '$APP_DIR/api' && npm ci --no-audit --no-fund"
+    # Claves de los avisos de precio (notificaciones push), en api/.env y sin mostrarlas.
+    as_app bash -c "cd '$APP_DIR/api' && npm run --silent vapid-keys"
 
     echo "==> Histórico real (paquete de data-archive)"
     # Lo genera `npm run pack-archive` en tu PC y se sube con scp junto a su SHA-256.

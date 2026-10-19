@@ -1,4 +1,6 @@
 ---
+import { ADSENSE_ID, GA4_ID } from "../consts";
+
 const year = new Date().getFullYear();
 ---
 
@@ -28,6 +30,8 @@ const year = new Date().getFullYear();
             <h2>Legal</h2>
             <a href="/privacidad/">Privacidad</a>
             <a href="/cookies/">Cookies</a>
+            {/* Vuelve a abrir el aviso de cookies (ConsentBanner) para cambiar la decisión. */}
+            {(ADSENSE_ID || GA4_ID) && <button type="button" class="footerLinkBtn" data-consent-open>Preferencias de cookies</button>}
             <a href="/aviso-legal/">Aviso legal</a>
             <a href="/contacto/">Contacto</a>
         </nav>
@@ -97,8 +101,21 @@ const year = new Date().getFullYear();
         width: fit-content;
     }
 
-    .footerCol a:hover {
+    .footerCol a:hover,
+    .footerLinkBtn:hover {
         color: var(--primary);
+    }
+
+    .footerLinkBtn {
+        padding: 0;
+        border: none;
+        background: none;
+        color: var(--text-muted);
+        font: inherit;
+        font-size: 0.9rem;
+        text-align: left;
+        cursor: pointer;
+        width: fit-content;
     }
 
     .footerBottom {

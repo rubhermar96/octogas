@@ -13,6 +13,8 @@
     "ingest": "tsx src/ingest/index.ts",
     "replay": "tsx src/ingest/replay.ts",
     "seed": "tsx src/seed-history.ts",
+    "alerts": "tsx src/alerts/send.ts",
+    "vapid-keys": "tsx src/alerts/vapid-keys.ts",
     "typecheck": "tsc --noEmit",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
@@ -25,11 +27,13 @@
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.2.1",
     "pg": "^8.13.1",
-    "tsx": "^4.23.15"
+    "tsx": "^4.23.15",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
     "@types/pg": "^8.11.10",
+    "@types/web-push": "^3.6.4",
     "drizzle-kit": "^0.31.10",
     "typescript": "^5.7.2"
   },

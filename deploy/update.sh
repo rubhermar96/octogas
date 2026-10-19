@@ -27,12 +27,14 @@ main() {
     as_app bash -c "cd '$APP_DIR/api' && npm ci --no-audit --no-fund"
 
     if ! as_app git -C "$APP_DIR" diff --quiet "$before" "$after" -- api/src/db/schema.ts; then
-        echo
-        echo "AVISO: ha cambiado el esquema de la base de datos (api/src/db/schema.ts)."
-        echo "Revisa y aplica el cambio ANTES de seguir usando la web:"
-        echo "    sudo -u $APP_USER bash -c 'cd $APP_DIR/api && npx drizzle-kit push'"
-        echo
+        # drizzle-kit enseña el SQL y, si algo pudiera borrar datos, pide confirmación aquí.
+        echo "==> Base de datos: cambios del esquema (api/src/db/schema.ts)"
+        as_app bash -c "cd '$APP_DIR/api' && npx drizzle-kit push"
     fi
+
+    # Claves de los avisos de precio (notificaciones push): se crean la primera vez en
+    # api/.env y no se muestran. Antes de reiniciar la API, que las lee al arrancar.
+    as_app bash -c "cd '$APP_DIR/api' && npm run --silent vapid-keys"
 
     echo "==> Servicios y Nginx"
     install_units

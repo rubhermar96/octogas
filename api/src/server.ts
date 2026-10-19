@@ -4,10 +4,12 @@ import cors from "@fastify/cors";
 import { stationRoutes } from "./routes/stations";
 import { shortLinkRoutes } from "./routes/shortLinks";
 import { redirectRoutes } from "./routes/redirect";
+import { alertRoutes } from "./routes/alerts";
 
 // Registros sin IP: la política de privacidad solo contempla las de Nginx (anonimizadas).
 // trustProxy: en producción la API va detrás de Nginx (cabeceras X-Forwarded-*).
-// bodyLimit: la única petición con cuerpo es /api/shorten (una URL de hasta 4000 caracteres).
+// bodyLimit: las peticiones con cuerpo son /api/shorten (una URL de hasta 4000 caracteres) y
+// /api/alerts (una suscripción push y hasta 12 gasolineras).
 const app = Fastify({
     logger: { serializers: { req: (req) => ({ method: req.method, url: req.url }) } },
     trustProxy: true,
@@ -26,6 +28,7 @@ app.get("/health", async () => ({ ok: true, service: "octogas-api" }));
 
 await app.register(stationRoutes, { prefix: "/api" });
 await app.register(shortLinkRoutes, { prefix: "/api" });
+await app.register(alertRoutes, { prefix: "/api" });
 await app.register(redirectRoutes);
 
 // HOST: por defecto solo local; en el VPS Nginx es quien la expone hacia fuera.

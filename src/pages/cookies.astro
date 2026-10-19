@@ -1,12 +1,15 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Footer from "../components/Footer.astro";
-import { ADSENSE_ID } from "../consts";
+import { ADSENSE_ID, GA4_ID } from "../consts";
 
-// Los textos reflejan el estado REAL del sitio: mientras no haya publicidad
-// activa (PUBLIC_ADSENSE_ID vacío) no hay cookies de terceros ni banner de
-// consentimiento. Al activarla y reconstruir, esta página cambia sola.
+// Los textos reflejan el estado REAL del sitio: sin Google Analytics (GA4_ID) ni
+// publicidad (PUBLIC_ADSENSE_ID) no hay cookies de terceros ni aviso de
+// consentimiento. Al activarlos y reconstruir, esta página cambia sola.
 const adsActive = Boolean(ADSENSE_ID);
+const analyticsActive = Boolean(GA4_ID);
+const consentActive = adsActive || analyticsActive;
+const thirdParty = [analyticsActive && "analítica", adsActive && "publicidad"].filter(Boolean).join(" y ");
 ---
 
 <Layout
@@ -18,7 +21,7 @@ const adsActive = Boolean(ADSENSE_ID);
     <div class="legal" data-reveal-children>
         <a href="/" class="back">← Volver al inicio</a>
         <h1>Política de cookies</h1>
-        <p class="updated">Última actualización: 6 de octubre de 2026</p>
+        <p class="updated">Última actualización: 19 de octubre de 2026</p>
 
         <p>
             Esta política explica qué cookies y tecnologías de almacenamiento similares utiliza
@@ -36,14 +39,15 @@ const adsActive = Boolean(ADSENSE_ID);
 
         <h2>2. Tu consentimiento</h2>
         {
-            adsActive ? (
+            consentActive ? (
                 <p>
                     Al entrar por primera vez verás un aviso de cookies. Puedes <strong>aceptar</strong> o
                     <strong>rechazar</strong> las cookies no esenciales con la misma facilidad, y navegar
                     sin aceptarlas. <strong>Mientras no des tu consentimiento, no se cargan las cookies de
-                    publicidad de terceros.</strong> Las cookies técnicas necesarias no requieren
-                    consentimiento porque son imprescindibles para que el Sitio funcione y recuerde tus
-                    preferencias.
+                    {thirdParty} de terceros.</strong> Puedes cambiar tu decisión cuando quieras desde
+                    «Preferencias de cookies», al pie de cualquier página. Las cookies técnicas necesarias
+                    no requieren consentimiento porque son imprescindibles para que el Sitio funcione y
+                    recuerde tus preferencias.
                 </p>
             ) : (
                 <p>
@@ -57,7 +61,7 @@ const adsActive = Boolean(ADSENSE_ID);
 
         <h2>3. Cookies y almacenamiento que usamos</h2>
 
-        {adsActive && <h3>a) Técnicas o necesarias (no requieren consentimiento)</h3>}
+        {consentActive && <h3>a) Técnicas o necesarias (no requieren consentimiento)</h3>}
         <p>
             Se guardan en el almacenamiento local de tu navegador, <strong>no se envían a nuestros
             servidores</strong> y sirven para el funcionamiento y tus preferencias:
@@ -73,9 +77,9 @@ const adsActive = Boolean(ADSENSE_ID);
                     </tr>
                 </thead>
                 <tbody>
-                    {/* Solo existe con publicidad: guarda la respuesta al aviso de cookies. */}
+                    {/* Solo existe con aviso de cookies: guarda la respuesta. */}
                     {
-                        adsActive && (
+                        consentActive && (
                             <tr>
                                 <td>octo-consent</td>
                                 <td>OCTO</td>
@@ -102,13 +106,64 @@ const adsActive = Boolean(ADSENSE_ID);
                         <td>Recordar las gasolineras añadidas al comparador</td>
                         <td>Persistente</td>
                     </tr>
+                    <tr>
+                        <td>octo-favorites, octo-fuel</td>
+                        <td>OCTO</td>
+                        <td>Recordar las gasolineras de «Mis gasolineras» y tu combustible</td>
+                        <td>Persistente</td>
+                    </tr>
+                    <tr>
+                        <td>octo-alert</td>
+                        <td>OCTO</td>
+                        <td>Recordar el aviso de precio que has activado (combustible y precio)</td>
+                        <td>Hasta que lo desactives</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
 
+        {analyticsActive && (
+            <>
+                <h3>b) De terceros: analítica (requieren consentimiento)</h3>
+                <p>
+                    Si aceptas, cargamos <strong>Google Analytics 4</strong> para saber cómo se usa
+                    OCTO (qué páginas se visitan, cómo se llega a ellas, desde qué tipo de dispositivo y
+                    algunas acciones, como guardar o comparar gasolineras) y así mejorarlo. Estas
+                    cookies <strong>solo se instalan tras tu aceptación</strong> y se borran si retiras
+                    el consentimiento.
+                </p>
+                <div class="tableWrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Responsable</th>
+                                <th>Finalidad</th>
+                                <th>Duración</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>_ga</td>
+                                <td>Google Analytics (Google Ireland Ltd. / Google LLC)</td>
+                                <td>Distinguir visitantes para las estadísticas</td>
+                                <td>2 años</td>
+                            </tr>
+                            <tr>
+                                <td>_ga_&lt;ID&gt;</td>
+                                <td>Google Analytics (Google Ireland Ltd. / Google LLC)</td>
+                                <td>Mantener el estado de la visita</td>
+                                <td>2 años</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </>
+        )}
+
         {adsActive && (
             <>
-                <h3>b) De terceros: publicidad (requieren consentimiento)</h3>
+                <h3>{analyticsActive ? "c)" : "b)"} De terceros: publicidad (requieren consentimiento)</h3>
                 <p>
                     Si aceptas, cargamos <strong>Google AdSense</strong> para mostrar publicidad que
                     sostiene el proyecto. Google puede instalar cookies y usar identificadores para
@@ -139,17 +194,28 @@ const adsActive = Boolean(ADSENSE_ID);
                 </div>
             </>
         )}
-        <p>
-            {adsActive
-                ? "OCTO no utiliza actualmente cookies de analítica propias. Si en el futuro incorporamos herramientas de medición, actualizaremos esta política y el aviso de consentimiento."
-                : "OCTO no utiliza cookies de terceros ni de analítica: únicamente el almacenamiento técnico anterior. Si esto cambiara en el futuro, actualizaríamos esta política."}
-        </p>
+        {
+            !analyticsActive && (
+                <p>
+                    {adsActive
+                        ? "OCTO no utiliza actualmente cookies de analítica. Si en el futuro incorporamos herramientas de medición, actualizaremos esta política y el aviso de consentimiento."
+                        : "OCTO no utiliza cookies de terceros ni de analítica: únicamente el almacenamiento técnico anterior. Si esto cambiara en el futuro, actualizaríamos esta política."}
+                </p>
+            )
+        }
 
-        <h2>4. Cómo gestionar {adsActive ? "o retirar tu consentimiento" : "el almacenamiento"}</h2>
+        <h2>4. Cómo gestionar {consentActive ? "o retirar tu consentimiento" : "el almacenamiento"}</h2>
         <ul>
+            {consentActive && (
+                <li>
+                    <strong>En OCTO:</strong> pulsa «Preferencias de cookies», al pie de cualquier
+                    página, para aceptar o rechazar de nuevo. Si las rechazas, dejamos de cargar las
+                    cookies de terceros y borramos las de Google Analytics.
+                </li>
+            )}
             <li>
-                <strong>En OCTO:</strong> puedes borrar los datos del sitio en tu navegador para
-                eliminar el almacenamiento local.{adsActive
+                <strong>Almacenamiento local:</strong> puedes borrar los datos del sitio en tu
+                navegador para eliminarlo.{consentActive
                     ? " Al volver a entrar, se mostrará de nuevo el aviso de cookies."
                     : ""}
             </li>
@@ -158,6 +224,13 @@ const adsActive = Boolean(ADSENSE_ID);
                 local desde la configuración de Chrome, Firefox, Safari, Edge, etc. Ten en cuenta que
                 desactivar las cookies técnicas puede afectar al funcionamiento del Sitio.
             </li>
+            {analyticsActive && (
+                <li>
+                    <strong>Google Analytics:</strong> también puedes impedir la medición en todas las
+                    webs con el
+                    <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer">complemento de inhabilitación de Google Analytics</a>.
+                </li>
+            )}
             {adsActive && (
                 <li>
                     <strong>Publicidad de Google:</strong> puedes gestionar la personalización de

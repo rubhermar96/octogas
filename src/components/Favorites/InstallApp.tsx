@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import styles from './InstallApp.module.css';
+import { track } from '../../lib/track';
 
 /** Evento "beforeinstallprompt" de Chrome/Edge (no está en los tipos de TypeScript). */
 interface InstallPromptEvent extends Event {
@@ -32,7 +33,10 @@ const InstallApp: React.FC = () => {
         setMode(window.__octoInstall ? 'prompt' : ios ? 'ios' : /Android/.test(ua) ? 'android' : 'none');
 
         const onInstallable = () => setMode('prompt');
-        const onInstalled = () => setMode('installed');
+        const onInstalled = () => {
+            setMode('installed');
+            track('instalar_app');
+        };
         window.addEventListener('octo-installable', onInstallable);
         window.addEventListener('appinstalled', onInstalled);
         return () => {

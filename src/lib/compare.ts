@@ -5,6 +5,8 @@
  * entre islas (explorador, botón de comparar, página /comparador) mediante un
  * CustomEvent. También responde a cambios desde otras pestañas (evento storage).
  */
+import { track } from './track';
+
 const KEY = 'octo-compare';
 const EVENT = 'octo-compare-change';
 
@@ -48,6 +50,7 @@ export function toggleCompare(id: string): { added: boolean; full: boolean } {
     }
     ids.push(id);
     save(ids);
+    track('comparar_gasolinera', { station_id: id });
     return { added: true, full: false };
 }
 
@@ -57,6 +60,7 @@ export function addToCompare(id: string): { added: boolean; full: boolean } {
     if (ids.length >= MAX_COMPARE) return { added: false, full: true };
     ids.push(id);
     save(ids);
+    track('comparar_gasolinera', { station_id: id });
     return { added: true, full: false };
 }
 

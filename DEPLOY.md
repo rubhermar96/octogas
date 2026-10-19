@@ -51,6 +51,7 @@ y no tienes que inventar ninguno salvo la contraseña de `sudo`.
 | Certificado HTTPS | certbot | `/etc/letsencrypt` (se renueva solo) | — |
 | Verificación de Search Console | Search Console | Registro DNS `TXT` | Pública (no es un secreto) |
 | Clave de IndexNow | `refresh.sh` (aleatoria, la primera vez) | `/srv/octogas/.env` (`INDEXNOW_KEY`) y publicada en `https://octogas.es/{clave}.txt` | Pública (el protocolo exige publicarla) |
+| Claves VAPID (avisos de precio) | `setup.sh` / `update.sh` (`npm run vapid-keys`, la primera vez) | `/srv/octogas/api/.env` (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`) | La pública, los navegadores; la privada, nadie. Si se cambian, los avisos activos dejan de llegar y hay que volver a activarlos |
 | Accesos a Netcup, al registrador y a GitHub | Tú | Tu gestor de contraseñas | Tú |
 
 - Activa la **verificación en dos pasos** en GitHub, Netcup y el registrador. Con el
@@ -249,6 +250,7 @@ El resultado de cada despliegue se ve en la pestaña **Actions** del repositorio
 | Publicar cambios de servidor o de BD  | `sudo bash /srv/octogas/deploy/update.sh`                  |
 | Copias de seguridad                   | `ls -lh /var/backups/octogas`                              |
 | Avisos a Bing (IndexNow)              | `journalctl -u octogas-refresh \| grep IndexNow`           |
+| Avisos de precio enviados             | `journalctl -u octogas-refresh \| grep avisos`             |
 
 ### Volver a la versión anterior de la web
 

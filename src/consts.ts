@@ -36,6 +36,13 @@ export const OWNER = {
 export const ADSENSE_ID: string = import.meta.env.PUBLIC_ADSENSE_ID ?? '';
 
 /**
+ * ID de medición de Google Analytics 4 (formato G-XXXXXXXXXX). No es secreto: va en el
+ * código de la página. Con él, el aviso de cookies pide consentimiento y GA4 solo se
+ * carga si el usuario acepta (ConsentBanner.astro). PUBLIC_GA4_ID lo sustituye si se define.
+ */
+export const GA4_ID: string = import.meta.env.PUBLIC_GA4_ID || 'G-G0PG2FZK2L';
+
+/**
  * Código de verificación de Google Search Console: solo el valor del atributo
  * `content` de la etiqueta <meta name="google-site-verification">. Se lee de
  * PUBLIC_GOOGLE_SITE_VERIFICATION. Mientras esté vacío, no se inserta la etiqueta.

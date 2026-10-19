@@ -27,6 +27,7 @@ import { stationUrl } from '../../lib/stationUrl';
 import { displayCity } from '../../lib/placeName';
 import { stationIcon, StationPopup, stationMarkerStyles } from '../Map/StationMarker';
 import styles from './RoutePlanner.module.css';
+import { track } from '../../lib/track';
 
 // Color del borde del marcador según el precio frente a la media del corredor
 // (mismos umbrales que el Explorador, para que el código de color coincida).
@@ -282,6 +283,7 @@ function buildShareText(r: ActiveRoute, octoUrl: string, gmapsUrl: string): stri
 }
 
 async function shareRoute(r: ActiveRoute) {
+    track('compartir_ruta');
     const fullOctoUrl = typeof window !== 'undefined' ? window.location.href : '';
     const [octoUrl, gmapsUrl] = await Promise.all([
         shortenUrl(fullOctoUrl),
@@ -515,6 +517,7 @@ const RoutePlanner: React.FC = () => {
             setError('Indica origen y destino.');
             return;
         }
+        track('calcular_ruta');
         setLoading(true);
         setResult(null);
         try {
