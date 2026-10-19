@@ -9,15 +9,20 @@ import styles from './PriceAlerts.module.css';
 const nf3 = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 const unit = (f: FuelType) => (f === 'gnc' || f === 'gnl' || f === 'hydrogen' ? '€/kg' : '€/L');
 const priceText = (f: FuelType, n: number) => `${nf3.format(n)} ${unit(f)}`;
-/** "1,65", "1.65" o "1,649" → número. */
-const parsePrice = (s: string) => Number(s.trim().replace(',', '.'));
+/** 0 domingo … 6 sábado (como la API); en el selector, de lunes a domingo. */
+const DAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+const digestText = (cfg: Pick<AlertConfig, 'digest' | 'digestDay'>) =>
+    cfg.digest === 'daily' ? 'cada día por la mañana' : `cada ${DAYS[cfg.digestDay ?? 1]} por la mañana`;
 
 type Support = 'checking' | 'ok' | 'ios' | 'none' | 'denied';
 
 /**
- * "Avísame cuando baje": notificación en el móvil u ordenador cuando alguna de las
- * gasolineras guardadas tenga el combustible elegido a ese precio o menos (se comprueba
- * con cada actualización de precios, dos veces al día).
+ * Avisos de "Mis gasolineras" en este dispositivo (notificaciones): bajadas de precio
+ * que merecen la pena (automático, según el historial de cada gasolinera) y un resumen
+ * diario o semanal de la más barata. Se comprueba con cada actualización de
+ * precios, dos veces al día (api/src/alerts/send.ts).
  */
 const PriceAlerts: React.FC = () => {
     const ids = useFavoriteIds();
@@ -25,7 +30,9 @@ const PriceAlerts: React.FC = () => {
     const [config, setConfig] = useState<AlertConfig | null>(null);
     const [editing, setEditing] = useState(false);
     const [fuel, setFuel] = useState<FuelType>('sp95');
-    const [price, setPrice] = useState('');
+    const [mode, setMode] = useState<AlertConfig['mode']>('auto');
+    const [digest, setDigest] = useState<AlertConfig['digest']>('none');
+    const [digestDay, setDigestDay] = useState(1);
     const [stations, setStations] = useState<FavoriteStation[]>([]);
     const [busy, setBusy] = useState(false);
     const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
@@ -53,35 +60,29 @@ const PriceAlerts: React.FC = () => {
         return prices.length ? Math.min(...prices) : undefined;
     }, [stations, fuel]);
 
-    // Precio propuesto para un aviso nuevo: un céntimo por debajo de la más barata de hoy,
-    // redondeado. Al cambiar uno activo se parte de lo que tenía.
-    useEffect(() => {
-        if (config) return;
-        if (cheapest != null) setPrice((Math.floor((cheapest - 0.01) * 100) / 100).toFixed(2).replace('.', ','));
-    }, [cheapest, config]);
-
     const startEditing = () => {
         if (!config) return;
         setFuel(config.fuel);
-        setPrice(config.maxPrice.toFixed(3).replace(/0$/, '').replace('.', ','));
+        setMode(config.mode);
+        setDigest(config.digest);
+        setDigestDay(config.digestDay ?? 1);
         setMessage(null);
         setEditing(true);
     };
 
     if (!ids.length || support === 'checking') return null;
 
-    const intro = (
-        <p className={styles.lead}>
-            Te avisamos en este dispositivo cuando alguna de tus gasolineras tenga tu combustible a ese precio o menos.
-            Comprobamos los precios dos veces al día.
-        </p>
+    const title = ({ icon, text }: { icon: string; text: string }) => (
+        <h2>
+            <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>
+            {text}
+        </h2>
     );
 
     if (support === 'ios')
         return (
             <section className={styles.box}>
-                <h2>Avisos de precio</h2>
-                {intro}
+                {title({ icon: 'notifications', text: 'Avisos de tus gasolineras' })}
                 <p className={styles.note}>
                     En iPhone, los avisos funcionan con OCTO en la pantalla de inicio: en Safari, pulsa <b>Compartir</b> y{' '}
                     <b>Añadir a pantalla de inicio</b>, ábrelo desde ese icono y actívalos aquí.
@@ -91,14 +92,14 @@ const PriceAlerts: React.FC = () => {
     if (support === 'none')
         return (
             <section className={styles.box}>
-                <h2>Avisos de precio</h2>
+                {title({ icon: 'notifications', text: 'Avisos de tus gasolineras' })}
                 <p className={styles.note}>Este navegador no permite notificaciones. Prueba con Chrome, Edge, Firefox o Safari.</p>
             </section>
         );
     if (support === 'denied')
         return (
             <section className={styles.box}>
-                <h2>Avisos de precio</h2>
+                {title({ icon: 'notifications_off', text: 'Avisos de tus gasolineras' })}
                 <p className={styles.note}>
                     Las notificaciones de OCTO están bloqueadas en este navegador. Para recibir avisos, permítelas en los
                     ajustes del sitio (el candado junto a la dirección) y vuelve a esta página.
@@ -124,35 +125,36 @@ const PriceAlerts: React.FC = () => {
 
     const save = () =>
         run(async () => {
-            const maxPrice = parsePrice(price);
-            if (!(maxPrice >= 0.3 && maxPrice <= 30)) throw new Error('Escribe un precio válido, por ejemplo 1,65.');
-            const cfg = { fuel, maxPrice };
-            const { below } = await saveAlert(cfg, ids);
+            if (mode === 'none' && digest === 'none') throw new Error('Elige al menos un aviso: de bajadas o el resumen.');
+            const cfg: AlertConfig = { fuel, mode, digest, ...(digest === 'weekly' ? { digestDay } : {}) };
+            await saveAlert(cfg, ids);
             setConfig(cfg);
             setEditing(false);
-            const names = below
-                .map((b) => stations.find((s) => s.id === b.stationId))
-                .filter((s): s is FavoriteStation => !!s)
-                .map((s) => s.name);
-            setMessage({
-                kind: 'ok',
-                text: below.length
-                    ? `Aviso activado. Ahora mismo ya ${below.length === 1 ? 'está' : 'están'} por debajo: ${names.join(', ')}. Te avisaremos cuando ${below.length === 1 ? 'baje' : 'bajen'} más o de cualquier otra.`
-                    : 'Aviso activado. Te llegará una notificación cuando alguna baje a ese precio.',
-            });
+            const parts: string[] = [];
+            if (mode === 'auto') parts.push('Te avisaremos cuando una de tus gasolineras tenga una bajada que merezca la pena.');
+            if (digest !== 'none') parts.push(`El resumen te llegará ${digestText(cfg)}.`);
+            setMessage({ kind: 'ok', text: `Avisos activados. ${parts.join(' ')}` });
         });
 
     if (config && !editing)
         return (
             <section className={`${styles.box} ${styles.on}`}>
-                <h2>
-                    <span className="material-symbols-outlined" aria-hidden="true">notifications_active</span>
-                    Avisos de precio activados
-                </h2>
-                <p className={styles.lead}>
-                    Te avisaremos cuando {ids.length === 1 ? 'tu gasolinera guardada' : `alguna de tus ${ids.length} gasolineras`} tenga{' '}
-                    <b>{FUEL_LABELS[config.fuel]}</b> a <b>{priceText(config.fuel, config.maxPrice)}</b> o menos.
-                </p>
+                {title({ icon: 'notifications_active', text: 'Avisos activados' })}
+                <ul className={styles.summary}>
+                    <li>
+                        Combustible: <b>{FUEL_LABELS[config.fuel]}</b>
+                    </li>
+                    {config.mode === 'auto' && (
+                        <li>
+                            Bajadas: <b>automático</b>, cuando una esté a su precio más bajo del mes o muy por debajo de lo habitual
+                        </li>
+                    )}
+                    {config.digest !== 'none' && (
+                        <li>
+                            Resumen de la más barata: <b>{digestText(config)}</b>
+                        </li>
+                    )}
+                </ul>
                 <div className={styles.actions}>
                     <button type="button" className={styles.secondary} disabled={busy} onClick={startEditing}>
                         Cambiar
@@ -161,10 +163,12 @@ const PriceAlerts: React.FC = () => {
                         type="button"
                         className={styles.secondary}
                         disabled={busy}
-                        onClick={() => run(async () => {
-                            await testAlert();
-                            setMessage({ kind: 'ok', text: 'Enviada. Si no la ves en unos segundos, revisa los permisos de notificaciones.' });
-                        })}
+                        onClick={() =>
+                            run(async () => {
+                                await testAlert();
+                                setMessage({ kind: 'ok', text: 'Enviada. Si no la ves en unos segundos, revisa los permisos de notificaciones.' });
+                            })
+                        }
                     >
                         Enviar aviso de prueba
                     </button>
@@ -172,11 +176,13 @@ const PriceAlerts: React.FC = () => {
                         type="button"
                         className={styles.link}
                         disabled={busy}
-                        onClick={() => run(async () => {
-                            await deleteAlert();
-                            setConfig(null);
-                            setMessage({ kind: 'ok', text: 'Avisos desactivados.' });
-                        })}
+                        onClick={() =>
+                            run(async () => {
+                                await deleteAlert();
+                                setConfig(null);
+                                setMessage({ kind: 'ok', text: 'Avisos desactivados.' });
+                            })
+                        }
                     >
                         Desactivar
                     </button>
@@ -187,11 +193,10 @@ const PriceAlerts: React.FC = () => {
 
     return (
         <section className={styles.box}>
-            <h2>
-                <span className="material-symbols-outlined" aria-hidden="true">notifications</span>
-                Avísame cuando baje
-            </h2>
-            {intro}
+            {title({ icon: 'notifications', text: 'Avisos de tus gasolineras' })}
+            <p className={styles.lead}>
+                Te avisamos en este dispositivo. Comprobamos los precios de tus gasolineras dos veces al día.
+            </p>
             <form
                 className={styles.form}
                 onSubmit={(e) => {
@@ -199,7 +204,7 @@ const PriceAlerts: React.FC = () => {
                     save();
                 }}
             >
-                <label>
+                <label className={styles.field}>
                     <span>Combustible</span>
                     <select value={fuel} onChange={(e) => setFuel(e.target.value as FuelType)}>
                         {(fuels.length ? fuels : FUEL_ORDER).map((f) => (
@@ -209,28 +214,69 @@ const PriceAlerts: React.FC = () => {
                         ))}
                     </select>
                 </label>
-                <label>
-                    <span>A este precio o menos ({unit(fuel)})</span>
-                    <input
-                        type="text"
-                        inputMode="decimal"
-                        value={price}
-                        onChange={(e) => setPrice(e.target.value)}
-                        placeholder="1,65"
-                        aria-describedby="alert-hint"
-                    />
-                </label>
-                <button type="submit" className={styles.primary} disabled={busy}>
-                    {busy ? 'Activando…' : config ? 'Guardar cambios' : 'Activar avisos'}
-                </button>
-                {editing && (
-                    <button type="button" className={styles.link} onClick={() => setEditing(false)}>
-                        Cancelar
+
+                <fieldset className={styles.group}>
+                    <legend>Bajadas de precio</legend>
+                    <label className={styles.option}>
+                        <input type="checkbox" checked={mode === 'auto'} onChange={(e) => setMode(e.target.checked ? 'auto' : 'none')} />
+                        <span>
+                            <b>Avisarme cuando baje</b>
+                            <small>
+                                Cuando una de tus gasolineras esté a su precio más bajo del último mes o muy por debajo de
+                                lo habitual. Como mucho, un aviso cada tres días.
+                            </small>
+                        </span>
+                    </label>
+                </fieldset>
+
+                <fieldset className={styles.group}>
+                    <legend>Resumen de la más barata</legend>
+                    <label className={styles.option}>
+                        <input type="radio" name="digest" checked={digest === 'none'} onChange={() => setDigest('none')} />
+                        <span>
+                            <b>Sin resumen</b>
+                        </span>
+                    </label>
+                    <label className={styles.option}>
+                        <input type="radio" name="digest" checked={digest === 'daily'} onChange={() => setDigest('daily')} />
+                        <span>
+                            <b>Cada día, por la mañana</b>
+                        </span>
+                    </label>
+                    <label className={styles.option}>
+                        <input type="radio" name="digest" checked={digest === 'weekly'} onChange={() => setDigest('weekly')} />
+                        <span>
+                            <b>Cada semana</b>
+                            {digest === 'weekly' && (
+                                <span className={styles.inline}>
+                                    el
+                                    <select value={digestDay} onChange={(e) => setDigestDay(Number(e.target.value))} aria-label="Día del resumen">
+                                        {WEEK_ORDER.map((d) => (
+                                            <option key={d} value={d}>
+                                                {DAYS[d]}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    por la mañana
+                                </span>
+                            )}
+                        </span>
+                    </label>
+                </fieldset>
+
+                <div className={styles.actions}>
+                    <button type="submit" className={styles.primary} disabled={busy}>
+                        {busy ? 'Guardando…' : config ? 'Guardar cambios' : 'Activar avisos'}
                     </button>
-                )}
+                    {editing && (
+                        <button type="button" className={styles.link} onClick={() => setEditing(false)}>
+                            Cancelar
+                        </button>
+                    )}
+                </div>
             </form>
             {cheapest != null && (
-                <p className={styles.hint} id="alert-hint">
+                <p className={styles.hint}>
                     Hoy la más barata de tus gasolineras para {FUEL_LABELS[fuel]} está a {priceText(fuel, cheapest)}.
                 </p>
             )}

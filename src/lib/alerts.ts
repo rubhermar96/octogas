@@ -1,8 +1,8 @@
 /**
  * Avisos de precio de "Mis gasolineras" en el navegador: suscripción push (con el
  * service worker de /sw.js) y alta, cambio o baja en la API (api/src/routes/alerts.ts).
- * Lo elegido (combustible y precio máximo) se recuerda aquí para enseñarlo; la API
- * guarda además las gasolineras y avisa tras cada actualización de precios.
+ * Lo elegido (combustible, tipo de aviso de bajadas y resumen) se recuerda aquí para
+ * enseñarlo; la API guarda además las gasolineras y avisa tras cada actualización.
  */
 import type { FuelType } from '../types/gasolinera';
 import { track } from './track';
@@ -12,7 +12,11 @@ const KEY = 'octo-alert';
 
 export interface AlertConfig {
     fuel: FuelType;
-    maxPrice: number;
+    /** Bajadas de precio: automático (según el historial de cada gasolinera) o ninguno. */
+    mode: 'auto' | 'none';
+    /** Resumen de la más barata: ninguno, diario o semanal (el `digestDay`, 0 domingo … 6 sábado). */
+    digest: 'none' | 'daily' | 'weekly';
+    digestDay?: number;
 }
 
 export function pushSupported(): boolean {
@@ -22,7 +26,15 @@ export function pushSupported(): boolean {
 export function getAlertConfig(): AlertConfig | null {
     try {
         const raw = localStorage.getItem(KEY);
-        return raw ? (JSON.parse(raw) as AlertConfig) : null;
+        if (!raw) return null;
+        // Los de la primera versión (combustible y precio máximo) pasan a automático.
+        const cfg = JSON.parse(raw) as { fuel: FuelType; mode?: string; digest?: AlertConfig['digest']; digestDay?: number };
+        return {
+            fuel: cfg.fuel,
+            mode: cfg.mode === 'none' ? 'none' : 'auto',
+            digest: cfg.digest ?? 'none',
+            ...(cfg.digest === 'weekly' ? { digestDay: cfg.digestDay ?? 1 } : {}),
+        };
     } catch {
         return null;
     }
@@ -63,21 +75,15 @@ async function send(method: 'PUT' | 'DELETE' | 'POST', path: string, body: unkno
     return res.json();
 }
 
-export interface SavedAlert {
-    /** Gasolineras que ya están por debajo del precio elegido (no se avisa de ellas hasta que bajen más). */
-    below: { stationId: string; price: number }[];
-}
-
-/** Activa o cambia el aviso. Pide permiso de notificaciones (llamar desde un clic). */
-export async function saveAlert(cfg: AlertConfig, stationIds: string[]): Promise<SavedAlert> {
+/** Activa o cambia los avisos. Pide permiso de notificaciones (llamar desde un clic). */
+export async function saveAlert(cfg: AlertConfig, stationIds: string[]): Promise<void> {
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') throw new Error('permission');
     const sub = await getSubscription(true);
     if (!sub) throw new Error('No se pudo activar las notificaciones.');
-    const res = (await send('PUT', '/alerts', { subscription: sub.toJSON(), ...cfg, stationIds })) as SavedAlert;
+    await send('PUT', '/alerts', { subscription: sub.toJSON(), ...cfg, stationIds });
     setAlertConfig(cfg);
-    track('activar_aviso', { fuel: cfg.fuel, gasolineras: stationIds.length });
-    return res;
+    track('activar_aviso', { fuel: cfg.fuel, bajadas: cfg.mode, resumen: cfg.digest, gasolineras: stationIds.length });
 }
 
 /** Desactiva el aviso y la suscripción de este navegador. */

@@ -1,10 +1,10 @@
 /**
- * Avisos de precio de "Mis gasolineras": piezas comunes de la API (alta y baja de
- * avisos) y del envío (send.ts, tras cada ingesta).
+ * Avisos de "Mis gasolineras": piezas comunes de la API (alta y baja de avisos) y del
+ * envío (send.ts, tras cada ingesta).
  *
- * Cada aviso es de un navegador (su suscripción push): un combustible, un precio
- * máximo y las gasolineras guardadas. Se avisa cuando alguna está a ese precio o
- * menos; no se repite hasta que baja otro céntimo o vuelve a subir por encima.
+ * Cada aviso es de un navegador (su suscripción push): un combustible, las gasolineras
+ * guardadas y qué quiere recibir: bajadas de precio (automático, según el historial de
+ * cada gasolinera) y un resumen diario o semanal de la más barata.
  */
 import webpush from "web-push";
 import { normalizePlaceName } from "../lib/placeName";
@@ -55,39 +55,122 @@ export function configureWebPush(): boolean {
     return true;
 }
 
-// --- Cuándo avisar ---
+// --- Aviso automático: bajadas que merecen la pena según el historial ---
 
-export interface Evaluation {
-    /** Gasolineras de las que avisar ahora, de la más barata a la más cara. */
-    toNotify: { stationId: string; price: number }[];
-    /** Estado nuevo de lo avisado (se guarda aunque no haya aviso). */
-    notified: Record<string, number>;
+const DAY = 86_400_000;
+/** Días de historial con los que se compara. */
+const WINDOW_DAYS = 30;
+/** Días con precio conocido que hacen falta para juzgar (si no, no se avisa). */
+const MIN_SAMPLES = 20;
+/** "Muy por debajo de lo habitual": céntimos bajo la mediana del último mes. */
+const BELOW_TYPICAL = 0.0395;
+/** Entre dos avisos automáticos del mismo navegador. */
+export const AUTO_COOLDOWN_MS = 3 * DAY;
+
+/** Cambios de precio de una gasolinera en un combustible, del más antiguo al más reciente. */
+export type History = { t: number; price: number }[];
+
+/** Precio vigente en el instante `t` (el último cambio anterior), si se conoce. */
+export function priceAt(history: History, t: number): number | undefined {
+    let found: number | undefined;
+    for (const h of history) {
+        if (h.t > t) break;
+        found = h.price;
+    }
+    return found;
 }
 
 /**
- * Con los precios de hoy (`prices`, solo de este combustible): avisa de las que están
- * al precio máximo o menos y no se avisaron ya a ese precio (o uno céntimo más bajo).
- * Las que vuelven a estar por encima se olvidan, para avisar de nuevo si bajan.
+ * Lo más barato y el precio habitual (mediana de un precio por día) de los últimos 30
+ * días, sin contar hoy. Sin historial suficiente, undefined: mejor no avisar que
+ * comparar con dos días de datos.
  */
-export function evaluate(
-    alert: { maxPrice: number; stationIds: string[]; notified: Record<string, number> },
-    prices: Map<string, number>
-): Evaluation {
+export function monthStats(history: History, now: number): { min: number; typical: number } | undefined {
+    const start = now - WINDOW_DAYS * DAY;
+    const end = now - 12 * 3600_000; // excluye el precio recién publicado
+    const daily: number[] = [];
+    for (let d = 1; d <= WINDOW_DAYS; d++) {
+        const p = priceAt(history, now - d * DAY);
+        if (p != null) daily.push(p);
+    }
+    if (daily.length < MIN_SAMPLES) return undefined;
+    // El mínimo incluye los cambios que duraron menos de un día.
+    const inWindow = history.filter((h) => h.t > start && h.t <= end).map((h) => h.price);
+    const atStart = priceAt(history, start);
+    const min = Math.min(...daily, ...inWindow, ...(atStart != null ? [atStart] : []));
+    const sorted = [...daily].sort((a, b) => a - b);
+    const m = sorted.length >> 1;
+    const typical = sorted.length % 2 ? sorted[m] : (sorted[m - 1] + sorted[m]) / 2;
+    return { min, typical };
+}
+
+export interface AutoCandidate {
+    stationId: string;
+    price: number;
+    /** 'low': el precio más bajo en 30 días; 'below': muy por debajo de lo habitual. */
+    reason: "low" | "below";
+    typical: number;
+}
+
+/**
+ * Aviso automático: de las gasolineras guardadas, las que hoy están a su precio más bajo
+ * en 30 días (al menos 1 céntimo por debajo) o 4 céntimos o más por debajo de su precio
+ * habitual, y no se avisaron ya a ese precio. La mejor oportunidad (más por debajo de lo
+ * habitual) primero. Las que suben más de un céntimo sobre lo avisado se olvidan.
+ */
+export function evaluateAuto(
+    alert: { stationIds: string[]; notified: Record<string, number> },
+    prices: Map<string, number>,
+    histories: Map<string, History>,
+    now: number
+): { candidates: AutoCandidate[]; notified: Record<string, number> } {
     const notified: Record<string, number> = {};
-    const toNotify: Evaluation["toNotify"] = [];
+    const candidates: AutoCandidate[] = [];
     for (const id of alert.stationIds) {
         const price = prices.get(id);
-        if (price == null || price > alert.maxPrice + 0.0005) continue;
+        if (price == null) continue;
         const last = alert.notified[id];
-        if (last == null || price < last - STEP) {
-            toNotify.push({ stationId: id, price });
-            notified[id] = price;
-        } else {
-            notified[id] = last;
-        }
+        if (last != null && price <= last + STEP) notified[id] = last;
+        const stats = monthStats(histories.get(id) ?? [], now);
+        if (!stats) continue;
+        const low = price <= stats.min - STEP;
+        const below = price <= stats.typical - BELOW_TYPICAL;
+        if (!low && !below) continue;
+        if (notified[id] != null && price >= notified[id] - STEP) continue;
+        candidates.push({ stationId: id, price, reason: low ? "low" : "below", typical: stats.typical });
     }
-    toNotify.sort((a, b) => a.price - b.price);
-    return { toNotify, notified };
+    candidates.sort((a, b) => b.typical - b.price - (a.typical - a.price));
+    return { candidates, notified };
+}
+
+// --- Resumen diario o semanal ---
+
+const madridParts = (t: number) =>
+    Object.fromEntries(
+        new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", weekday: "short", hourCycle: "h23" })
+            .formatToParts(new Date(t))
+            .map((p) => [p.type, p.value])
+    );
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export const madridDate = (t: number) => {
+    const p = madridParts(t);
+    return `${p.year}-${p.month}-${p.day}`;
+};
+
+/**
+ * ¿Toca el resumen? Uno al día como mucho, en el primer refresco desde las 6:00 (hora
+ * de Madrid; el temporizador refresca a las 7:00 y a las 15:00); el semanal, solo el
+ * día elegido (0 domingo … 6 sábado).
+ */
+export function digestDue(
+    alert: { digest: string; digestDay: number | null; lastDigestAt: Date | null },
+    now: number
+): boolean {
+    if (alert.digest !== "daily" && alert.digest !== "weekly") return false;
+    const p = madridParts(now);
+    if (Number(p.hour) < 6) return false;
+    if (alert.lastDigestAt && madridDate(alert.lastDigestAt.getTime()) === madridDate(now)) return false;
+    return alert.digest === "daily" || WEEKDAYS.indexOf(p.weekday) === alert.digestDay;
 }
 
 // --- Texto de la notificación ---
@@ -121,25 +204,57 @@ export interface PushMessage {
     tag: string;
 }
 
-export function buildMessage(
-    fuel: FuelKey,
-    maxPrice: number,
-    found: { label: string; price: number }[],
-    total: number
-): PushMessage {
-    const name = FUEL_NAMES[fuel];
-    const best = found[0];
-    const base = { url: "/mis-gasolineras/", tag: "octo-precio" };
-    if (found.length === 1)
-        return {
-            ...base,
-            title: `${name} a ${priceText(fuel, best.price)}`,
-            body: `En ${best.label}: por debajo de tu aviso de ${priceText(fuel, maxPrice)}.`,
-        };
+const nf1 = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 1 });
+/** "4 céntimos", "1 céntimo", "0,5 céntimos". */
+export const centsText = (diff: number) => {
+    const c = Math.round(Math.abs(diff) * 1000) / 10;
+    return `${nf1.format(c)} ${c === 1 ? "céntimo" : "céntimos"}`;
+};
+
+/** Aviso automático: "Diésel a 1,659 €/L en Ballenoil (Laguna de Duero)" y el porqué. */
+export function buildAutoMessage(fuel: FuelKey, c: AutoCandidate, label: string, cheapestOfYours: boolean): PushMessage {
+    const under = c.typical - c.price;
+    const why =
+        c.reason === "low"
+            ? `Su precio más bajo en 30 días${under >= STEP ? `: ${centsText(under)} menos de lo habitual` : ""}.`
+            : `${centsText(under)} por debajo de su precio habitual (${priceText(fuel, c.typical)}).`;
     return {
-        ...base,
-        title: `${name} por debajo de ${priceText(fuel, maxPrice)} en ${found.length} de tus ${total} gasolineras`,
-        body: `La más barata: ${best.label}, a ${priceText(fuel, best.price)}.`,
+        url: "/mis-gasolineras/",
+        tag: "octo-precio",
+        title: `${FUEL_NAMES[fuel]} a ${priceText(fuel, c.price)} en ${label}`,
+        body: cheapestOfYours ? `${why} Es la más barata de tus gasolineras.` : why,
+    };
+}
+
+/**
+ * Resumen: la más barata de las guardadas para su combustible y cómo ha cambiado (desde
+ * ayer o desde hace una semana). `rows`, de la más barata a la más cara.
+ */
+export function buildDigestMessage(
+    fuel: FuelKey,
+    kind: "daily" | "weekly",
+    rows: { label: string; price: number; before?: number }[]
+): PushMessage {
+    const best = rows[0];
+    const when = kind === "daily" ? "ayer" : "hace una semana";
+    let change = "";
+    if (best.before != null) {
+        const d = best.price - best.before;
+        change = Math.abs(d) < 0.0005 ? `igual que ${when}` : `${centsText(d)} ${d < 0 ? "menos" : "más"} que ${when}`;
+    }
+    const head = kind === "daily" ? "Hoy" : "Esta semana";
+    const parts =
+        rows.length === 1
+            ? [`${FUEL_NAMES[fuel]}${change ? `: ${change}` : ""}.`]
+            : [
+                  `${FUEL_NAMES[fuel]}, la más barata de tus ${rows.length} gasolineras${change ? ` (${change})` : ""}.`,
+                  `La más cara está a ${priceText(fuel, rows[rows.length - 1].price)}.`,
+              ];
+    return {
+        url: "/mis-gasolineras/",
+        tag: "octo-resumen",
+        title: `${head}, ${best.label} a ${priceText(fuel, best.price)}`,
+        body: parts.join(" "),
     };
 }
 

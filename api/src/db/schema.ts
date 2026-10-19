@@ -106,9 +106,13 @@ export const shortLinks = pgTable("short_links", {
 });
 
 /**
- * Avisos de precio (notificaciones push de "Mis gasolineras"): uno por navegador
- * (su suscripción push), con el combustible, el precio máximo y las gasolineras
- * guardadas. Sin cuentas: el navegador se identifica por su endpoint de push.
+ * Avisos de "Mis gasolineras" (notificaciones push): uno por navegador (su suscripción
+ * push), con el combustible, las gasolineras guardadas y qué avisos quiere:
+ *   - bajadas de precio (`mode`): 'auto' (precio más bajo en 30 días o muy por debajo
+ *     de lo habitual, ver alerts/core.ts) o 'none'. 'price' (al bajar de `maxPrice`) es de
+ *     la primera versión: ya no se crea y se trata como 'auto';
+ *   - resumen de la más barata (`digest`): 'none', 'daily' o 'weekly' (el `digestDay`).
+ * Sin cuentas: el navegador se identifica por su endpoint de push.
  */
 export const pushAlerts = pgTable("push_alerts", {
     id: bigserial("id", { mode: "number" }).primaryKey(),
@@ -116,14 +120,21 @@ export const pushAlerts = pgTable("push_alerts", {
     p256dh: text("p256dh").notNull(),
     auth: text("auth").notNull(),
     fuel: fuelEnum("fuel").notNull(),
-    maxPrice: real("max_price").notNull(),
+    mode: text("mode").$type<"auto" | "price" | "none">().notNull().default("price"),
+    /** Solo los de la primera versión (mode 'price'); ya no se usa. */
+    maxPrice: real("max_price"),
+    digest: text("digest").$type<"none" | "daily" | "weekly">().notNull().default("none"),
+    /** Día del resumen semanal: 0 domingo … 6 sábado. */
+    digestDay: integer("digest_day"),
     stationIds: text("station_ids").array().notNull(),
     /** Último precio avisado por gasolinera ({ "11330": 1.629 }): no se repite el aviso
-     *  hasta que baja otro céntimo o vuelve a pasar por encima del máximo. */
+     *  de una gasolinera hasta que baja otro céntimo (o sube y vuelve a bajar). */
     notified: jsonb("notified").$type<Record<string, number>>().notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Último aviso de bajada enviado (el automático deja unos días entre avisos). */
     lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
+    lastDigestAt: timestamp("last_digest_at", { withTimezone: true }),
 });
 
 export type FuelKey = (typeof fuelEnum.enumValues)[number];
