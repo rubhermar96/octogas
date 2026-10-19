@@ -65,7 +65,7 @@ async function getSubscription(create: boolean): Promise<PushSubscription | null
     return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(publicKey) as BufferSource });
 }
 
-async function send(method: 'PUT' | 'DELETE' | 'POST', path: string, body: unknown) {
+async function send(method: 'PUT' | 'DELETE', path: string, body: unknown) {
     const res = await fetch(`${API}/api${path}`, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -95,13 +95,6 @@ export async function deleteAlert(): Promise<void> {
     }
     setAlertConfig(null);
     track('desactivar_aviso');
-}
-
-/** Notificación de prueba a este navegador. */
-export async function testAlert(): Promise<void> {
-    const sub = await getSubscription(false);
-    if (!sub) throw new Error('No hay ningún aviso activo en este navegador.');
-    await send('POST', '/alerts/test', { endpoint: sub.endpoint });
 }
 
 /** Tras guardar o quitar gasolineras: el aviso pasa a vigilar la lista nueva. */

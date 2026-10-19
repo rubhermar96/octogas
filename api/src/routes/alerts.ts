@@ -2,14 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
 import { fuelEnum, pushAlerts, stations, type FuelKey } from "../db/schema";
-import {
-    MAX_STATIONS,
-    configureWebPush,
-    isKey,
-    isPushEndpoint,
-    sendPush,
-    vapidPublicKey,
-} from "../alerts/core";
+import { MAX_STATIONS, isKey, isPushEndpoint, vapidPublicKey } from "../alerts/core";
 
 const FUEL_SET = new Set<string>(fuelEnum.enumValues);
 
@@ -32,7 +25,6 @@ const DIGESTS = new Set(["none", "daily", "weekly"]);
  *   PUT    /api/alerts       crea o actualiza los avisos de una suscripción: bajadas de
  *                             precio (automático) y resumen diario o semanal.
  *   DELETE /api/alerts       lo borra ({ endpoint }).
- *   POST   /api/alerts/test  envía una notificación de prueba ({ endpoint }).
  */
 export const alertRoutes: FastifyPluginAsync = async (app) => {
     app.get("/alerts/key", async (_req, reply) => {
@@ -108,24 +100,5 @@ export const alertRoutes: FastifyPluginAsync = async (app) => {
         if (!isPushEndpoint(endpoint)) return reply.code(400).send({ error: "Suscripción no válida" });
         await db.delete(pushAlerts).where(eq(pushAlerts.endpoint, endpoint));
         return { ok: true };
-    });
-
-    app.post("/alerts/test", async (req, reply) => {
-        const { endpoint } = (req.body as AlertBody) ?? {};
-        if (!isPushEndpoint(endpoint)) return reply.code(400).send({ error: "Suscripción no válida" });
-        if (!configureWebPush()) return reply.code(503).send({ error: "Avisos no configurados" });
-        const [alert] = await db.select().from(pushAlerts).where(eq(pushAlerts.endpoint, endpoint)).limit(1);
-        if (!alert) return reply.code(404).send({ error: "Sin aviso activo" });
-        const result = await sendPush(alert, {
-            title: "Avisos de OCTO activados",
-            body: "Así te llegarán los avisos cuando tus gasolineras bajen de precio.",
-            url: "/mis-gasolineras/",
-            tag: "octo-prueba",
-        });
-        if (result === "gone") {
-            await db.delete(pushAlerts).where(eq(pushAlerts.id, alert.id));
-            return reply.code(410).send({ error: "La suscripción ya no existe" });
-        }
-        return result === "ok" ? { ok: true } : reply.code(502).send({ error: "No se pudo enviar" });
     });
 };

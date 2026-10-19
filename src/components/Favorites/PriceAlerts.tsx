@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { FuelType } from '../../types/gasolinera';
 import { FUEL_LABELS, FUEL_ORDER } from '../../lib/fuels';
 import { getMyFuel, loadFavoriteStations, type FavoriteStation } from '../../lib/favorites';
-import { deleteAlert, getAlertConfig, pushSupported, saveAlert, testAlert, type AlertConfig } from '../../lib/alerts';
+import { deleteAlert, getAlertConfig, pushSupported, saveAlert, syncAlertStations, type AlertConfig } from '../../lib/alerts';
 import { useFavoriteIds } from './FavoriteButton';
 import styles from './PriceAlerts.module.css';
 
@@ -48,10 +48,22 @@ const PriceAlerts: React.FC = () => {
         setFuel(cfg?.fuel ?? getMyFuel());
     }, []);
 
-    // Precios de hoy de las guardadas, para proponer un precio y para el resumen.
+    // Precios de hoy de las guardadas, para indicar la más barata.
     useEffect(() => {
         if (ids.length) loadFavoriteStations(ids).then(setStations);
         else setStations([]);
+    }, [ids.join(',')]);
+
+    // Al abrir la página, el servidor recibe otra vez la lista de gasolineras: cada cambio
+    // ya se le envía al guardar o quitar una, pero si en ese momento no había conexión
+    // se habría quedado con la lista anterior.
+    const synced = useRef(false);
+    useEffect(() => {
+        if (synced.current || !ids.length || !getAlertConfig() || !pushSupported() || Notification.permission !== 'granted') return;
+        synced.current = true;
+        syncAlertStations(ids)
+            .then(() => setConfig(getAlertConfig()))
+            .catch(() => {});
     }, [ids.join(',')]);
 
     const fuels = useMemo(() => FUEL_ORDER.filter((f) => stations.some((s) => s.prices[f] != null)), [stations]);
@@ -158,19 +170,6 @@ const PriceAlerts: React.FC = () => {
                 <div className={styles.actions}>
                     <button type="button" className={styles.secondary} disabled={busy} onClick={startEditing}>
                         Cambiar
-                    </button>
-                    <button
-                        type="button"
-                        className={styles.secondary}
-                        disabled={busy}
-                        onClick={() =>
-                            run(async () => {
-                                await testAlert();
-                                setMessage({ kind: 'ok', text: 'Enviada. Si no la ves en unos segundos, revisa los permisos de notificaciones.' });
-                            })
-                        }
-                    >
-                        Enviar aviso de prueba
                     </button>
                     <button
                         type="button"
