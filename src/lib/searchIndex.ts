@@ -11,12 +11,17 @@ import path from "node:path";
 import type { GasStation } from "../types/gasolinera";
 import { loadMissingStations } from "./missingStations";
 import { displayCity, displayProvince, placeSlug } from "./placeName";
+import { brandsData } from "./brandPages";
 
 export interface SearchIndex {
     /** Provincias: [nombre, slug, otros nombres con los que se buscan]. */
     p: [string, string, string?][];
     /** Municipios: [nombre, provincia (posición en p), slug, gasolineras con precio hoy, otros nombres]. */
     m: [string, number, string, number, string?][];
+    /** Marcas con página (lib/brandPages.ts): [nombre, slug, gasolineras]. */
+    b: [string, string, number][];
+    /** Marcas con página en una provincia: [marca (posición en b), provincia (posición en p), gasolineras]. */
+    bp: [number, number, number][];
     /** Gasolineras: [rótulo, dirección (como la publica el Ministerio), municipio (posición en m), id]. */
     s?: [string, string, number, string][];
 }
@@ -50,7 +55,7 @@ export function buildSearchIndex(): Required<SearchIndex> {
     const today = JSON.parse(fs.readFileSync(path.resolve("public/data/stations.json"), "utf-8")) as GasStation[];
     const missing = loadMissingStations(today);
 
-    const index: Required<SearchIndex> = { p: [], m: [], s: [] };
+    const index: Required<SearchIndex> = { p: [], m: [], b: [], bp: [], s: [] };
     // Provincias: solo las de hoy (son las que tienen página).
     const provinces = new Map<string, number>();
     for (const st of today) {
@@ -79,6 +84,14 @@ export function buildSearchIndex(): Required<SearchIndex> {
             }
             if (priced) index.m[mi][3]++;
             index.s.push([st.brand, st.address, mi, st.id]);
+        }
+    }
+    for (const brand of brandsData().brands) {
+        const bi = index.b.length;
+        index.b.push([brand.name, brand.slug, brand.stations.length]);
+        for (const bp of brand.provinces) {
+            const pi = provinces.get(bp.slug);
+            if (bp.hasPage && pi != null) index.bp.push([bi, pi, bp.stations.length]);
         }
     }
     return (cache = index);

@@ -1,0 +1,13 @@
+---
+// Una marca en toda España (ver src/lib/brandPages.ts): las que tienen BRAND_MIN gasolineras.
+import BrandPage from "../../../components/BrandPage/BrandPage.astro";
+import { brandsData } from "../../../lib/brandPages";
+
+export function getStaticPaths() {
+    return brandsData().brands.map((b) => ({ params: { marca: b.slug } }));
+}
+
+const { marca } = Astro.params;
+---
+
+<BrandPage slug={marca} />

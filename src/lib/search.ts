@@ -9,7 +9,7 @@ import type { SearchIndex } from './searchIndex';
 import { displayAddress } from './format';
 import { stationSlug } from './stationUrl';
 
-export type ResultKind = 'municipio' | 'provincia' | 'gasolinera' | 'pagina';
+export type ResultKind = 'municipio' | 'provincia' | 'marca' | 'gasolinera' | 'pagina';
 
 export interface SearchResult {
     kind: ResultKind;
@@ -38,6 +38,7 @@ interface Entry extends SearchResult {
 interface Prepared {
     munis: Entry[];
     provinces: Entry[];
+    brands: Entry[];
     stations: Entry[];
 }
 
@@ -73,6 +74,7 @@ const PAGES: Entry[] = [
     page({ title: 'Gasolineras con GLP', sub: 'Autogás más barato', url: '/gasolineras-glp/', icon: 'local_gas_station', words: 'glp autogas gas licuado' }),
     page({ title: 'Gasóleo agrícola', sub: 'Gasóleo B más barato', url: '/gasoleo-agricola/', icon: 'local_gas_station', words: 'gasoleo b tractor' }),
     page({ title: 'Planificar viaje', sub: 'Las más baratas en tu ruta', url: '/rutas/', icon: 'route', words: 'ruta trayecto' }),
+    page({ title: 'Precios por marca', sub: 'Qué marca de gasolinera es más barata', url: '/marcas/', icon: 'storefront', words: 'marcas ranking' }),
     page({ title: 'Comparador', sub: 'Compara gasolineras lado a lado', url: '/comparador/', icon: 'balance', words: 'comparar' }),
     page({ title: 'Mis gasolineras', sub: 'Tus guardadas y avisos de precio', url: '/mis-gasolineras/', icon: 'bookmarks', words: 'guardadas favoritas avisos' }),
 ];
@@ -122,7 +124,36 @@ function prepare(index: SearchIndex): Prepared {
             weight: muni.weight,
         };
     });
-    return { munis, provinces, stations };
+    // Marcas: la de España y, con la provincia ("repsol madrid"), la de esa provincia.
+    const nf = new Intl.NumberFormat('es-ES');
+    const brands: Entry[] = [
+        ...(index.b ?? []).map(([name, slug, count]) => ({
+            kind: 'marca' as const,
+            title: `Gasolineras ${name}`,
+            sub: `${nf.format(count)} en España`,
+            url: `/marcas/${slug}/`,
+            icon: 'storefront',
+            name: normalize(name),
+            hay: ` ${normalize(name)}`,
+            weight: count,
+        })),
+        ...(index.bp ?? []).map(([bi, pi, count]) => {
+            const [name, slug] = index.b[bi];
+            const [provName, provSlug, provAlias] = index.p[pi];
+            return {
+                kind: 'marca' as const,
+                title: `Gasolineras ${name} en ${provName}`,
+                sub: `${nf.format(count)} en la provincia`,
+                url: `/marcas/${slug}/${provSlug}/`,
+                icon: 'storefront',
+                name: normalize(name),
+                hay: ` ${normalize(name)}`,
+                context: ` ${normalize(`${provName} ${provAlias ?? ''}`)}`,
+                weight: count,
+            };
+        }),
+    ];
+    return { munis, provinces, brands, stations };
 }
 
 let prepared: Prepared | null = null;
@@ -178,6 +209,18 @@ function placeScore(e: Entry, q: string, tokens: string[]): number {
     const name = ` ${e.name}`;
     if (matchesAll(name, tokens)) return 2;
     return tokens.some((t) => name.includes(` ${t}`)) ? 3 : -1;
+}
+
+/**
+ * Marcas: 0 = la de España por su nombre exacto, 1 = su nombre empieza por lo buscado,
+ * 2 = la marca en una provincia (marca y provincia: "repsol madrid"), -1 = no.
+ */
+function brandScore(e: Entry, q: string, tokens: string[]): number {
+    const inName = tokens.filter((t) => e.hay.includes(` ${t}`));
+    if (!inName.length) return -1;
+    if (!e.context) return inName.length === tokens.length ? (e.name === q ? 0 : e.name.startsWith(q) ? 1 : 2) : -1;
+    const rest = tokens.filter((t) => !inName.includes(t));
+    return rest.length && matchesAll(e.context, rest) ? 2 : -1;
 }
 
 /**
@@ -239,6 +282,7 @@ export function search(query: string): SearchGroup[] {
     if (prepared) {
         add('Municipios', top(prepared.munis, (e) => placeScore(e, text, words), 6));
         add('Provincias', top(prepared.provinces, (e) => placeScore(e, text, words), 2));
+        add('Marcas', top(prepared.brands, (e) => brandScore(e, text, words), 3));
     }
     if (!pagesFirst) add('Páginas', pages);
     // Con una o dos letras saldrían cientos de gasolineras al azar.

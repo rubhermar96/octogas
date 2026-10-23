@@ -8,6 +8,7 @@ import CompareToggle from "../../components/CompareToggle.astro";
 import { stationUrl, municipioUrl, provinceUrl } from "../../lib/stationUrl";
 import RecentVisit from "../../components/Recent/RecentVisit.astro";
 import RecentStrip from "../../components/Recent/RecentStrip.astro";
+import { brandUrl, brandsInProvince } from "../../lib/brandPages";
 import { placeSlug, displayProvince, displayCity } from "../../lib/placeName";
 import PriceHistoryChart from "../../components/Station/PriceHistoryChart";
 import { loadAggHistory, scopeKey } from "../../lib/aggHistory";
@@ -92,6 +93,8 @@ const { provinceName, stations, munis, insightInput } = Astro.props as {
 };
 
 const provLabel = displayProvince(provinceName);
+// Marcas con página propia en la provincia (/marcas/repsol/madrid/).
+const brandsHere = brandsInProvince(provinceName);
 
 const aggHist = (await loadAggHistory()).get(scopeKey("province", placeSlug(provinceName))) ?? {};
 
@@ -267,6 +270,33 @@ const breadcrumbJsonLd = {
                     }
                 </div>
             </section>
+
+            {
+                brandsHere.length > 0 && (
+                    <section class="munis">
+                        <h2>Gasolineras por marca en {provLabel}</h2>
+                        <p class="section-note">
+                            Con el precio medio de hoy de cada marca en la provincia. <a href="/marcas/">Qué marca es más barata en toda España</a>.
+                        </p>
+                        <div class="muni-grid" data-reveal-items>
+                            {brandsHere.map(({ brand, province }) => (
+                                <a href={brandUrl(brand, province)} class="muni-link hover-lift">
+                                    <span class="muni-top">
+                                        <span class="muni-name">{brand.name}</span>
+                                        <span class="muni-count">{province.stations.length}</span>
+                                    </span>
+                                    {(province.avg.sp95 != null || province.avg.diesel != null) && (
+                                        <span class="muni-prices">
+                                            {province.avg.sp95 != null && <span><b>{FUEL_LABELS.sp95}</b> {fmt(province.avg.sp95)}</span>}
+                                            {province.avg.diesel != null && <span><b>{FUEL_LABELS.diesel}</b> {fmt(province.avg.diesel)}</span>}
+                                        </span>
+                                    )}
+                                </a>
+                            ))}
+                        </div>
+                    </section>
+                )
+            }
 
             <section class="faq" data-reveal-items>
                 <h2>Preguntas frecuentes sobre el combustible en {provLabel}</h2>
@@ -471,6 +501,10 @@ const breadcrumbJsonLd = {
         margin: -1rem 0 1.25rem;
         font-size: 0.85rem;
         color: var(--text-muted);
+    }
+    .section-note a {
+        color: var(--primary);
+        font-weight: 600;
     }
     .muni-link {
         display: flex;

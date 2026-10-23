@@ -288,6 +288,17 @@
     margin-bottom: 1.5rem;
 }
 
+.marqueeLabel a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--primary);
+    text-underline-offset: 4px;
+}
+
+.marqueeLabel a:hover {
+    color: var(--primary);
+}
+
 .marqueeTrack {
     display: flex;
     gap: 2.5rem;

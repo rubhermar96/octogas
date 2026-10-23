@@ -1,0 +1,15 @@
+---
+// Una marca en una provincia (ver src/lib/brandPages.ts): con BRAND_PROVINCE_MIN gasolineras allí.
+import BrandPage from "../../../components/BrandPage/BrandPage.astro";
+import { brandsData } from "../../../lib/brandPages";
+
+export function getStaticPaths() {
+    return brandsData().brands.flatMap((b) =>
+        b.provinces.filter((p) => p.hasPage).map((p) => ({ params: { marca: b.slug, provincia: p.slug } }))
+    );
+}
+
+const { marca, provincia } = Astro.params;
+---
+
+<BrandPage slug={marca} provinceSlug={provincia} />

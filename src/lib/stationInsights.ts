@@ -10,6 +10,7 @@ import type { StationHistory } from "./history";
 import { displayCity } from "./placeName";
 import { getDistance } from "./geo";
 import { FUEL_LIST_ORDER } from "./fuelSummary";
+import { brandPageFor } from "./brandPages";
 import {
     FUEL,
     FUEL_NAMES,
@@ -31,6 +32,7 @@ import {
     type Averages,
     type MainFuel,
     type Paragraph,
+    type Part,
 } from "./insightText";
 
 export const AROUND_KM = 5;
@@ -53,6 +55,8 @@ export interface StationInsightInput {
     around: Alternative[];
     /** Gasolineras de su misma marca en la provincia (con precios de hoy). */
     brandInProvince?: { count: number; avg: Averages };
+    /** Página de su marca (lib/brandPages.ts): la de su provincia o, si no hay, la de España. */
+    brandPage?: { url: string; inProvince: boolean; count: number };
     /** Nº de gasolineras con cada combustible poco común en su municipio y provincia. */
     fuelCounts: Partial<Record<FuelType, { muni: number; prov: number }>>;
     history?: StationHistory | null;
@@ -88,7 +92,7 @@ function nationalBand(mine: number, sorted: number[] | undefined): string | unde
 }
 
 export function stationInsights(input: StationInsightInput): Insights {
-    const { station, lastSeen, muni, prov, muniStations, provinceAvg, nationalPrices, around, brandInProvince, fuelCounts, history } = input;
+    const { station, lastSeen, muni, prov, muniStations, provinceAvg, nationalPrices, around, brandInProvince, brandPage, fuelCounts, history } = input;
     const now = input.now ?? Date.now();
     const active = !lastSeen;
     const paragraphs: Paragraph[] = [];
@@ -262,27 +266,44 @@ export function stationInsights(input: StationInsightInput): Insights {
 
     // --- 5. Frente a su marca ---
     if (active && !isGeneric(station)) {
-        const sentences: string[] = [];
+        const parts: Part[] = [];
+        const add = (...xs: Part[]) => parts.push(...(parts.length ? [" "] : []), ...xs);
+        let linked = false;
         const p = mine(main);
         const b = brandInProvince;
-        // Gasolina 95 y diésel frente a la media de su marca en la provincia.
+        // Gasolina 95 y diésel frente a la media de su marca en la provincia (enlazada a la
+        // página de la marca allí, si la tiene).
         const vsBrand = b && b.count >= 3 ? MAIN_FUELS.filter((f) => mine(f) != null && b.avg[f] != null) : [];
-        if (b && vsBrand.length)
-            sentences.push(
-                `Es una de las ${b.count} gasolineras ${station.brand} de la provincia de ${prov}, y su ${FUEL[vsBrand[0]].name} está ${versus(mine(vsBrand[0])!, b.avg[vsBrand[0]]!, vsBrand[0])} la media de la marca allí (${price(b.avg[vsBrand[0]]!)})${
+        if (b && vsBrand.length) {
+            const group = `${b.count} gasolineras ${station.brand} de la provincia de ${prov}`;
+            linked = !!brandPage?.inProvince;
+            add(
+                "Es una de las ",
+                linked ? { text: group, href: brandPage!.url } : group,
+                `, y su ${FUEL[vsBrand[0]].name} está ${versus(mine(vsBrand[0])!, b.avg[vsBrand[0]]!, vsBrand[0])} la media de la marca allí (${price(b.avg[vsBrand[0]]!)})${
                     vsBrand[1] ? `; su ${FUEL[vsBrand[1]].name}, ${versus(mine(vsBrand[1])!, b.avg[vsBrand[1]]!, vsBrand[1])} la media (${price(b.avg[vsBrand[1]]!)})` : ""
                 }.`
             );
+        }
         const sameBrand = muniStations.filter((s) => s.brand === station.brand && s.prices[main] != null);
         if (p != null && sameBrand.length >= 2) {
             const better = sameBrand.filter((s) => s.prices[main]! < p - 0.0005).length;
-            sentences.push(
+            add(
                 better === 0
                     ? `En ${muni} es la más barata de las ${sameBrand.length} ${station.brand}.`
                     : `En ${muni} hay ${sameBrand.length} ${station.brand}, y ${better === 1 ? "una es más barata" : `${better} son más baratas`} que esta.`
             );
         }
-        if (sentences.length) paragraphs.push([sentences.join(" ")]);
+        if (brandPage && !linked)
+            add(
+                `Precios de hoy en `,
+                {
+                    text: brandPage.inProvince ? `las ${brandPage.count} gasolineras ${station.brand} de ${prov}` : `las ${brandPage.count} gasolineras ${station.brand} de España`,
+                    href: brandPage.url,
+                },
+                "."
+            );
+        if (parts.length) paragraphs.push(parts);
     }
 
     // --- 6. Qué vende y cuándo abre ---
@@ -377,6 +398,12 @@ export function stationInsightContext(today: GasStation[]) {
         return out;
     };
 
+    const brandPageOf = (s: GasStation): StationInsightInput["brandPage"] => {
+        const page = brandPageFor(s);
+        if (!page) return undefined;
+        return { url: page.url, inProvince: !!page.province, count: (page.province ?? page.brand).stations.length };
+    };
+
     return (station: GasStation, extra: { lastSeen: string | null; muni: string; prov: string; history?: StationHistory | null }): StationInsightInput => {
         const muniList = byMuni.get(muniKey(station));
         const provList = byProv.get(station.province);
@@ -390,6 +417,7 @@ export function stationInsightContext(today: GasStation[]) {
             nationalPrices,
             around: aroundOf(station),
             brandInProvince: brandStats.get(`${station.province}|${station.brand}`),
+            brandPage: brandPageOf(station),
             fuelCounts,
         };
     };

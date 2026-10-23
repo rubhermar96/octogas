@@ -1,0 +1,675 @@
+---
+/**
+ * Páginas de marcas (ver lib/brandPages.ts): sin `slug`, /marcas/ (todas, de la más
+ * barata a la más cara); con `slug`, la de una marca en toda España; con `slug` y
+ * `provinceSlug`, la de una marca en una provincia.
+ */
+import Layout from "../../layouts/Layout.astro";
+import Footer from "../Footer.astro";
+import AdSlot from "../AdSlot.astro";
+import LazyMainMap from "../Map/LazyMainMap";
+import FuelStationList from "../FuelPage/FuelStationList.astro";
+import { brandProvinceTexts, brandTexts, brandUrl, brandsData, brandsIndexTexts, comparable, BRAND_MIN, type Brand } from "../../lib/brandPages";
+import { provinceUrl } from "../../lib/stationUrl";
+import { FUEL, MAIN_FUELS, joinEs, price, type Averages, type MainFuel } from "../../lib/insightText";
+
+interface Props {
+    slug?: string;
+    provinceSlug?: string;
+}
+
+const { slug, provinceSlug } = Astro.props;
+const data = brandsData();
+const brand = slug ? data.bySlug.get(slug)! : undefined;
+const bp = brand && provinceSlug ? brand.provinces.find((p) => p.slug === provinceSlug && p.hasPage)! : undefined;
+const texts = bp ? brandProvinceTexts(data, brand!, bp) : brand ? brandTexts(data, brand) : brandsIndexTexts(data);
+
+const fmt = (n: number | undefined) => (n == null ? "—" : n.toFixed(3));
+const updated = new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
+/** "gasolina 95 a 1,589 €/L y diésel a 1,489 €/L". */
+const pricesText = (avg: Averages) => joinEs(MAIN_FUELS.filter((f) => avg[f] != null).map((f) => `${FUEL[f].name} a ${price(avg[f]!)}`));
+
+// Gasolineras de la página, de la más barata a la más cara (gasolina 95; si no, diésel). En
+// la de España, sin Canarias, Ceuta ni Melilla si la marca es de la península (comparable()).
+const stations = bp ? bp.stations : brand ? brand.stations : [];
+const pool = brand && !bp ? comparable(brand) : { stations, mainland: false };
+const main: MainFuel = stations.some((s) => s.prices.sp95 != null) ? "sp95" : "diesel";
+const sorted = [...pool.stations].sort(
+    (a, b) => (a.prices[main] ?? Infinity) - (b.prices[main] ?? Infinity) || (a.prices.diesel ?? Infinity) - (b.prices.diesel ?? Infinity)
+);
+const listed = bp ? sorted : sorted.slice(0, 20);
+const avg = bp ? bp.avg : brand ? brand.avg : data.national;
+const ref = bp ? (data.provinceAvg.get(bp.name) ?? {}) : data.national;
+
+// Todas las marcas, para /marcas/: primero las que entran en la comparación de gasolina 95.
+const ranked = data.ranking.sp95;
+const mainlandCheapest = ranked.find((b) => !b.lowTax);
+const indexRows: { brand: Brand; pos?: number }[] = [
+    ...ranked.map((b, i) => ({ brand: b, pos: i + 1 })),
+    ...data.brands.filter((b) => !ranked.includes(b)).map((b) => ({ brand: b })),
+];
+
+let title: string;
+let h1: string;
+let subtitle: string;
+let description: string;
+if (bp) {
+    const n = bp.stations.length;
+    title = `Gasolineras ${brand!.name} en ${bp.label}: precios hoy | OCTO`;
+    h1 = `Gasolineras ${brand!.name} en ${bp.label}`;
+    subtitle = `Las ${n} gasolineras ${brand!.name} de la provincia de ${bp.label}, de la más barata a la más cara, y cómo están frente a las demás marcas.`;
+    description = `Las ${n} gasolineras ${brand!.name} de la provincia de ${bp.label} hoy: ${pricesText(bp.avg)} de media. De la más barata a la más cara, con mapa y horarios. Datos oficiales, actualizados cada día.`;
+} else if (brand) {
+    const n = brand.stations.length;
+    title = `Gasolineras ${brand.name}: precio de la gasolina y el diésel hoy | OCTO`;
+    h1 = `Gasolineras ${brand.name}: precios de hoy`;
+    subtitle = `Precio medio de hoy en las ${n} gasolineras ${brand.name} de España, sus más baratas y cómo está por provincias y frente a otras marcas.`;
+    description = `Precio de hoy en las ${n} gasolineras ${brand.name} de España: ${pricesText(brand.avg)} de media. Las más baratas, por provincias y frente a otras marcas. Datos oficiales, actualizados cada día.`;
+} else {
+    title = "¿Qué marca de gasolinera es más barata? Precios de hoy por marca | OCTO";
+    h1 = "Marcas de gasolineras: cuál es más barata hoy";
+    subtitle = `Las ${data.brands.length} marcas con al menos ${BRAND_MIN} gasolineras en España, de la más barata a la más cara para gasolina 95, con su precio medio de hoy.`;
+    description = `Precio medio de hoy de la gasolina 95 y el diésel en las ${data.brands.length} marcas de gasolineras con más presencia en España (Repsol, Cepsa, BP, Galp, Ballenoil...), de la más barata a la más cara. Datos oficiales.`;
+}
+
+const crumbs = [
+    { name: "Inicio", url: "/" },
+    { name: "Marcas", url: "/marcas/" },
+    ...(brand ? [{ name: brand.name, url: brandUrl(brand) }] : []),
+    ...(bp ? [{ name: bp.label, url: brandUrl(brand!, bp) }] : []),
+];
+const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: texts.faq.map((x) => ({ "@type": "Question", name: x.q, acceptedAnswer: { "@type": "Answer", text: x.a } })),
+};
+const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.name, item: new URL(c.url, Astro.site).href })),
+};
+
+// Mapa (marca en una provincia).
+const located = stations.filter((s) => Number.isFinite(s.lat) && Number.isFinite(s.lng));
+const center: [number, number] = located.length
+    ? [located.reduce((a, s) => a + s.lat, 0) / located.length, located.reduce((a, s) => a + s.lng, 0) / located.length]
+    : [40.4, -3.7];
+
+// Enlaces del final: la marca en otras provincias, otras marcas en la provincia u otras marcas.
+const otherProvinces = bp ? brand!.provinces.filter((p) => p.hasPage && p !== bp) : [];
+const brandsHere = bp
+    ? data.brands
+          .filter((b) => b !== brand)
+          .flatMap((b) => {
+              const p = b.provinces.find((x) => x.name === bp.name && x.hasPage);
+              return p ? [{ b, p }] : [];
+          })
+    : [];
+const otherBrands = brand && !bp ? data.brands.filter((b) => b !== brand).slice(0, 24) : [];
+---
+
+<Layout title={title} description={description}>
+    <script type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} slot="head" />
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd)} slot="head" />
+
+    <div class="page-container">
+        <div class="content-wrapper" data-reveal-children>
+            <nav class="breadcrumb" aria-label="Migas de pan">
+                {
+                    crumbs.map((c, i) =>
+                        i === crumbs.length - 1 ? (
+                            <span class="current">{c.name}</span>
+                        ) : (
+                            <>
+                                <a href={c.url}>{c.name}</a>
+                                <span>›</span>
+                            </>
+                        )
+                    )
+                }
+            </nav>
+
+            <header class="page-header">
+                {
+                    brand && (
+                        <div class="logo-box">
+                            {brand.logo ? (
+                                <img src={`/brands/${brand.logo}`} alt={brand.name} width="72" height="72" />
+                            ) : (
+                                <span class="material-symbols-outlined" aria-hidden="true">local_gas_station</span>
+                            )}
+                        </div>
+                    )
+                }
+                <div class="head-text">
+                    <h1>{h1}</h1>
+                    <p class="subtitle">
+                        {subtitle} <span class="updated">Actualizado el {updated}.</span>
+                    </p>
+                </div>
+            </header>
+
+            <section class="stats-bar" data-reveal-items aria-label="Resumen de precios">
+                <div class="stat">
+                    <span class="stat-label">{brand ? "Gasolineras" : "Marcas comparadas"}</span>
+                    <span class="stat-value muted">{brand ? stations.length : data.brands.length}</span>
+                </div>
+                {
+                    MAIN_FUELS.map((f) => (
+                        <div class="stat">
+                            <span class="stat-label">{brand ? `${FUEL[f].name}, media` : `${FUEL[f].name}, media de España`}</span>
+                            <span class="stat-value">
+                                {fmt(avg[f])} <small>€/L</small>
+                            </span>
+                            {brand && ref[f] != null && (
+                                <span class="stat-sub">
+                                    {bp ? `Provincia: ${fmt(ref[f])}` : `España: ${fmt(ref[f])}`}
+                                </span>
+                            )}
+                        </div>
+                    ))
+                }
+                {
+                    !brand && ranked.length > 0 && (
+                        <div class="stat">
+                            <span class="stat-label">Más barata (gasolina 95)</span>
+                            <span class="stat-value">{ranked[0].name}</span>
+                            {ranked[0].region && mainlandCheapest && (
+                                <span class="stat-sub">
+                                    {`En ${ranked[0].region}. Península y Baleares: ${mainlandCheapest.name}`}
+                                </span>
+                            )}
+                        </div>
+                    )
+                }
+            </section>
+
+            <section class="insights">
+                <h2>{bp ? `Cómo están las ${brand!.name} en ${bp.label}` : brand ? `Cómo está ${brand.name} hoy` : "Qué marca es más barata"}</h2>
+                {texts.paragraphs.map((p) => <p>{p.map((part) => (typeof part === "string" ? part : <a href={part.href}>{part.text}</a>))}</p>)}
+                {!brand && <p>Cada gasolinera pone su propio precio, así que dentro de una misma marca hay diferencias de varios céntimos según la zona: abre cada marca para ver sus gasolineras más baratas y cómo está en tu provincia.</p>}
+            </section>
+
+            {
+                !brand && (
+                    <section class="table-section">
+                        <h2>Marcas de gasolineras de la más barata a la más cara</h2>
+                        <div class="table-scroll">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col" class="num">#</th>
+                                        <th scope="col">Marca</th>
+                                        <th scope="col" class="num">Gasolineras</th>
+                                        <th scope="col" class="num">Gasolina 95</th>
+                                        <th scope="col" class="num">Diésel</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {indexRows.map(({ brand: b, pos }) => (
+                                        <tr>
+                                            <td class="num muted">{pos ?? ""}</td>
+                                            <th scope="row">
+                                                <a href={brandUrl(b)}>{b.name}</a>
+                                                {b.region && <span class="tag">{b.region}</span>}
+                                            </th>
+                                            <td class="num">{b.stations.length}</td>
+                                            <td class="num price">{fmt(b.avg.sp95)}</td>
+                                            <td class="num">{fmt(b.avg.diesel)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="table-note">
+                            Precio medio de hoy en €/L. El puesto es el de la gasolina 95 entre las marcas con al menos {BRAND_MIN} gasolineras que la venden.
+                            Las marcas de Canarias, Ceuta o Melilla salen más baratas porque allí el combustible paga menos impuestos.
+                        </p>
+                    </section>
+                )
+            }
+
+            {
+                brand && (
+                    <section class="list-section">
+                        <h2>
+                            {bp
+                                ? `Gasolineras ${brand.name} en ${bp.label}, de la más barata a la más cara`
+                                : `Las ${listed.length} gasolineras ${brand.name} más baratas de ${pool.mainland ? "la península y Baleares" : "España"}`}
+                        </h2>
+                        <FuelStationList stations={listed} fuel={main} second={main === "sp95" ? "diesel" : undefined} withProvince={!bp} byAddress />
+                    </section>
+                )
+            }
+
+            {
+                brand && !bp && (
+                    <section class="table-section">
+                        <h2>{`${brand.name} por provincias`}</h2>
+                        <div class="table-scroll">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Provincia</th>
+                                        <th scope="col" class="num">Gasolineras</th>
+                                        <th scope="col" class="num">Gasolina 95</th>
+                                        <th scope="col" class="num">Diésel</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {brand.provinces.map((p) => (
+                                        <tr>
+                                            <th scope="row">{p.hasPage ? <a href={brandUrl(brand, p)}>{p.label}</a> : p.label}</th>
+                                            <td class="num">{p.stations.length}</td>
+                                            <td class="num price">{fmt(p.avg.sp95)}</td>
+                                            <td class="num">{fmt(p.avg.diesel)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                )
+            }
+
+            <AdSlot slot="" label="Publicidad" minHeight={120} />
+
+            {
+                bp && (
+                    <section class="map-section">
+                        <h2>{`Mapa de las gasolineras ${brand!.name} en ${bp.label}`}</h2>
+                        <div class="map-wrapper">
+                            <LazyMainMap client:only="react" stations={stations} initialCenter={center} initialZoom={8} disableGeolocation={true} />
+                        </div>
+                    </section>
+                )
+            }
+
+            <section class="faq" data-reveal-items>
+                <h2>Preguntas frecuentes</h2>
+                {
+                    texts.faq.map((x) => (
+                        <details class="faq-item">
+                            <summary>{x.q}</summary>
+                            <p>{x.a}</p>
+                        </details>
+                    ))
+                }
+            </section>
+
+            <section class="more">
+                {
+                    otherProvinces.length > 0 && (
+                        <>
+                            <h2>{`${brand!.name} en otras provincias`}</h2>
+                            <div class="chips" data-reveal-items>
+                                {otherProvinces.map((p) => (
+                                    <a class="chip" href={brandUrl(brand!, p)}>
+                                        {p.label}
+                                        <span>{p.stations.length}</span>
+                                    </a>
+                                ))}
+                            </div>
+                        </>
+                    )
+                }
+                {
+                    brandsHere.length > 0 && (
+                        <>
+                            <h2>{`Otras marcas en ${bp!.label}`}</h2>
+                            <div class="chips" data-reveal-items>
+                                {brandsHere.map(({ b, p }) => (
+                                    <a class="chip" href={brandUrl(b, p)}>
+                                        {b.name}
+                                        <span>{p.stations.length}</span>
+                                    </a>
+                                ))}
+                            </div>
+                        </>
+                    )
+                }
+                {
+                    otherBrands.length > 0 && (
+                        <>
+                            <h2>Otras marcas</h2>
+                            <div class="chips" data-reveal-items>
+                                {otherBrands.map((b) => (
+                                    <a class="chip" href={brandUrl(b)}>
+                                        {b.name}
+                                        <span>{b.stations.length}</span>
+                                    </a>
+                                ))}
+                            </div>
+                        </>
+                    )
+                }
+                <p class="more-links">
+                    {bp && (
+                        <>
+                            <a href={brandUrl(brand!)}>{`${brand!.name} en toda España`}</a>
+                            {" · "}
+                            <a href={provinceUrl(bp.name)}>{`Todas las gasolineras de ${bp.label}`}</a>
+                            {" · "}
+                        </>
+                    )}
+                    {brand && (
+                        <>
+                            <a href="/marcas/">Todas las marcas, de la más barata a la más cara</a>
+                            {" · "}
+                        </>
+                    )}
+                    <a href="/precios-combustible-espana/">Precio de la gasolina y el diésel en España</a>
+                </p>
+            </section>
+        </div>
+    </div>
+
+    <Footer />
+</Layout>
+
+<style>
+    .page-container {
+        padding: 5rem 2rem 3rem;
+        min-height: 100vh;
+        background-color: var(--bg);
+        color: var(--text);
+    }
+    .content-wrapper {
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .breadcrumb a {
+        color: var(--text-muted);
+        text-decoration: none;
+    }
+    .breadcrumb a:hover {
+        color: var(--primary);
+    }
+    .breadcrumb .current {
+        color: var(--text);
+        font-weight: 600;
+    }
+    .page-header {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        margin-bottom: 2rem;
+    }
+    .logo-box {
+        width: 72px;
+        height: 72px;
+        flex-shrink: 0;
+        background: #fff;
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    .logo-box img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        padding: 4px;
+    }
+    .logo-box .material-symbols-outlined {
+        font-size: 2.4rem;
+        color: #64748b;
+    }
+    .head-text {
+        flex: 1;
+        min-width: 0;
+    }
+    h1 {
+        font-family: var(--font-header);
+        font-size: clamp(1.8rem, 4vw, 2.6rem);
+        margin-bottom: 0.75rem;
+        line-height: 1.1;
+    }
+    .subtitle {
+        color: var(--text-muted);
+        font-size: 1.05rem;
+        line-height: 1.6;
+        max-width: 760px;
+    }
+    .updated {
+        color: var(--primary);
+        font-weight: 600;
+    }
+    .stats-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2.5rem;
+    }
+    .stat {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        padding: 1.1rem 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .stat-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        font-weight: 700;
+    }
+    .stat-value {
+        font-family: var(--font-header);
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--primary);
+        overflow-wrap: anywhere;
+    }
+    .stat-value.muted {
+        color: var(--text);
+    }
+    .stat-value small {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+    .stat-sub {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+    section h2 {
+        font-family: var(--font-header);
+        font-size: 1.4rem;
+        margin-bottom: 1.25rem;
+    }
+    .insights {
+        margin-bottom: 3rem;
+    }
+    .insights p {
+        max-width: 72ch;
+        margin-bottom: 0.9rem;
+        line-height: 1.7;
+        color: var(--text-muted);
+    }
+    .insights a {
+        color: var(--text);
+        font-weight: 600;
+        text-decoration: underline;
+        text-decoration-color: var(--primary);
+        text-underline-offset: 3px;
+    }
+    .insights a:hover {
+        color: var(--primary);
+    }
+    .list-section,
+    .table-section,
+    .map-section,
+    .faq,
+    .more {
+        margin-bottom: 3rem;
+    }
+    .table-scroll {
+        overflow-x: auto;
+    }
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        font-size: 0.92rem;
+    }
+    .data-table th,
+    .data-table td {
+        padding: 0.6rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid color-mix(in srgb, var(--border) 35%, transparent);
+    }
+    .data-table thead th {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--border);
+    }
+    .data-table tbody tr:last-child th,
+    .data-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .data-table a {
+        color: var(--text);
+        font-weight: 600;
+        text-decoration: underline;
+        text-decoration-color: var(--primary);
+        text-underline-offset: 3px;
+    }
+    .data-table a:hover {
+        color: var(--primary);
+    }
+    .tag {
+        display: inline-block;
+        margin-left: 0.5rem;
+        padding: 0 0.35rem;
+        border: 1px solid var(--secondary);
+        color: var(--secondary);
+        font-size: 0.68rem;
+        font-weight: 700;
+        vertical-align: middle;
+    }
+    .table-note {
+        margin-top: 0.75rem;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        line-height: 1.5;
+    }
+    .num {
+        text-align: right !important;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+    .price {
+        font-weight: 800;
+        color: var(--primary);
+    }
+    .muted {
+        color: var(--text-muted);
+    }
+    .map-wrapper {
+        height: 460px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+    .faq-item {
+        border: 1px solid var(--border);
+        margin-bottom: 0.75rem;
+        background: var(--surface);
+        overflow: hidden;
+    }
+    .faq-item summary {
+        padding: 1rem 1.25rem;
+        font-weight: 700;
+        cursor: pointer;
+        color: var(--text);
+        list-style: none;
+    }
+    .faq-item summary::-webkit-details-marker {
+        display: none;
+    }
+    .faq-item summary::after {
+        content: "+";
+        float: right;
+        color: var(--primary);
+        font-weight: 800;
+    }
+    .faq-item[open] summary::after {
+        content: "−";
+    }
+    .faq-item p {
+        padding: 0 1.25rem 1.1rem;
+        color: var(--text-muted);
+        line-height: 1.6;
+    }
+    .more h2 {
+        font-size: 1.2rem;
+    }
+    .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 2rem;
+    }
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.45rem 0.8rem;
+        border: 1px solid var(--border);
+        color: var(--text);
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .chip:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+    .chip span {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+    }
+    .more-links {
+        line-height: 1.9;
+        color: var(--text-muted);
+    }
+    .more-links a {
+        color: var(--primary);
+        font-weight: 600;
+    }
+
+    @media (max-width: 640px) {
+        .page-container {
+            padding: 5rem 1rem 3rem;
+        }
+        .page-header {
+            align-items: flex-start;
+        }
+        .logo-box {
+            width: 56px;
+            height: 56px;
+        }
+        .data-table th,
+        .data-table td {
+            padding: 0.55rem 0.6rem;
+        }
+        .map-wrapper {
+            height: 380px;
+        }
+    }
+</style>

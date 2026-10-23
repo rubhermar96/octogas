@@ -2,13 +2,14 @@
 /**
  * Lista de gasolineras que venden un combustible, de la más barata a la más cara: nombre
  * (a su ficha), dirección, municipio, si abre 24 horas, precio y botón de comparar. En
- * móvil, cada gasolinera es una tarjeta.
+ * móvil, cada gasolinera es una tarjeta. Con `second`, dos precios (páginas de marca).
  */
 import CompareToggle from "../CompareToggle.astro";
 import { displayAddress } from "../../lib/format";
 import { displayCity, displayProvince } from "../../lib/placeName";
 import { is24h, isGeneric } from "../../lib/insightText";
 import { municipioUrl, stationUrl } from "../../lib/stationUrl";
+import { FUEL_LABELS } from "../../lib/fuels";
 import type { FuelType, GasStation } from "../../types/gasolinera";
 
 interface Props {
@@ -16,9 +17,14 @@ interface Props {
     fuel: FuelType;
     /** Añade la provincia junto al municipio (listas de toda España). */
     withProvince?: boolean;
+    /** Segundo combustible, con su precio al lado del primero (cada uno con su nombre). */
+    second?: FuelType;
+    /** Por la dirección en vez de por la marca (listas de una sola marca). */
+    byAddress?: boolean;
 }
 
-const { stations, fuel, withProvince = false } = Astro.props;
+const { stations, fuel, withProvince = false, second, byAddress = false } = Astro.props;
+const fuels = second ? [fuel, second] : [fuel];
 ---
 
 <ol class="fuel-stations">
@@ -28,17 +34,28 @@ const { stations, fuel, withProvince = false } = Astro.props;
                 <span class="fs-rank">{i + 1}</span>
                 <div class="fs-main">
                     <a class="fs-name" href={stationUrl(s)}>
-                        {isGeneric(s) ? displayAddress(s.address) : s.brand}
+                        {byAddress || isGeneric(s) ? displayAddress(s.address) : s.brand}
                     </a>
                     <span class="fs-where">
-                        {!isGeneric(s) && <>{displayAddress(s.address)} · </>}
+                        {!byAddress && !isGeneric(s) && <>{displayAddress(s.address)} · </>}
                         <a href={municipioUrl(s.province, s.city)}>{displayCity(s.city)}</a>
                         {withProvince && displayProvince(s.province) !== displayCity(s.city) && <> ({displayProvince(s.province)})</>}
                         {is24h(s) && <span class="fs-24h">24 h</span>}
                     </span>
                 </div>
-                <span class="fs-price">
-                    {s.prices[fuel]!.toFixed(3)} <small>€/L</small>
+                <span class="fs-prices">
+                    {fuels.map((f) => (
+                        <span class="fs-price">
+                            {second && <span class="fs-fuel">{FUEL_LABELS[f]}</span>}
+                            {s.prices[f] != null ? (
+                                <span>
+                                    {s.prices[f]!.toFixed(3)} <small>€/L</small>
+                                </span>
+                            ) : (
+                                <span class="fs-none" aria-label="sin precio">—</span>
+                            )}
+                        </span>
+                    ))}
                 </span>
                 <div class="fs-compare">
                     <CompareToggle stationId={s.id} variant="square" />
@@ -111,11 +128,28 @@ const { stations, fuel, withProvince = false } = Astro.props;
         font-size: 0.68rem;
         font-weight: 700;
     }
+    .fs-prices {
+        display: flex;
+        gap: 1.25rem;
+    }
     .fs-price {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
         font-weight: 800;
         color: var(--primary);
         white-space: nowrap;
         font-variant-numeric: tabular-nums;
+    }
+    .fs-fuel {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-muted);
+    }
+    .fs-none {
+        color: var(--text-muted);
     }
     .fs-price small {
         font-size: 0.72rem;
@@ -139,9 +173,12 @@ const { stations, fuel, withProvince = false } = Astro.props;
         .fs-main {
             grid-column: 2 / -1;
         }
-        .fs-price {
+        .fs-prices {
             grid-column: 2;
             grid-row: 2;
+        }
+        .fs-price {
+            align-items: flex-start;
         }
         .fs-compare {
             grid-column: 3;
