@@ -1,0 +1,236 @@
+/* Buscador de la cabecera (SearchButton.astro + SiteSearch.astro). */
+
+/* Botón de la cabecera: como el del tema; desde tablet, con el texto. */
+.trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    height: 44px;
+    min-width: 44px;
+    padding: 0;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: box-shadow 0.3s, border-color 0.3s, transform 0.3s;
+}
+
+.trigger:hover {
+    box-shadow: 0 0 15px rgba(54, 211, 153, 0.4);
+    border-color: var(--primary);
+}
+
+.trigger:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.triggerLabel,
+.triggerKey {
+    display: none;
+}
+
+@media (min-width: 640px) {
+    .trigger {
+        padding: 0 0.9rem 0 0.75rem;
+    }
+    .triggerLabel {
+        display: inline;
+    }
+}
+
+@media (min-width: 1024px) and (hover: hover) {
+    .triggerKey {
+        display: inline-block;
+        margin-left: 0.35rem;
+        padding: 0 0.35rem;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        font-family: inherit;
+        font-size: 0.75rem;
+        line-height: 1.4;
+    }
+}
+
+/* Ventana: ocupa toda la pantalla (un clic fuera del panel la cierra); el panel va arriba. */
+.dialog {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    overflow: hidden;
+}
+
+.dialog::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+}
+
+.dialog[open] .panel {
+    animation: searchIn 0.18s ease-out;
+}
+
+@keyframes searchIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+}
+
+.panel {
+    display: flex;
+    flex-direction: column;
+    width: min(640px, calc(100% - 2rem));
+    max-height: min(70vh, 640px);
+    margin: 12vh auto 0;
+    background-color: var(--bg);
+    border: 1px solid var(--border);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+}
+
+/* En el móvil, a pantalla completa (deja sitio al teclado). */
+@media (max-width: 640px) {
+    .panel {
+        width: 100%;
+        height: 100%;
+        max-height: none;
+        margin: 0;
+        border: none;
+    }
+}
+
+.bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.5rem 0.5rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+}
+
+.input {
+    flex: 1;
+    min-width: 0;
+    height: 48px;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 1.05rem;
+}
+
+.input::placeholder {
+    color: var(--text-muted);
+}
+
+/* Sin la X propia del navegador en los campos de búsqueda: ya está la de cerrar. */
+.input::-webkit-search-cancel-button {
+    display: none;
+}
+
+.close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    color: var(--text-muted);
+}
+
+.close:hover,
+.close:focus-visible {
+    color: var(--text);
+}
+
+.results {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.5rem 0 0.75rem;
+}
+
+.groupHead {
+    padding: 0.75rem 1rem 0.35rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.foot {
+    padding: 0.5rem 1rem 0.25rem;
+    text-align: right;
+}
+
+.groupAction {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.groupAction:hover {
+    color: var(--text);
+}
+
+.option {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.6rem 1rem;
+    border-left: 3px solid transparent;
+    color: var(--text);
+    text-decoration: none;
+}
+
+.option:hover,
+.option.active {
+    background-color: var(--primary-dim);
+    border-left-color: var(--primary);
+}
+
+.optionIcon {
+    flex-shrink: 0;
+    font-size: 22px;
+    color: var(--primary);
+}
+
+.optionText {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.optionTitle,
+.optionSub {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.optionTitle {
+    font-weight: 600;
+}
+
+.optionSub {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.note {
+    padding: 1rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}

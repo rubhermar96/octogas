@@ -1,0 +1,24 @@
+---
+/**
+ * Apunta la página en "Vistas recientemente" (lib/recent.ts) al abrirla. Va en las
+ * fichas de gasolinera y en las páginas de municipio y de provincia.
+ */
+import type { RecentItem } from "../../lib/recent";
+
+type Props = RecentItem;
+
+const { kind, url, title, sub, id } = Astro.props;
+const item: RecentItem = { kind, url, title, sub, ...(id ? { id } : {}) };
+// En un <script> no puede aparecer "</": se escapa el "<".
+const json = JSON.stringify(item).replace(/</g, "\\u003c");
+---
+
+<script type="application/json" id="octo-recent-visit" set:html={json} />
+
+<script>
+    import { addRecent } from "../../lib/recent";
+
+    try {
+        addRecent(JSON.parse(document.getElementById("octo-recent-visit")?.textContent ?? "null"));
+    } catch {}
+</script>

@@ -1,0 +1,234 @@
+---
+/**
+ * Buscador de toda la web: municipios, provincias, gasolineras y páginas (lib/search.ts).
+ * Se abre con el botón de la cabecera (SearchButton.astro, o cualquier elemento con
+ * data-search-open), con "/" o con Ctrl+K. Vacío, enseña las vistas recientemente
+ * (lib/recent.ts) y unos accesos rápidos. Sin isla: script propio, como FavoriteToggle.
+ */
+import styles from "./SiteSearch.module.css";
+---
+
+<dialog class={styles.dialog} id="site-search" aria-label="Buscar en OCTO">
+    <div class={styles.panel}>
+        <div class={styles.bar}>
+            <span class="material-symbols-outlined" aria-hidden="true">search</span>
+            <input
+                class={styles.input}
+                type="search"
+                role="combobox"
+                aria-expanded="true"
+                aria-controls="site-search-results"
+                aria-autocomplete="list"
+                aria-label="Municipio, provincia o gasolinera"
+                placeholder="Municipio, provincia o gasolinera"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                enterkeyhint="go"
+                data-search-input
+            />
+            <button type="button" class={styles.close} aria-label="Cerrar el buscador" data-search-close>
+                <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+        </div>
+        <div class={styles.results}>
+            <div id="site-search-results" role="listbox" aria-label="Resultados" data-search-results></div>
+            {/* Fuera de la lista: en un listbox solo pueden ir opciones. */}
+            <div data-search-notes></div>
+            <div class={styles.foot} data-search-foot hidden>
+                <button type="button" class={styles.groupAction} data-search-clear>Borrar las vistas recientemente</button>
+            </div>
+        </div>
+        <p class="sr-only" aria-live="polite" data-search-status></p>
+    </div>
+</dialog>
+
+<script>
+    import styles from "./SiteSearch.module.css";
+    import { QUICK_LINKS, loadSearchIndex, search, searchReady, type SearchResult } from "../../lib/search";
+    import { clearRecent, getRecent, type RecentItem } from "../../lib/recent";
+    import { track } from "../../lib/track";
+
+    const dialog = document.getElementById("site-search") as HTMLDialogElement | null;
+    if (dialog) setUp(dialog);
+
+    function setUp(dialog: HTMLDialogElement) {
+        const input = dialog.querySelector<HTMLInputElement>("[data-search-input]")!;
+        const box = dialog.querySelector<HTMLElement>("[data-search-results]")!;
+        const status = dialog.querySelector<HTMLElement>("[data-search-status]")!;
+        const notes = dialog.querySelector<HTMLElement>("[data-search-notes]")!;
+        const foot = dialog.querySelector<HTMLElement>("[data-search-foot]")!;
+        let options: HTMLAnchorElement[] = [];
+        let active = -1;
+        let failed = false;
+
+        const el = (tag: string, className?: string, text?: string) => {
+            const node = document.createElement(tag);
+            if (className) node.className = className;
+            if (text) node.textContent = text;
+            return node;
+        };
+
+        const recentResult = (r: RecentItem): SearchResult => ({
+            kind: r.kind,
+            title: r.title,
+            sub: r.sub,
+            url: r.url,
+            icon: r.kind === "gasolinera" ? "local_gas_station" : r.kind === "municipio" ? "location_city" : "map",
+        });
+
+        function setActive(i: number, scroll = true) {
+            const prev = options[active];
+            if (prev) {
+                prev.classList.remove(styles.active);
+                prev.setAttribute("aria-selected", "false");
+            }
+            active = i;
+            const next = options[i];
+            if (next) {
+                next.classList.add(styles.active);
+                next.setAttribute("aria-selected", "true");
+                if (scroll) next.scrollIntoView({ block: "nearest" });
+                input.setAttribute("aria-activedescendant", next.id);
+            } else input.removeAttribute("aria-activedescendant");
+        }
+
+        function group(label: string, items: SearchResult[], onPick: (r: SearchResult) => void) {
+            const wrap = el("div");
+            const head = el("div", styles.groupHead, label);
+            head.id = `site-search-group-${box.children.length}`;
+            head.setAttribute("role", "presentation");
+            wrap.setAttribute("role", "group");
+            wrap.setAttribute("aria-labelledby", head.id);
+            wrap.append(head);
+            for (const r of items) {
+                const a = el("a", styles.option) as HTMLAnchorElement;
+                a.href = r.url;
+                a.id = `site-search-option-${options.length}`;
+                a.setAttribute("role", "option");
+                a.setAttribute("aria-selected", "false");
+                const icon = el("span", `material-symbols-outlined ${styles.optionIcon}`, r.icon);
+                icon.setAttribute("aria-hidden", "true");
+                const text = el("span", styles.optionText);
+                text.append(el("span", styles.optionTitle, r.title), el("span", styles.optionSub, r.sub));
+                a.append(icon, text);
+                a.addEventListener("click", () => onPick(r));
+                a.addEventListener("mousemove", () => {
+                    const i = options.indexOf(a);
+                    if (i !== active) setActive(i, false);
+                });
+                options.push(a);
+                wrap.append(a);
+            }
+            box.append(wrap);
+        }
+
+        function note(text: string) {
+            notes.append(el("p", styles.note, text));
+        }
+
+        function render() {
+            const query = input.value.trim();
+            options = [];
+            active = -1;
+            box.replaceChildren();
+            notes.replaceChildren();
+            foot.hidden = true;
+            if (!query) {
+                const recent = getRecent()
+                    .filter((r) => r.url !== location.pathname)
+                    .slice(0, 5);
+                if (recent.length) group("Vistas recientemente", recent.map(recentResult), (r) => track("abrir_reciente", { tipo: r.kind }));
+                group("Accesos rápidos", QUICK_LINKS, () => {});
+                foot.hidden = !recent.length;
+                status.textContent = "";
+                setActive(-1);
+                return;
+            }
+            const groups = search(query);
+            for (const g of groups) group(g.label, g.items, (r) => track("search", { search_term: query, tipo: r.kind }));
+            const ready = searchReady();
+            if (!groups.length) {
+                if (failed) note("No se ha podido cargar el buscador. Revisa la conexión y vuelve a intentarlo.");
+                else if (!ready.places) note("Cargando…");
+                else if (ready.stations || query.length < 3) note(`No hay resultados para «${query}». Prueba con el nombre del municipio o de la marca.`);
+            }
+            if (!ready.stations && !failed && query.length >= 3) note("Buscando también entre las gasolineras…");
+            const n = options.length;
+            status.textContent = n ? `${n} ${n === 1 ? "resultado" : "resultados"}` : "Sin resultados";
+            setActive(n ? 0 : -1);
+        }
+
+        function load() {
+            if (searchReady().stations) return;
+            failed = false;
+            loadSearchIndex(render).catch(() => {
+                failed = true;
+                render();
+            });
+        }
+
+        function open() {
+            if (!dialog.open) dialog.showModal();
+            input.focus();
+            input.select();
+            render();
+            load();
+        }
+
+        input.addEventListener("input", render);
+        dialog.querySelector("[data-search-clear]")?.addEventListener("click", () => {
+            clearRecent();
+            render();
+            input.focus();
+        });
+        input.addEventListener("keydown", (e) => {
+            const n = options.length;
+            if (e.key === "ArrowDown" && n) {
+                e.preventDefault();
+                setActive((active + 1) % n);
+            } else if (e.key === "ArrowUp" && n) {
+                e.preventDefault();
+                setActive(active <= 0 ? n - 1 : active - 1);
+            } else if (e.key === "Enter" && options[active]) {
+                e.preventDefault();
+                // Como un clic: cuenta en Analytics y enciende la barra de carga (Layout).
+                options[active].click();
+            } else if (e.key === "Escape") {
+                // En un campo de búsqueda, el primer Escape solo borraría el texto.
+                e.preventDefault();
+                dialog.close();
+            }
+        });
+        dialog.querySelector("[data-search-close]")?.addEventListener("click", () => dialog.close());
+        // Un clic fuera del panel (en el fondo oscurecido) la cierra.
+        dialog.addEventListener("click", (e) => {
+            if (e.target === dialog) dialog.close();
+        });
+
+        document.addEventListener("click", (e) => {
+            const trigger = (e.target as Element | null)?.closest("[data-search-open]");
+            if (!trigger) return;
+            e.preventDefault();
+            open();
+        });
+        // Se adelanta la descarga del índice en cuanto se apunta al botón.
+        for (const trigger of document.querySelectorAll("[data-search-open]"))
+            for (const type of ["pointerenter", "focus", "touchstart"]) trigger.addEventListener(type, load, { passive: true });
+        document.addEventListener("keydown", (e) => {
+            if (e.defaultPrevented || dialog.open) return;
+            const t = e.target as HTMLElement;
+            const typing = t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName);
+            const slash = e.key === "/" && !typing && !e.ctrlKey && !e.metaKey && !e.altKey;
+            const ctrlK = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k";
+            if (slash || ctrlK) {
+                e.preventDefault();
+                open();
+            }
+        });
+        // Al volver con "atrás", la página se restaura tal cual: sin el buscador abierto.
+        window.addEventListener("pageshow", (e) => {
+            if (e.persisted && dialog.open) dialog.close();
+        });
+    }
+</script>

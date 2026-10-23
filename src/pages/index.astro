@@ -5,6 +5,7 @@ import Layout from "../layouts/Layout.astro";
 import ExplorerSelector from "../components/Explorer/ExplorerSelector";
 import NationalTopFuels, { type TopStation } from "../components/Home/NationalTopFuels";
 import HomeMyStations from "../components/Favorites/HomeMyStations";
+import RecentStrip from "../components/Recent/RecentStrip.astro";
 import Footer from "../components/Footer.astro";
 import { BRAND_LOGO_FILES } from "../lib/brandLogos";
 import { FUEL_LABELS, FUEL_ORDER } from "../lib/fuels";
@@ -209,6 +210,16 @@ const steps = [
         <!-- ===== MIS GASOLINERAS (solo si hay alguna guardada en este dispositivo) ===== -->
         <HomeMyStations
             client:idle
+            sectionClass={styles.section}
+            innerClass={styles.inner}
+            headClass={styles.sectionHead}
+            eyebrowClass={styles.eyebrow}
+            titleClass={styles.sectionTitle}
+        />
+
+        <!-- ===== VISTAS RECIENTEMENTE (solo si hay alguna en este dispositivo) ===== -->
+        <RecentStrip
+            skipFavorites
             sectionClass={styles.section}
             innerClass={styles.inner}
             headClass={styles.sectionHead}

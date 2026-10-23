@@ -12,6 +12,8 @@ import iconFontUrl from "../assets/fonts/material-symbols-outlined.woff2?url";
 
 import { SITE, GOOGLE_SITE_VERIFICATION, ADSENSE_ID, GA4_ID } from "../consts";
 import ConsentBanner from "../components/ConsentBanner.astro";
+import SearchButton from "../components/Search/SearchButton.astro";
+import SiteSearch from "../components/Search/SiteSearch.astro";
 
 interface Props {
     title: string;
@@ -152,6 +154,8 @@ const orgJsonLd = {
             )}
 
             <div class={styles.headerControls}>
+                <SearchButton />
+
                 <button class={styles.themeToggle} id="theme-toggle" aria-label="Cambiar entre tema claro y oscuro">
                     <span class={`material-symbols-outlined ${styles.themeToggleIcon} ${styles.sun}`} aria-hidden="true">light_mode</span>
                     <span class={`material-symbols-outlined ${styles.themeToggleIcon} ${styles.moon}`} aria-hidden="true">dark_mode</span>
@@ -178,6 +182,9 @@ const orgJsonLd = {
                 <a href="/mis-gasolineras/" class={styles.menuLink}>Mis gasolineras</a>
             </div>
         </nav>
+
+        <!-- Buscador (fuera de la cabecera, que deja pasar los clics: lo heredaría). -->
+        <SiteSearch />
 
         <div class={styles.shell}>
             {/* Sidebar */}

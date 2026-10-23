@@ -7,6 +7,8 @@ import AdSlot from "../../../../components/AdSlot.astro";
 import Footer from "../../../../components/Footer.astro";
 import CompareToggle from "../../../../components/CompareToggle.astro";
 import FavoriteToggle from "../../../../components/Favorites/FavoriteToggle.astro";
+import RecentVisit from "../../../../components/Recent/RecentVisit.astro";
+import RecentStrip from "../../../../components/Recent/RecentStrip.astro";
 import { slugify } from "../../../../lib/slug";
 import { stationSlug, stationUrl, provinceUrl, municipioUrl } from "../../../../lib/stationUrl";
 import { placeSlug, displayProvince, displayCity } from "../../../../lib/placeName";
@@ -250,6 +252,13 @@ const mapStations = [lastSeen ? { ...station, prices: {} } : station, ...nearby]
     <script type="application/ld+json" set:html={JSON.stringify(gasStationJsonLd)} slot="head" />
     <script type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} slot="head" />
     <script type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd)} slot="head" />
+    <RecentVisit
+        kind="gasolinera"
+        id={station.id}
+        url={stationUrl(station)}
+        title={brandLabel || addressLabel}
+        sub={brandLabel ? `${addressLabel} · ${cityLabel}` : `${cityLabel} (${provLabel})`}
+    />
 
     <div class="page-container">
         <div class="content-wrapper" data-reveal-children>
@@ -428,6 +437,8 @@ const mapStations = [lastSeen ? { ...station, prices: {} } : station, ...nearby]
                     ))
                 }
             </section>
+
+            <RecentStrip />
         </div>
     </div>
 

@@ -1,6 +1,7 @@
 /**
  * Acciones que se miden en Google Analytics 4, además de las visitas: guardar una
- * gasolinera, compararla, activar avisos o instalar la app. Solo envía algo si el
+ * gasolinera, compararla, activar avisos, instalar la app o buscar (evento "search" de
+ * GA4, con lo buscado en search_term). Solo envía algo si el
  * usuario aceptó las cookies de Analytics (ConsentBanner.astro carga entonces gtag);
  * si no, no hace nada.
  */

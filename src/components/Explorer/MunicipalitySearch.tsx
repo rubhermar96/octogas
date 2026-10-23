@@ -2,6 +2,9 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { displayProvince, displayCity } from '../../lib/placeName';
 import styles from './MunicipalitySearch.module.css';
 
+/** Sin mayúsculas ni acentos: "cordoba" encuentra Córdoba. */
+const fold = (text: string) => text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
 interface LocationItem {
     city: string;
     province: string;
@@ -11,8 +14,11 @@ interface LocationItem {
 }
 
 const MunicipalitySearch: React.FC = () => {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [isOpen, setIsOpen] = useState(false);
+    // ?q= (la búsqueda del sitio que anuncian los datos estructurados del Layout).
+    const [searchTerm, setSearchTerm] = useState(() =>
+        typeof window === 'undefined' ? '' : (new URLSearchParams(location.search).get('q') ?? '').slice(0, 80)
+    );
+    const [isOpen, setIsOpen] = useState(searchTerm !== '');
     const [locations, setLocations] = useState<LocationItem[]>([]);
     const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -28,11 +34,11 @@ const MunicipalitySearch: React.FC = () => {
     // pueblos de su provincia, y dentro de cada grupo, las más grandes primero.
     const filteredLocations = useMemo(() => {
         if (!searchTerm) return [];
-        const q = searchTerm.toLowerCase().trim();
+        const q = fold(searchTerm.trim());
 
         const score = (loc: LocationItem): number => {
-            const city = displayCity(loc.city).toLowerCase();
-            const prov = displayProvince(loc.province).toLowerCase();
+            const city = fold(displayCity(loc.city));
+            const prov = fold(displayProvince(loc.province));
             if (city === q) return 0;
             if (city.startsWith(q)) return 1;
             if (city.includes(q)) return 2;

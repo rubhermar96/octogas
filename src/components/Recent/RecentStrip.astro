@@ -1,0 +1,123 @@
+---
+/**
+ * "Vistas recientemente": las últimas fichas, municipios y provincias abiertos en este
+ * navegador (lib/recent.ts), sin la página actual, y en las gasolineras su precio de
+ * hoy del combustible de Mis gasolineras. Se pinta en el navegador y, sin ninguna, no
+ * aparece. Va al final de las fichas, municipios y provincias, y en la portada.
+ */
+import styles from "./RecentStrip.module.css";
+
+interface Props {
+    /** La portada pasa sus clases para que la sección sea como las demás. */
+    sectionClass?: string;
+    innerClass?: string;
+    headClass?: string;
+    eyebrowClass?: string;
+    titleClass?: string;
+    /** Sin las guardadas, que ya salen en "Mis gasolineras" (portada y su página). */
+    skipFavorites?: boolean;
+}
+
+const { sectionClass, innerClass, headClass, eyebrowClass, titleClass, skipFavorites = false } = Astro.props;
+---
+
+<section
+    class:list={[styles.strip, sectionClass ?? styles.spaced]}
+    aria-labelledby="recent-strip-title"
+    data-recent-strip
+    data-skip-favorites={skipFavorites ? "" : undefined}
+    hidden
+>
+    <div class={innerClass}>
+        <div class={headClass ?? styles.head}>
+            {eyebrowClass && <span class={eyebrowClass}>En este dispositivo</span>}
+            <h2 id="recent-strip-title" class={titleClass ?? styles.title}>Vistas recientemente</h2>
+            <button type="button" class={styles.clear} aria-label="Borrar las vistas recientemente" data-recent-clear>Borrar</button>
+        </div>
+        <ul class={styles.list} data-recent-list></ul>
+    </div>
+</section>
+
+<script>
+    import styles from "./RecentStrip.module.css";
+    import { clearRecent, getRecent, onRecentChange, type RecentItem } from "../../lib/recent";
+    import { getFavoriteIds, getMyFuel, loadFavoriteStations, onFavoritesChange, type FavoriteStation } from "../../lib/favorites";
+    import { FUEL_LABELS } from "../../lib/fuels";
+    import { track } from "../../lib/track";
+    import type { FuelType } from "../../types/gasolinera";
+
+    const MAX = 6;
+    const unit = (f: FuelType) => (f === "gnc" || f === "gnl" || f === "hydrogen" ? "€/kg" : "€/L");
+
+    for (const strip of document.querySelectorAll<HTMLElement>("[data-recent-strip]")) setUp(strip);
+
+    function setUp(strip: HTMLElement) {
+        const list = strip.querySelector<HTMLElement>("[data-recent-list]")!;
+        const skipFavorites = strip.hasAttribute("data-skip-favorites");
+        let pending = 0;
+
+        const el = (tag: string, className?: string, text?: string) => {
+            const node = document.createElement(tag);
+            if (className) node.className = className;
+            if (text) node.textContent = text;
+            return node;
+        };
+
+        function card(r: RecentItem) {
+            const li = el("li");
+            const a = el("a", `${styles.card} hover-lift`) as HTMLAnchorElement;
+            a.href = r.url;
+            a.addEventListener("click", () => track("abrir_reciente", { tipo: r.kind }));
+            const icon = el(
+                "span",
+                `material-symbols-outlined ${styles.icon}`,
+                r.kind === "gasolinera" ? "local_gas_station" : r.kind === "municipio" ? "location_city" : "map"
+            );
+            icon.setAttribute("aria-hidden", "true");
+            const text = el("span", styles.text);
+            text.append(el("span", styles.name, r.title), el("span", styles.sub, r.sub));
+            if (r.id) {
+                const price = el("span", styles.price);
+                price.dataset.recentPrice = r.id;
+                text.append(price);
+            }
+            a.append(icon, text);
+            li.append(a);
+            return li;
+        }
+
+        // Precio de hoy: el combustible de Mis gasolineras o, si no lo tiene, el primero que haya.
+        function priceText(s: FavoriteStation): string {
+            if (s.lastSeen) return "Sin precios hoy";
+            const mine = getMyFuel();
+            const fuel = s.prices[mine] != null ? mine : (["sp95", "diesel", "sp98", "glp"] as FuelType[]).find((f) => s.prices[f] != null);
+            return fuel ? `${FUEL_LABELS[fuel]} ${s.prices[fuel]!.toFixed(3)} ${unit(fuel)}` : "";
+        }
+
+        async function render() {
+            const saved = skipFavorites ? new Set(getFavoriteIds()) : null;
+            const items = getRecent()
+                .filter((r) => r.url !== location.pathname && !(saved && r.id && saved.has(r.id)))
+                .slice(0, MAX);
+            strip.hidden = !items.length;
+            list.replaceChildren(...items.map(card));
+            const ids = items.flatMap((r) => (r.id ? [r.id] : []));
+            if (!ids.length) return;
+            const run = ++pending;
+            const stations = await loadFavoriteStations(ids);
+            if (run !== pending) return;
+            for (const s of stations) {
+                const slot = list.querySelector<HTMLElement>(`[data-recent-price="${CSS.escape(s.id)}"]`);
+                if (slot) slot.textContent = priceText(s);
+            }
+        }
+
+        strip.querySelector("[data-recent-clear]")?.addEventListener("click", () => clearRecent());
+        onRecentChange(() => void render());
+        if (skipFavorites) onFavoritesChange(() => void render());
+        window.addEventListener("pageshow", (e) => {
+            if (e.persisted) void render();
+        });
+        void render();
+    }
+</script>

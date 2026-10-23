@@ -4,6 +4,7 @@ import Footer from "../components/Footer.astro";
 import MyStations from "../components/Favorites/MyStations";
 import InstallApp from "../components/Favorites/InstallApp";
 import PriceAlerts from "../components/Favorites/PriceAlerts";
+import RecentStrip from "../components/Recent/RecentStrip.astro";
 import { MAX_FAVORITES } from "../lib/favorites";
 ---
 
@@ -38,6 +39,9 @@ import { MAX_FAVORITES } from "../lib/favorites";
                     usas OCTO en varios dispositivos, cada uno tiene su propia lista.
                 </p>
             </section>
+
+            {/* Las vistas y aún sin guardar, para guardarlas desde su ficha. */}
+            <RecentStrip skipFavorites />
         </div>
     </div>
     <Footer />

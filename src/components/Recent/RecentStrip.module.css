@@ -1,0 +1,120 @@
+/* "Vistas recientemente" (RecentStrip.astro). */
+
+/* Las clases de la portada fijan su propio display: sin esto, `hidden` no la ocultaría. */
+.strip[hidden] {
+    display: none !important;
+}
+
+/* Al final de fichas, municipios y provincias (la portada usa sus propias clases). */
+.spaced {
+    margin-top: 2.5rem;
+}
+
+.head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.title {
+    font-family: var(--font-header);
+    font-size: 1.3rem;
+}
+
+.clear {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.clear:hover {
+    color: var(--text);
+}
+
+.list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* En el móvil, en una fila que se desliza de lado. */
+@media (max-width: 640px) {
+    .title {
+        font-size: 1.2rem;
+    }
+    .list {
+        grid-template-columns: none;
+        grid-auto-flow: column;
+        grid-auto-columns: 78%;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        padding-bottom: 0.5rem;
+    }
+    .list > li {
+        scroll-snap-align: start;
+    }
+}
+
+.card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    height: 100%;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--border);
+    background-color: var(--bg);
+    color: var(--text);
+    text-decoration: none;
+}
+
+.card:hover {
+    border-color: var(--primary);
+}
+
+.icon {
+    flex-shrink: 0;
+    font-size: 22px;
+    color: var(--primary);
+}
+
+.text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.name,
+.sub {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.name {
+    font-weight: 600;
+}
+
+.sub {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.price {
+    margin-top: 0.2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.price:empty {
+    display: none;
+}

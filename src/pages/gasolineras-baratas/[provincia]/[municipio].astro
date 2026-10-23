@@ -7,7 +7,9 @@ import MunicipioTop from "../../../components/Municipio/MunicipioTop";
 import AdSlot from "../../../components/AdSlot.astro";
 import Footer from "../../../components/Footer.astro";
 import CompareToggle from "../../../components/CompareToggle.astro";
-import { stationUrl, provinceUrl } from "../../../lib/stationUrl";
+import { stationUrl, provinceUrl, municipioUrl } from "../../../lib/stationUrl";
+import RecentVisit from "../../../components/Recent/RecentVisit.astro";
+import RecentStrip from "../../../components/Recent/RecentStrip.astro";
 import { placeSlug, displayProvince, displayCity } from "../../../lib/placeName";
 import PriceHistoryChart from "../../../components/Station/PriceHistoryChart";
 import { loadAggHistory, scopeKey } from "../../../lib/aggHistory";
@@ -270,6 +272,7 @@ const breadcrumbJsonLd = {
 
 <Layout title={pageTitle} description={pageDescription}>
     <script type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} slot="head" />
+    <RecentVisit kind="municipio" url={municipioUrl(provinceName, municipalityName)} title={muniLabel} sub={provLabel} />
     <script type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd)} slot="head" />
 
     <div class="page-container">
@@ -411,6 +414,8 @@ const breadcrumbJsonLd = {
                     </section>
                 )
             }
+
+            <RecentStrip />
         </div>
     </div>
 
