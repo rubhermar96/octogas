@@ -1,4 +1,5 @@
-/* Aviso para instalar OCTO (InstallPrompt.astro): una franja abajo, sin tapar la página. */
+/* Aviso para instalar OCTO (InstallPrompt.astro): una franja abajo, sin tapar la página,
+   con una captura de la app asomando por la izquierda. */
 
 .banner {
     position: fixed;
@@ -7,46 +8,98 @@
     transform: translateX(-50%);
     z-index: 150; /* por encima de la página, por debajo del aviso de cookies (200) */
     display: flex;
-    align-items: center;
-    gap: 0.85rem;
-    width: min(560px, calc(100% - 2rem));
-    padding: 0.85rem 1rem;
+    align-items: stretch;
+    gap: 1rem;
+    width: min(520px, calc(100% - 2rem));
+    padding: 0.9rem 1rem 0.9rem 0;
+    overflow: hidden;
     border: 1px solid var(--primary);
-    background: var(--bg);
+    background: var(--surface);
     color: var(--text);
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
-    animation: installIn 0.3s ease-out;
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55);
+    animation: installIn 0.35s ease-out;
 }
 
-.banner[hidden] {
+.banner[hidden],
+:global(body.menu-open) .banner {
     display: none;
 }
 
 @keyframes installIn {
     from {
         opacity: 0;
-        transform: translate(-50%, 12px);
+        transform: translate(-50%, 16px);
     }
 }
 
-.icon {
+/* La pantalla del móvil, inclinada y cortada por abajo. */
+.shot {
+    position: relative;
     flex-shrink: 0;
-    width: 48px;
-    height: 48px;
+    width: 104px;
+    margin: -0.9rem 0;
+}
+
+.shot img {
+    position: absolute;
+    top: 1.1rem;
+    left: 0.9rem;
+    width: 88px;
+    height: auto;
+    border: 3px solid #1f2937;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+    transform: rotate(-6deg);
 }
 
 .text {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.kicker {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--primary);
 }
 
 .title {
-    font-weight: 800;
-    line-height: 1.3;
+    font-family: var(--font-header);
+    font-size: 1.1rem;
+    line-height: 1.15;
+}
+
+.perks {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin: 0.1rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.perks[hidden] {
+    display: none;
+}
+
+.perks li {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.perks :global(.material-symbols-outlined) {
+    font-size: 17px;
+    color: var(--primary);
 }
 
 .body {
-    margin-top: 0.15rem;
     font-size: 0.85rem;
     line-height: 1.45;
     color: var(--text-muted);
@@ -65,41 +118,37 @@
 
 .actions {
     display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    flex-shrink: 0;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.45rem;
 }
 
 .install {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
     padding: 0.55rem 1rem;
     background: var(--primary);
     color: var(--on-primary);
     font-weight: 800;
 }
 
+.install[hidden] {
+    display: none;
+}
+
+.install :global(.material-symbols-outlined) {
+    font-size: 19px;
+}
+
 .later {
-    padding: 0.3rem 0.5rem;
+    padding: 0.3rem 0.25rem;
     color: var(--text-muted);
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     font-weight: 600;
     text-decoration: underline;
 }
 
 .later:hover {
     color: var(--text);
-}
-
-@media (max-width: 480px) {
-    .banner {
-        flex-wrap: wrap;
-    }
-    .actions {
-        flex-direction: row-reverse;
-        justify-content: flex-start;
-        align-items: center;
-        width: 100%;
-    }
-    .install {
-        flex: 1;
-    }
 }

@@ -10,25 +10,34 @@
  *     que se explican los dos pasos.
  * Nunca con la web abierta como app, ni con el aviso de cookies a la vista, ni en Mis
  * gasolineras (que ya tiene el suyo). "Ahora no" lo calla 14 días; instalada, para siempre.
+ * Además, las tarjetas de los menús (InstallCard.astro: se enseñan con [data-install-show]
+ * y su botón lleva [data-install-open]) instalan directamente donde se puede, o enseñan
+ * este aviso con los pasos en iPhone.
  */
 import styles from "./InstallPrompt.module.css";
 ---
 
 <aside class={styles.banner} id="install-prompt" aria-label="Instalar OCTO" hidden>
-    <img class={styles.icon} src="/icons/octo-192.png" alt="" width="48" height="48" />
+    <div class={styles.shot} aria-hidden="true">
+        <img src="/images/app/app-mapa-360.webp" alt="" width="360" height="779" loading="lazy" decoding="async" />
+    </div>
     <div class={styles.text}>
-        <p class={styles.title}>Instala la app de OCTO</p>
-        <p class={styles.body} data-install-text="prompt">
-            Tus gasolineras y sus precios a un toque, y avisos cuando bajen. Gratis y sin registrarte.
-        </p>
+        <p class={styles.kicker}>App gratis · sin registrarte</p>
+        <p class={styles.title}>Lleva OCTO en el móvil</p>
+        <ul class={styles.perks} data-install-text="prompt">
+            <li><span class="material-symbols-outlined" aria-hidden="true">bookmarks</span>Tus gasolineras a un toque</li>
+            <li><span class="material-symbols-outlined" aria-hidden="true">notifications_active</span>Avisos cuando baja el precio</li>
+        </ul>
         <p class={styles.body} data-install-text="ios" hidden>
             Pulsa <span class="material-symbols-outlined" aria-hidden="true">ios_share</span><b>Compartir</b> y después
             <b>Añadir a pantalla de inicio</b>.
         </p>
-    </div>
-    <div class={styles.actions}>
-        <button type="button" class={styles.install} data-install-yes>Instalar</button>
-        <button type="button" class={styles.later} data-install-no>Ahora no</button>
+        <div class={styles.actions}>
+            <button type="button" class={styles.install} data-install-yes>
+                <span class="material-symbols-outlined" aria-hidden="true">add_to_home_screen</span>Instalar
+            </button>
+            <button type="button" class={styles.later} data-install-no>Ahora no</button>
+        </div>
     </div>
 </aside>
 
@@ -61,64 +70,89 @@ import styles from "./InstallPrompt.module.css";
 
     if (standalone) set(localStorage, INSTALLED, "1");
 
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const hide = () => {
+        if (banner) banner.hidden = true;
+    };
+
+    /** Abre la instalación del navegador (Chrome, Edge...). Devuelve si la había. */
+    async function installNow(): Promise<boolean> {
+        const e = window.__octoInstall;
+        if (!e) return false;
+        await e.prompt();
+        const { outcome } = await e.userChoice;
+        window.__octoInstall = null;
+        if (outcome === "dismissed") set(localStorage, DISMISSED, String(Date.now()));
+        hide();
+        syncButtons();
+        return true;
+    }
+
+    /** Enseña el aviso: con botón de instalar o, en iPhone, con los pasos. */
+    function show(source: "tiempo" | "menu") {
+        if (!banner) return;
+        banner.querySelector<HTMLElement>('[data-install-text="prompt"]')!.hidden = !window.__octoInstall;
+        banner.querySelector<HTMLElement>('[data-install-text="ios"]')!.hidden = !!window.__octoInstall;
+        // En iPhone no hay botón de instalar: solo los pasos.
+        banner.querySelector<HTMLElement>("[data-install-yes]")!.hidden = !window.__octoInstall;
+        banner.hidden = false;
+        track("ver_aviso_instalar", { tipo: window.__octoInstall ? "boton" : "ios", origen: source });
+    }
+
+    // Tarjetas de los menús (InstallCard.astro): solo donde se puede instalar y no está ya
+    // instalada. Su botón instala directamente; en iPhone, enseña los pasos.
+    const canInstall = () => !standalone && get(localStorage, INSTALLED) !== "1" && (!!window.__octoInstall || ios);
+    function syncButtons() {
+        for (const b of document.querySelectorAll<HTMLElement>("[data-install-show]")) b.hidden = !canInstall();
+    }
+    syncButtons();
+    window.addEventListener("octo-installable", syncButtons);
+    document.addEventListener("click", async (ev) => {
+        const b = (ev.target as Element | null)?.closest("[data-install-open]");
+        if (!b) return;
+        ev.preventDefault();
+        document.body.classList.remove("menu-open");
+        track("pulsar_instalar_menu", { tipo: window.__octoInstall ? "boton" : "ios" });
+        if (!(await installNow())) show("menu");
+    });
+
+    banner?.querySelector("[data-install-yes]")!.addEventListener("click", () => void installNow());
+    banner?.querySelector("[data-install-no]")!.addEventListener("click", () => {
+        set(localStorage, DISMISSED, String(Date.now()));
+        track("descartar_aviso_instalar");
+        hide();
+    });
+    window.addEventListener("appinstalled", () => {
+        set(localStorage, INSTALLED, "1");
+        if (timer) clearInterval(timer);
+        hide();
+        syncButtons();
+    });
+
+    // Aviso automático tras 30 s de uso.
     const quiet =
         !banner ||
+        !canInstall() && !("onbeforeinstallprompt" in window) ||
         standalone ||
         get(localStorage, INSTALLED) === "1" ||
         Date.now() - Number(get(localStorage, DISMISSED) ?? 0) < QUIET_MS ||
         location.pathname === "/mis-gasolineras/";
 
-    if (banner && !quiet) {
-        let shown = false;
+    if (!quiet) {
         let engaged = Number(get(sessionStorage, ENGAGED) ?? 0);
-        const canInstall = () => !!window.__octoInstall || ios;
         const cookiesOpen = () => {
             const c = document.getElementById("cookie-consent");
             return !!c && !c.hidden;
         };
-
-        const show = () => {
-            shown = true;
-            banner.querySelector<HTMLElement>('[data-install-text="prompt"]')!.hidden = !window.__octoInstall;
-            banner.querySelector<HTMLElement>('[data-install-text="ios"]')!.hidden = !!window.__octoInstall;
-            // En iPhone no hay botón de instalar: solo los pasos.
-            banner.querySelector<HTMLElement>("[data-install-yes]")!.hidden = !window.__octoInstall;
-            banner.hidden = false;
-            track("ver_aviso_instalar", { tipo: window.__octoInstall ? "boton" : "ios" });
-        };
-        const hide = () => {
-            banner.hidden = true;
-        };
-
         // Cuenta el tiempo con la página a la vista y suma el de las páginas anteriores.
-        const timer = setInterval(() => {
-            if (document.visibilityState !== "visible" || shown) return;
+        timer = setInterval(() => {
+            if (document.visibilityState !== "visible") return;
             engaged += 1000;
             set(sessionStorage, ENGAGED, String(engaged));
             if (engaged >= WAIT_MS && canInstall() && !cookiesOpen()) {
                 clearInterval(timer);
-                show();
+                show("tiempo");
             }
         }, 1000);
-
-        banner.querySelector("[data-install-yes]")!.addEventListener("click", async () => {
-            const e = window.__octoInstall;
-            if (!e) return hide();
-            await e.prompt();
-            const { outcome } = await e.userChoice;
-            window.__octoInstall = null;
-            if (outcome === "dismissed") set(localStorage, DISMISSED, String(Date.now()));
-            hide();
-        });
-        banner.querySelector("[data-install-no]")!.addEventListener("click", () => {
-            set(localStorage, DISMISSED, String(Date.now()));
-            track("descartar_aviso_instalar");
-            hide();
-        });
-        window.addEventListener("appinstalled", () => {
-            set(localStorage, INSTALLED, "1");
-            clearInterval(timer);
-            hide();
-        });
     }
 </script>

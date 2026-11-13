@@ -873,6 +873,7 @@
 :global(.menu-open) .menuLink:nth-child(4) { transition-delay: 0.6s; }
 :global(.menu-open) .menuLink:nth-child(5) { transition-delay: 0.7s; }
 :global(.menu-open) .menuLink:nth-child(6) { transition-delay: 0.8s; }
+:global(.menu-open) .menuLink:nth-child(7) { transition-delay: 0.9s; }
 
 .menuLink:hover {
     color: var(--primary);

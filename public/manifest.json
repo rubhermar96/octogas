@@ -16,6 +16,11 @@
         { "src": "/icons/octo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
         { "src": "/icons/octo-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
     ],
+    "screenshots": [
+        { "src": "/images/app/app-mis-gasolineras.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Tus gasolineras guardadas con el precio de hoy" },
+        { "src": "/images/app/app-mapa.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Mapa con el precio de cada gasolinera" },
+        { "src": "/images/app/app-ficha.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Tu precio con tus descuentos" }
+    ],
     "shortcuts": [
         { "name": "Mis gasolineras", "url": "/mis-gasolineras/", "icons": [{ "src": "/icons/octo-192.png", "sizes": "192x192" }] },
         { "name": "Gasolineras cerca de mí", "url": "/explorador/?mode=location", "icons": [{ "src": "/icons/octo-192.png", "sizes": "192x192" }] },

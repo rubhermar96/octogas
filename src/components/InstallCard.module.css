@@ -1,0 +1,148 @@
+/* Tarjeta "Instala la app" de los menús (InstallCard.astro). */
+
+.card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--primary);
+    background: var(--surface);
+    color: var(--text);
+}
+
+.card[hidden] {
+    display: none !important;
+}
+
+/* Capturas de la app como pantallas de móvil. */
+.shots img {
+    display: block;
+    border: 3px solid #1f2937;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    background: #000;
+}
+
+.body {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.kicker {
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--primary);
+}
+
+.title {
+    font-family: var(--font-header);
+    font-size: 1.15rem;
+    line-height: 1.15;
+}
+
+.perks {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin: 0.3rem 0 0.4rem;
+    padding: 0;
+    list-style: none;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.perks li {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.perks :global(.material-symbols-outlined) {
+    font-size: 18px;
+    color: var(--primary);
+}
+
+.cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: fit-content;
+    padding: 0.6rem 1rem;
+    background: var(--primary);
+    color: var(--on-primary);
+    font-weight: 800;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.cta:hover {
+    box-shadow: 0 0 18px rgba(52, 211, 153, 0.45);
+    transform: translateY(-1px);
+}
+
+.cta :global(.material-symbols-outlined) {
+    font-size: 20px;
+}
+
+/* --- Menú lateral (escritorio): dos pantallas a la derecha, asomando por abajo --- */
+.sidebar {
+    margin: 1.25rem 1rem 1.5rem;
+    padding: 1.1rem 1.1rem 1.2rem;
+    min-height: 230px;
+}
+
+.sidebar .body {
+    max-width: 58%;
+}
+
+.sidebar .shots {
+    position: absolute;
+    top: 1.2rem;
+    right: -0.6rem;
+    width: 46%;
+    height: 100%;
+}
+
+.sidebar .shots img {
+    position: absolute;
+    width: 92px;
+    height: auto;
+}
+
+.sidebar .back {
+    top: 1.4rem;
+    right: 3.6rem;
+    transform: rotate(-7deg);
+    opacity: 0.85;
+}
+
+.sidebar .front {
+    top: 0;
+    right: 0.6rem;
+    transform: rotate(5deg);
+}
+
+/* --- Menú del móvil: una pantalla a la izquierda, compacta --- */
+.menu {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: min(340px, calc(100vw - 3rem));
+    margin: 1.75rem auto 0;
+    padding: 0.9rem 1rem;
+    text-align: left;
+}
+
+.menu .shots img {
+    width: 64px;
+    height: 112px;
+    object-fit: cover;
+    object-position: top;
+}
+
+.menu .title {
+    font-size: 1rem;
+}

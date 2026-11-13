@@ -497,9 +497,20 @@
     gap: 0 0.4rem;
 }
 
-/* En el móvil, el botón "Ver mapa" flota abajo: que no tape la última tarjeta. */
+/* En el móvil, el botón "Ver mapa" flota abajo: que no tape la última tarjeta. Y la
+   cabecera de la lista deja sitio a los botones flotantes del sitio (buscar, tema y menú:
+   arriba a la derecha, de 24 a 68 px de alto y unos 200 px de ancho), alineada con ellos. */
 @media (max-width: 768px) {
     .stationList {
         padding-bottom: 6rem;
+    }
+    .header {
+        padding: 1.6rem 13rem 1.6rem 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .title {
+        display: none;
     }
 }

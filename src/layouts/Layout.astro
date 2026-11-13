@@ -13,6 +13,7 @@ import iconFontUrl from "../assets/fonts/material-symbols-outlined.woff2?url";
 import { SITE, GOOGLE_SITE_VERIFICATION, ADSENSE_ID, GA4_ID } from "../consts";
 import ConsentBanner from "../components/ConsentBanner.astro";
 import InstallPrompt from "../components/InstallPrompt.astro";
+import InstallCard from "../components/InstallCard.astro";
 import SearchButton from "../components/Search/SearchButton.astro";
 import SiteSearch from "../components/Search/SiteSearch.astro";
 
@@ -184,6 +185,7 @@ const orgJsonLd = {
                 <a href="/mis-gasolineras/" class={styles.menuLink}>Mis gasolineras</a>
                 <a href="/mis-descuentos/" class={styles.menuLink}>Mis descuentos</a>
             </div>
+            <InstallCard variant="menu" />
         </nav>
 
         <!-- Buscador (fuera de la cabecera, que deja pasar los clics: lo heredaría). -->
@@ -278,6 +280,9 @@ const orgJsonLd = {
                         <span class={styles.navLabel}>Mis descuentos</span>
                     </a>
                 </nav>
+
+                {/* Solo donde se puede instalar (InstallPrompt.astro la enseña). */}
+                <InstallCard variant="sidebar" />
             </aside>
             )}
 

@@ -1,0 +1,48 @@
+---
+/**
+ * Tarjeta "Instala la app" para los menús: en el lateral (escritorio) con dos capturas
+ * de la app en el móvil, y en el menú del móvil, más compacta. Oculta salvo donde se
+ * puede instalar y aún no está instalada; pulsarla instala directamente o, en iPhone,
+ * enseña los pasos (todo eso lo hace InstallPrompt.astro con [data-install-show] y
+ * [data-install-open]).
+ */
+import styles from "./InstallCard.module.css";
+
+interface Props {
+    variant: "sidebar" | "menu";
+}
+
+const { variant } = Astro.props;
+---
+
+<div class:list={[styles.card, styles[variant]]} data-install-show hidden>
+    <div class={styles.shots} aria-hidden="true">
+        <img class={styles.back} src="/images/app/app-mis-gasolineras-360.webp" alt="" width="360" height="779" loading="lazy" decoding="async" />
+        {variant === "sidebar" && (
+            <img class={styles.front} src="/images/app/app-mapa-360.webp" alt="" width="360" height="779" loading="lazy" decoding="async" />
+        )}
+    </div>
+    <div class={styles.body}>
+        <p class={styles.kicker}>App gratis · sin registrarte</p>
+        <p class={styles.title}>Lleva OCTO en el móvil</p>
+        {
+            variant === "sidebar" && (
+                <ul class={styles.perks}>
+                    <li>
+                        <span class="material-symbols-outlined" aria-hidden="true">bookmarks</span>Tus gasolineras a un toque
+                    </li>
+                    <li>
+                        <span class="material-symbols-outlined" aria-hidden="true">notifications_active</span>Avisos cuando baja el precio
+                    </li>
+                    <li>
+                        <span class="material-symbols-outlined" aria-hidden="true">savings</span>Tu precio con tus descuentos
+                    </li>
+                </ul>
+            )
+        }
+        <button type="button" class={styles.cta} data-install-open>
+            <span class="material-symbols-outlined" aria-hidden="true">add_to_home_screen</span>
+            Instalar app
+        </button>
+    </div>
+</div>

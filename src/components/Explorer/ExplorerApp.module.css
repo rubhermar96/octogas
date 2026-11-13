@@ -158,13 +158,14 @@
         height: 100vh;
     }
 
-    /* El mapa se muestra como overlay a pantalla completa (no un split apretado) */
+    /* El mapa se muestra como overlay a pantalla completa (no un split apretado), por
+       debajo de la cabecera flotante (50): así siguen a mano el buscador, el tema y el menú. */
     .mapArea {
         position: fixed;
         inset: 0;
         width: 100vw !important;
         height: 100vh;
-        z-index: 60;
+        z-index: 45;
     }
 
     .collapsed .mapArea {
@@ -224,15 +225,16 @@
         letter-spacing: 0;
     }
 
+    /* Debajo de los botones de la cabecera (que acaban a 68 px) y del zoom del mapa. */
     .mapFuelBar {
         position: absolute;
-        top: calc(0.75rem + env(safe-area-inset-top));
-        left: 3.5rem;
+        top: calc(5.25rem + env(safe-area-inset-top));
+        left: 0.75rem;
         right: 0.75rem;
         z-index: 1050;
         display: flex;
         gap: 0.35rem;
-        justify-content: flex-end;
+        justify-content: center;
     }
 
     .mapFuel {
