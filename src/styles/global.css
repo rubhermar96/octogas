@@ -259,6 +259,64 @@ input {
 .octo-marker-sel .material-symbols-outlined {
     font-size: 22px;
 }
+
+/* Precio del combustible elegido, pegado a la derecha del logo (sin pulsar): mismo alto y
+   mismo borde, como un solo cuadro. Con Mis descuentos directos, el que se paga en verde y
+   debajo, pequeño y tachado, el de surtidor. */
+.octo-marker-price {
+    position: absolute;
+    top: 0;
+    left: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    background: #111;
+    color: #fff;
+    border: 3px solid var(--bc, #94a3b8);
+    border-left: none;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+    font: 700 12px/14px var(--font-body);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.octo-marker-bonus b {
+    color: #34d399;
+    font-weight: 800;
+}
+
+/* Segunda línea, en pequeño: surtidor tachado y saldo. */
+.octo-marker-sub {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 9px;
+    line-height: 10px;
+}
+
+.octo-marker-bal {
+    display: inline-flex;
+    align-items: center;
+    color: #34d399;
+    font-weight: 800;
+}
+
+.octo-marker-bal .material-symbols-outlined {
+    font-size: 10px;
+}
+
+.octo-marker-price s {
+    color: #cbd5e1;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 10px;
+    text-decoration-thickness: 1px;
+}
 /* Texto solo para lectores de pantalla (y buscadores): no ocupa sitio en pantalla. */
 .sr-only {
     position: absolute;

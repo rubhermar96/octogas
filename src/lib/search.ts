@@ -76,6 +76,7 @@ const PAGES: Entry[] = [
     page({ title: 'Planificar viaje', sub: 'Las más baratas en tu ruta', url: '/rutas/', icon: 'route', words: 'ruta trayecto' }),
     page({ title: 'Precios por marca', sub: 'Qué marca de gasolinera es más barata', url: '/marcas/', icon: 'storefront', words: 'marcas ranking' }),
     page({ title: 'Comparador', sub: 'Compara gasolineras lado a lado', url: '/comparador/', icon: 'balance', words: 'comparar' }),
+    page({ title: 'Mis descuentos', sub: 'Tu precio con tus descuentos', url: '/mis-descuentos/', icon: 'savings', words: 'descuentos descuento saldo waylet cheque ahorro tarjeta' }),
     page({ title: 'Mis gasolineras', sub: 'Tus guardadas y avisos de precio', url: '/mis-gasolineras/', icon: 'bookmarks', words: 'guardadas favoritas avisos' }),
 ];
 

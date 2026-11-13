@@ -1,0 +1,102 @@
+---
+/**
+ * En la ficha: los precios de hoy con Mis descuentos (lib/discounts.ts). Si alguno vale
+ * aquí, cada tarjeta de precio ([data-price-card] de la ficha) enseña arriba lo que pagas
+ * (con la etiqueta "Bonificado" si hay descuento directo) y debajo un desglose: precio de
+ * surtidor, descuento directo y lo que vuelve al saldo (que no cambia lo que pagas).
+ * Debajo, el enlace para añadir un descuento (abre la ventana de Mis descuentos con esta
+ * gasolinera marcada). Sin isla: lo hace su script, como FavoriteToggle.
+ */
+import styles from "./StationDiscounts.module.css";
+
+interface Props {
+    stationId: string;
+    brand: string;
+    /** Si hoy no ha publicado precios: no se calcula nada con precios viejos. */
+    stale?: boolean;
+}
+
+const { stationId, brand, stale = false } = Astro.props;
+---
+
+<div class={styles.box} data-my-discounts data-station={stationId} data-brand={brand} data-stale={stale ? "" : undefined}>
+    <a class={styles.add} href={`/mis-descuentos/?descuento=nuevo&gasolinera=${stationId}`}>
+        <span class="material-symbols-outlined" aria-hidden="true">savings</span>
+        <span data-my-discounts-cta>¿Tienes un descuento aquí? Añádelo y verás tu precio</span>
+    </a>
+</div>
+
+<script>
+    import styles from "./StationDiscounts.module.css";
+    import { bonusSummary, getDiscounts, hasBalance, hasDirect, myPriceAt, onDiscountsChange, shortCents } from "../../lib/discounts";
+    import type { FuelType } from "../../types/gasolinera";
+
+    const unit = (f: FuelType) => (f === "gnc" || f === "gnl" || f === "hydrogen" ? "€/kg" : "€/L");
+
+    const el = (tag: string, className: string, text?: string) => {
+        const node = document.createElement(tag);
+        node.className = className;
+        if (text) node.textContent = text;
+        return node;
+    };
+
+    /** Una fila del desglose: nombre a la izquierda, cantidad a la derecha. */
+    const row = (label: string, value: string, className = "") => {
+        const r = el("div", `${styles.row} ${className}`);
+        r.append(el("dt", "", label), el("dd", "", value));
+        return r;
+    };
+
+    function render(box: HTMLElement) {
+        const station = { id: box.dataset.station ?? "", brand: box.dataset.brand ?? "" };
+        const list = box.hasAttribute("data-stale") ? [] : getDiscounts();
+        let any = false;
+        for (const card of document.querySelectorAll<HTMLElement>("[data-price-card]")) {
+            const fuel = card.dataset.fuel as FuelType;
+            const price = Number(card.dataset.price);
+            const pval = card.querySelector<HTMLElement>("[data-pval]")!;
+            pval.dataset.pump ??= pval.innerHTML;
+            card.querySelector("[data-bonus]")?.remove();
+            card.querySelector("[data-bonus-tag]")?.remove();
+            card.classList.remove(styles.mineCard);
+            const mine = Number.isFinite(price) ? myPriceAt(list, station, fuel, price) : undefined;
+            if (!mine) {
+                pval.innerHTML = pval.dataset.pump;
+                continue;
+            }
+            any = true;
+            card.classList.add(styles.mineCard);
+            card.title = bonusSummary(mine);
+            // Arriba, lo que se paga (con los directos); debajo, el desglose.
+            pval.textContent = `${mine.pay.toFixed(3)} `;
+            pval.append(el("small", "", unit(fuel)));
+            if (hasDirect(mine)) {
+                const tag = el("span", styles.tag, "Bonificado");
+                tag.dataset.bonusTag = "";
+                pval.before(tag);
+            }
+            const detail = el("dl", styles.detail);
+            detail.dataset.bonus = "";
+            if (hasDirect(mine)) {
+                detail.append(
+                    row("Precio de surtidor", `${price.toFixed(3)} ${unit(fuel)}`, styles.pump),
+                    row("Descuento directo", `−${shortCents(mine.direct)} cént./${unit(fuel).slice(2)}`)
+                );
+            }
+            if (hasBalance(mine)) detail.append(row("Vuelve a tu saldo", `+${shortCents(mine.balance)} cént./${unit(fuel).slice(2)}`, styles.balance));
+            card.append(detail);
+        }
+        // Las tarjetas con desglose necesitan más ancho.
+        const grid = document.querySelector<HTMLElement>("[data-price-card]")?.parentElement;
+        if (grid) grid.style.gridTemplateColumns = any ? "repeat(auto-fill, minmax(210px, 1fr))" : "";
+        box.querySelector("[data-my-discounts-cta]")!.textContent = any
+            ? "Añadir otro descuento"
+            : "¿Tienes un descuento aquí? Añádelo y verás tu precio";
+    }
+
+    const boxes = [...document.querySelectorAll<HTMLElement>("[data-my-discounts]")];
+    const renderAll = () => boxes.forEach(render);
+    onDiscountsChange(renderAll);
+    window.addEventListener("pageshow", renderAll);
+    renderAll();
+</script>

@@ -4,6 +4,7 @@ import ExplorerSidebar from './ExplorerSidebar';
 import styles from './ExplorerApp.module.css';
 import type { GasStation, FuelType } from '../../types/gasolinera';
 import { getDistance } from '../../lib/geo';
+import { FUEL_LABELS, MAIN_FUELS, OTHER_FUELS } from '../../lib/fuels';
 import L from 'leaflet';
 
 export type { FuelType };
@@ -242,9 +243,41 @@ const ExplorerApp: React.FC = () => {
                                 onClick={() => setMapCollapsed(true)}
                                 title="Ocultar mapa y ampliar listado"
                             >
-                                <span className="material-symbols-outlined" aria-hidden="true">left_panel_close</span>
-                                Ocultar mapa
+                                {/* En el móvil el mapa ocupa toda la pantalla: el botón vuelve a la lista. */}
+                                <span className={`material-symbols-outlined ${styles.onDesktop}`} aria-hidden="true">left_panel_close</span>
+                                <span className={`material-symbols-outlined ${styles.onMobile}`} aria-hidden="true">list</span>
+                                <span className={styles.onDesktop}>Ocultar mapa</span>
+                                <span className={styles.onMobile}>Ver lista</span>
                             </button>
+                        )}
+                        {/* Combustible desde el propio mapa (en el móvil, donde la lista no se ve). */}
+                        {!mapCollapsed && (
+                            <div className={styles.mapFuelBar} role="group" aria-label="Combustible">
+                                {MAIN_FUELS.map((f) => (
+                                    <button
+                                        key={f}
+                                        type="button"
+                                        className={`${styles.mapFuel} ${fuelType === f ? styles.mapFuelOn : ''}`}
+                                        aria-pressed={fuelType === f}
+                                        onClick={() => setFuelType(f)}
+                                    >
+                                        {FUEL_LABELS[f]}
+                                    </button>
+                                ))}
+                                <select
+                                    className={`${styles.mapFuel} ${OTHER_FUELS.includes(fuelType) ? styles.mapFuelOn : ''}`}
+                                    value={OTHER_FUELS.includes(fuelType) ? fuelType : ''}
+                                    onChange={(e) => e.target.value && setFuelType(e.target.value as FuelType)}
+                                    aria-label="Otros combustibles"
+                                >
+                                    <option value="">Otros…</option>
+                                    {OTHER_FUELS.map((f) => (
+                                        <option key={f} value={f}>
+                                            {FUEL_LABELS[f]}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         )}
                         <MainMap
                             stations={filteredStations}

@@ -350,6 +350,25 @@
     color: var(--text);
 }
 
+/* Con Mis descuentos (Bonus.tsx): debajo del precio principal y un icono en la rejilla. */
+.bonusBox {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.35rem;
+    text-align: right;
+}
+
+.bonusBox > span {
+    align-items: flex-end;
+}
+
+.bonusIcon {
+    margin-left: 0.15rem;
+    font-size: 12px;
+    vertical-align: -1px;
+    color: var(--primary);
+}
+
 .priceItem.highlight .priceType,
 .priceItem.highlight .priceValue {
     color: var(--primary);
@@ -476,4 +495,11 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0 0.4rem;
+}
+
+/* En el móvil, el botón "Ver mapa" flota abajo: que no tape la última tarjeta. */
+@media (max-width: 768px) {
+    .stationList {
+        padding-bottom: 6rem;
+    }
 }

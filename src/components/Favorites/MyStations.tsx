@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { FuelType } from '../../types/gasolinera';
 import { FUEL_LABELS, FUEL_ORDER } from '../../lib/fuels';
 import { getMyFuel, loadFavoriteStations, removeFavorite, setMyFuel, type FavoriteStation } from '../../lib/favorites';
+import { myPriceAt } from '../../lib/discounts';
+import { useDiscounts } from '../Discounts/useDiscounts';
+import Bonus from '../Discounts/Bonus';
 import CompareButton from '../Explorer/CompareButton';
 import FavoriteButton, { useFavoriteIds } from './FavoriteButton';
 import styles from './MyStations.module.css';
@@ -26,6 +29,7 @@ const MyStations: React.FC<Props> = ({ compact = false }) => {
     const [ready, setReady] = useState(false);
     const [stations, setStations] = useState<FavoriteStation[]>([]);
     const [fuel, setFuel] = useState<FuelType>('sp95');
+    const discounts = useDiscounts();
 
     useEffect(() => setFuel(getMyFuel()), []);
 
@@ -48,10 +52,14 @@ const MyStations: React.FC<Props> = ({ compact = false }) => {
     // Combustibles que vende alguna de las guardadas; si no vende ninguna el elegido, el primero.
     const fuels = useMemo(() => FUEL_ORDER.filter((f) => stations.some((s) => s.prices[f] != null)), [stations]);
     const shownFuel = fuels.includes(fuel) || !fuels.length ? fuel : fuels[0];
+    // Lo que se paga con Mis descuentos directos (el saldo solo se anota) y, sin ellos, el de
+    // surtidor: por él se ordena.
+    const mine = (s: FavoriteStation) => myPriceAt(discounts, s, shownFuel, s.prices[shownFuel]);
+    const priceOf = (s: FavoriteStation) => mine(s)?.pay ?? s.prices[shownFuel];
     const sorted = useMemo(
-        () =>
-            [...stations].sort((a, b) => (a.prices[shownFuel] ?? Infinity) - (b.prices[shownFuel] ?? Infinity)),
-        [stations, shownFuel]
+        () => [...stations].sort((a, b) => (priceOf(a) ?? Infinity) - (priceOf(b) ?? Infinity)),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [stations, shownFuel, discounts]
     );
     const gone = ready ? ids.filter((id) => !stations.some((s) => s.id === id)) : [];
 
@@ -82,8 +90,8 @@ const MyStations: React.FC<Props> = ({ compact = false }) => {
 
     const list = compact ? sorted.slice(0, 4) : sorted;
     // La más barata (o las empatadas), salvo que estén todas al mismo precio.
-    const min = sorted[0]?.prices[shownFuel];
-    const isBest = (s: FavoriteStation) => min != null && s.prices[shownFuel] != null && s.prices[shownFuel]! - min < 0.0005;
+    const min = sorted[0] ? priceOf(sorted[0]) : undefined;
+    const isBest = (s: FavoriteStation) => min != null && priceOf(s) != null && priceOf(s)! - min < 0.0005;
     const markBest = sorted.length > 1 && !sorted.every(isBest);
 
     return (
@@ -107,6 +115,7 @@ const MyStations: React.FC<Props> = ({ compact = false }) => {
             <ul className={`${styles.grid} ${compact ? styles.compact : ''}`}>
                 {list.map((s) => {
                     const p = s.prices[shownFuel];
+                    const my = mine(s);
                     const others = FUEL_ORDER.filter((f) => f !== shownFuel && s.prices[f] != null);
                     return (
                         <li key={s.id} className={`${styles.card} ${markBest && isBest(s) ? styles.best : ''}`}>
@@ -127,9 +136,10 @@ const MyStations: React.FC<Props> = ({ compact = false }) => {
                                     {p != null ? (
                                         <>
                                             <span className={styles.priceValue}>
-                                                <b>{p.toFixed(3)}</b> <small>{unit(shownFuel)}</small>
+                                                <b>{(my?.pay ?? p).toFixed(3)}</b> <small>{unit(shownFuel)}</small>
                                             </span>
                                             <span className={styles.priceFuel}>{FUEL_LABELS[shownFuel]}</span>
+                                            {my && <Bonus price={p} mine={my} />}
                                         </>
                                     ) : (
                                         <span className={styles.noFuel}>Sin {FUEL_LABELS[shownFuel]}</span>

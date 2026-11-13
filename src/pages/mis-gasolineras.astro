@@ -28,6 +28,15 @@ import { MAX_FAVORITES } from "../lib/favorites";
                 <MyStations client:only="react" />
             </section>
 
+            <a class="discounts-link" href="/mis-descuentos/">
+                <span class="material-symbols-outlined" aria-hidden="true">savings</span>
+                <span>
+                    <b>Mis descuentos</b>
+                    <small>Añade tus descuentos (directos o en saldo) y verás aquí tu precio de verdad</small>
+                </span>
+                <span class="material-symbols-outlined arrow" aria-hidden="true">arrow_forward</span>
+            </a>
+
             <PriceAlerts client:only="react" />
 
             <InstallApp client:only="react" />
@@ -75,6 +84,37 @@ import { MAX_FAVORITES } from "../lib/favorites";
     }
     .list {
         min-height: 8rem;
+    }
+    .discounts-link {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        padding: 1rem 1.2rem;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        text-decoration: none;
+    }
+    .discounts-link:hover {
+        border-color: var(--primary);
+    }
+    .discounts-link > .material-symbols-outlined {
+        font-size: 28px;
+        color: var(--primary);
+    }
+    .discounts-link span:not(.material-symbols-outlined) {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        flex: 1;
+    }
+    .discounts-link small {
+        color: var(--text-muted);
+        font-size: 0.88rem;
+        line-height: 1.5;
+    }
+    .discounts-link .arrow {
+        color: var(--primary);
     }
     .how h2 {
         font-family: var(--font-header);

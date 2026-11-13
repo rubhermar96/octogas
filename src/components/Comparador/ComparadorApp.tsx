@@ -5,6 +5,9 @@ import { getCompareIds, onCompareChange, addToCompare, removeFromCompare, clearC
 import { stationUrl } from '../../lib/stationUrl';
 import { displayCity } from '../../lib/placeName';
 import BrandLogo from '../Explorer/BrandLogo';
+import { hasDirect, myPriceAt } from '../../lib/discounts';
+import { useDiscounts } from '../Discounts/useDiscounts';
+import Bonus from '../Discounts/Bonus';
 import styles from './ComparadorApp.module.css';
 
 const formatPrice = (price: number | null | undefined) => (price != null ? price.toFixed(3) : '--');
@@ -14,6 +17,8 @@ const ComparadorApp: React.FC = () => {
     const [ids, setIds] = useState<string[]>([]);
     const [loaded, setLoaded] = useState(false);
     const [query, setQuery] = useState('');
+    // Con Mis descuentos, se compara el precio para mí (lib/discounts.ts).
+    const discounts = useDiscounts();
 
     useEffect(() => {
         let cancelled = false;
@@ -77,19 +82,30 @@ const ComparadorApp: React.FC = () => {
         [stations]
     );
 
+    // Precio que se compara: lo que se paga con Mis descuentos directos (el saldo no cuenta:
+    // se paga entero y vuelve después); sin ninguno, el de surtidor.
+    const priceFor = (s: GasStation, f: FuelType) => myPriceAt(discounts, s, f, s.prices[f])?.pay ?? s.prices[f];
+    const withDiscounts = stations.some((s) =>
+        fuelRows.some((f) => {
+            const mine = myPriceAt(discounts, s, f, s.prices[f]);
+            return !!mine && hasDirect(mine);
+        })
+    );
+
     // Por cada combustible, el precio más barato entre las comparadas (para resaltar).
     const cheapestByFuel = useMemo(() => {
         const map = {} as Record<FuelType, number>;
         for (const f of fuelRows) {
             let min = Infinity;
             for (const s of stations) {
-                const p = s.prices[f];
+                const p = priceFor(s, f);
                 if (p != null && p < min) min = p;
             }
             if (min !== Infinity) map[f] = min;
         }
         return map;
-    }, [fuelRows, stations]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fuelRows, stations, discounts]);
 
     // Cuántos combustibles "gana" cada estación (precio más barato del grupo).
     // Solo cuenta si al menos 2 estaciones tienen ese combustible: si es la
@@ -102,11 +118,12 @@ const ComparadorApp: React.FC = () => {
             const withPrice = stations.filter((s) => s.prices[f] != null);
             if (withPrice.length < 2) continue;
             for (const s of withPrice) {
-                if (s.prices[f] === min) map.set(s.id, (map.get(s.id) ?? 0) + 1);
+                if (priceFor(s, f) === min) map.set(s.id, (map.get(s.id) ?? 0) + 1);
             }
         }
         return map;
-    }, [fuelRows, stations, cheapestByFuel]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fuelRows, stations, cheapestByFuel, discounts]);
 
     const handleAdd = (s: GasStation) => {
         const res = addToCompare(s.id);
@@ -250,15 +267,21 @@ const ComparadorApp: React.FC = () => {
                                     {stations.map((s) => {
                                         const p = s.prices[f];
                                         const pricedCount = stations.filter((st) => st.prices[f] != null).length;
-                                        const isCheapest = p != null && p === cheapestByFuel[f] && pricedCount > 1;
+                                        const mine = myPriceAt(discounts, s, f, p);
+                                        const isCheapest = p != null && priceFor(s, f) === cheapestByFuel[f] && pricedCount > 1;
                                         return (
                                             <td
                                                 key={s.id}
                                                 className={`${styles.cell} ${isCheapest ? styles.cheapest : ''} ${p == null ? styles.na : ''}`}
                                             >
-                                                <span className={styles.price}>{formatPrice(p)}</span>
+                                                <span className={styles.price}>{formatPrice(mine?.pay ?? p)}</span>
                                                 {p != null && <span className={styles.unit}>€/L</span>}
-                                                {isCheapest && <span className={styles.bestTag}>más barata</span>}
+                                                {mine && p != null && (
+                                                    <span className={styles.mine}>
+                                                        <Bonus price={p} mine={mine} />
+                                                    </span>
+                                                )}
+                                                {isCheapest && <span className={styles.bestTag}>{withDiscounts ? 'más barata para ti' : 'más barata'}</span>}
                                             </td>
                                         );
                                     })}

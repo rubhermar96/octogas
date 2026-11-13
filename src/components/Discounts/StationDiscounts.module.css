@@ -1,0 +1,78 @@
+/* Ficha con Mis descuentos (StationDiscounts.astro): tarjetas de precio con desglose y el
+   enlace "¿Tienes un descuento aquí?". Las tarjetas son de la ficha (estilos con ámbito):
+   de ahí los !important. */
+
+.box {
+    margin-top: 1rem;
+}
+
+.add {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--primary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.add:hover {
+    color: var(--text);
+}
+
+.mineCard {
+    border-color: var(--primary) !important;
+    align-items: stretch !important;
+    text-align: center;
+}
+
+.tag {
+    align-self: center;
+    padding: 0.05rem 0.45rem;
+    background: var(--primary);
+    color: var(--on-primary);
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.detail {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin: 0.35rem 0 0;
+    padding-top: 0.6rem;
+    border-top: 1px solid color-mix(in srgb, var(--border) 40%, transparent);
+    text-align: left;
+}
+
+.row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+    font-size: 0.8rem;
+}
+
+.row dt {
+    color: var(--text-muted);
+}
+
+.row dd {
+    margin: 0;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* El precio de surtidor, bien visible: es el real del Ministerio. */
+.pump dd {
+    color: var(--text);
+}
+
+.balance dt,
+.balance dd {
+    color: var(--primary);
+}

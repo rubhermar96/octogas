@@ -1,0 +1,105 @@
+/* Aviso para instalar OCTO (InstallPrompt.astro): una franja abajo, sin tapar la página. */
+
+.banner {
+    position: fixed;
+    left: 50%;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 150; /* por encima de la página, por debajo del aviso de cookies (200) */
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    width: min(560px, calc(100% - 2rem));
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--primary);
+    background: var(--bg);
+    color: var(--text);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+    animation: installIn 0.3s ease-out;
+}
+
+.banner[hidden] {
+    display: none;
+}
+
+@keyframes installIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 12px);
+    }
+}
+
+.icon {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+}
+
+.text {
+    flex: 1;
+    min-width: 0;
+}
+
+.title {
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.body {
+    margin-top: 0.15rem;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+
+.body b {
+    color: var(--text);
+}
+
+.body :global(.material-symbols-outlined) {
+    font-size: 16px;
+    vertical-align: -3px;
+    margin-right: 0.15rem;
+    color: var(--text);
+}
+
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    flex-shrink: 0;
+}
+
+.install {
+    padding: 0.55rem 1rem;
+    background: var(--primary);
+    color: var(--on-primary);
+    font-weight: 800;
+}
+
+.later {
+    padding: 0.3rem 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.later:hover {
+    color: var(--text);
+}
+
+@media (max-width: 480px) {
+    .banner {
+        flex-wrap: wrap;
+    }
+    .actions {
+        flex-direction: row-reverse;
+        justify-content: flex-start;
+        align-items: center;
+        width: 100%;
+    }
+    .install {
+        flex: 1;
+    }
+}

@@ -5,6 +5,8 @@ import { injectMapCss } from './mapCss';
 import styles from './MainMap.module.css';
 import type { GasStation, FuelType } from '../../types/gasolinera';
 import { stationIcon, StationPopup } from './StationMarker';
+import { hasBalance, hasDirect, myPriceAt, shortCents } from '../../lib/discounts';
+import { useDiscounts } from '../Discounts/useDiscounts';
 import L from 'leaflet';
 
 /** Nombre accesible del marcador: Leaflet lo pone como title del botón del icono. */
@@ -165,6 +167,20 @@ const MainMap: React.FC<MainMapProps> = ({
     const [bounds, setBounds] = useState<L.LatLngBounds | null>(null);
     const [userPos, setUserPos] = useState<[number, number] | null>(null);
     const selectedMarkerRef = useRef<L.Marker>(null);
+    const discounts = useDiscounts();
+
+    // Etiqueta con el precio del combustible elegido: con Mis descuentos, el que se paga y,
+    // debajo, el de surtidor tachado (directos) y lo que vuelve al saldo (no cambia lo que se paga).
+    const priceLabel = (s: GasStation) => {
+        const price = s.prices[fuelType];
+        if (price == null) return undefined;
+        const mine = myPriceAt(discounts, s, fuelType, price);
+        return {
+            text: (mine?.pay ?? price).toFixed(3),
+            ...(mine && hasDirect(mine) ? { pump: price.toFixed(3) } : {}),
+            ...(mine && hasBalance(mine) ? { balance: `+${shortCents(mine.balance)}` } : {}),
+        };
+    };
 
     const averagePrice = useMemo(() => {
         const prices = stations
@@ -253,7 +269,7 @@ const MainMap: React.FC<MainMapProps> = ({
                                 <Marker
                                     key={station.id}
                                     position={[station.lat, station.lng]}
-                                    icon={stationIcon(station.brand, getColor(price), false)}
+                                    icon={stationIcon(station.brand, getColor(price), false, priceLabel(station))}
                                     title={markerTitle(station, price)}
                                     eventHandlers={{ click: () => onSelectStation?.(station.id) }}
                                 >
@@ -270,7 +286,7 @@ const MainMap: React.FC<MainMapProps> = ({
                     <Marker
                         ref={selectedMarkerRef}
                         position={[selectedStation.lat, selectedStation.lng]}
-                        icon={stationIcon(selectedStation.brand, getColor(selectedStation.prices[fuelType]), true)}
+                        icon={stationIcon(selectedStation.brand, getColor(selectedStation.prices[fuelType]), true, priceLabel(selectedStation))}
                         title={markerTitle(selectedStation, selectedStation.prices[fuelType])}
                         zIndexOffset={1000}
                         eventHandlers={{ click: () => onSelectStation?.(selectedStation.id) }}

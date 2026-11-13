@@ -12,6 +12,7 @@ import iconFontUrl from "../assets/fonts/material-symbols-outlined.woff2?url";
 
 import { SITE, GOOGLE_SITE_VERIFICATION, ADSENSE_ID, GA4_ID } from "../consts";
 import ConsentBanner from "../components/ConsentBanner.astro";
+import InstallPrompt from "../components/InstallPrompt.astro";
 import SearchButton from "../components/Search/SearchButton.astro";
 import SiteSearch from "../components/Search/SiteSearch.astro";
 
@@ -81,10 +82,11 @@ const orgJsonLd = {
                 try {
                     if (localStorage.getItem("theme") === "light") root.setAttribute("data-theme", "light");
                 } catch (e) {}
-                // Aviso de "instalar app" de Chrome/Edge: se guarda para el botón de Mis
-                // gasolineras (InstallApp.tsx). Allí no sale además la barra del navegador.
+                // Aviso de "instalar app" de Chrome/Edge: se guarda para nuestro aviso
+                // (InstallPrompt.astro, tras 30 s de uso) y el botón de Mis gasolineras
+                // (InstallApp.tsx), en lugar de la barra propia del navegador.
                 window.addEventListener("beforeinstallprompt", function (e) {
-                    if (location.pathname === "/mis-gasolineras/") e.preventDefault();
+                    e.preventDefault();
                     window.__octoInstall = e;
                     window.dispatchEvent(new Event("octo-installable"));
                 });
@@ -180,6 +182,7 @@ const orgJsonLd = {
                 <a href="/rutas/" class={styles.menuLink}>Planificar viaje</a>
                 <a href="/comparador/" class={styles.menuLink}>Comparador</a>
                 <a href="/mis-gasolineras/" class={styles.menuLink}>Mis gasolineras</a>
+                <a href="/mis-descuentos/" class={styles.menuLink}>Mis descuentos</a>
             </div>
         </nav>
 
@@ -264,6 +267,16 @@ const orgJsonLd = {
                         >
                         <span class={styles.navLabel}>Mis gasolineras</span>
                     </a>
+                    <a
+                        href="/mis-descuentos/"
+                        class={`${styles.navItem} ${Astro.url.pathname === "/mis-descuentos/" ? styles.active : ""}`}
+                    >
+                        <span
+                            class={`material-symbols-outlined ${styles.navIcon}`} aria-hidden="true"
+                            >savings</span
+                        >
+                        <span class={styles.navLabel}>Mis descuentos</span>
+                    </a>
                 </nav>
             </aside>
             )}
@@ -277,6 +290,7 @@ const orgJsonLd = {
         {/* Aviso de cookies solo si hay cookies de terceros que lo requieran: Google
             Analytics (GA4_ID) o publicidad (PUBLIC_ADSENSE_ID). Sin ninguno, no hay aviso. */}
         {(ADSENSE_ID || GA4_ID) && <ConsentBanner />}
+        <InstallPrompt />
 
         <script is:inline>
             // Animaciones de entrada (global.css): lo que ya está en pantalla entra solo

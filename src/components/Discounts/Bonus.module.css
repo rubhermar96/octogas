@@ -1,0 +1,57 @@
+/* Precio con Mis descuentos (Bonus.tsx y el script de StationDiscounts.astro): bonificado
+   por los directos y anotación de lo que vuelve al saldo. */
+
+.bonus {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.75rem;
+    line-height: 1.35;
+}
+
+.tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    width: fit-content;
+    padding: 0.05rem 0.4rem;
+    background: var(--primary);
+    color: var(--on-primary);
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+
+.parts {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.pump {
+    color: var(--text-muted);
+}
+
+.pump s {
+    text-decoration-thickness: 1px;
+}
+
+/* Lo que vuelve al saldo: no cambia el precio, solo se anota. */
+.balance {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    width: fit-content;
+    padding: 0.05rem 0.4rem;
+    border: 1px dashed var(--primary);
+    color: var(--text);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.balance :global(.material-symbols-outlined) {
+    font-size: 14px;
+    color: var(--primary);
+}

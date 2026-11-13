@@ -9,6 +9,9 @@ import BrandLogo from './BrandLogo';
 import CompareButton from './CompareButton';
 import FavoriteButton from '../Favorites/FavoriteButton';
 import BrandFilter, { type BrandOption } from './BrandFilter';
+import { hasDirect, myPriceAt } from '../../lib/discounts';
+import { useDiscounts } from '../Discounts/useDiscounts';
+import Bonus from '../Discounts/Bonus';
 import styles from './ExplorerSidebar.module.css';
 
 interface ExplorerSidebarProps {
@@ -51,6 +54,10 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
     onSelectStation,
 }) => {
     const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    // Con Mis descuentos directos, precios y orden con lo que se paga (lib/discounts.ts; el
+    // saldo solo se anota).
+    const discounts = useDiscounts();
+    const mineAt = (s: GasStation, f: FuelType) => myPriceAt(discounts, s, f, s.prices[f]);
     const [controlsHidden, setControlsHidden] = useState(false);
     const lastScrollTop = useRef(0);
 
@@ -77,15 +84,16 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
             if (sortType === 'distance') {
                 return a.distanceToCenter - b.distanceToCenter;
             }
-            const priceA = a.prices[fuelType] || Infinity;
-            const priceB = b.prices[fuelType] || Infinity;
+            const priceA = mineAt(a, fuelType)?.pay ?? (a.prices[fuelType] || Infinity);
+            const priceB = mineAt(b, fuelType)?.pay ?? (b.prices[fuelType] || Infinity);
             // Precios prácticamente iguales (dentro de la tolerancia): gana la más cercana.
             const bucketA = Math.round(priceA / PRICE_TIE_TOLERANCE);
             const bucketB = Math.round(priceB / PRICE_TIE_TOLERANCE);
             if (bucketA !== bucketB) return priceA - priceB;
             return a.distanceToCenter - b.distanceToCenter;
         });
-    }, [stations, center, sortType, fuelType]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [stations, center, sortType, fuelType, discounts]);
 
     // Cuando se selecciona una estación (desde el mapa), la traemos a la vista.
     useEffect(() => {
@@ -178,6 +186,7 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
                         const isSelected = station.id === selectedId;
                         const availableFuels = FUEL_ORDER.filter((f) => station.prices[f] != null);
                         const mainPrice = station.prices[fuelType];
+                        const mainMine = mineAt(station, fuelType);
 
                         return (
                             <div
@@ -209,8 +218,13 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
                                         </div>
                                     </div>
                                     <div className={styles.priceTag}>
-                                        <span className={styles.priceMain}>{formatPrice(mainPrice)}</span>
+                                        <span className={styles.priceMain}>{formatPrice(mainMine?.pay ?? mainPrice)}</span>
                                         <span className={styles.priceUnit}>€/L · {FUEL_LABELS[fuelType]}</span>
+                                        {mainMine && mainPrice != null && (
+                                            <span className={styles.bonusBox}>
+                                                <Bonus price={mainPrice} mine={mainMine} compact />
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
 
@@ -221,15 +235,26 @@ const ExplorerSidebar: React.FC<ExplorerSidebarProps> = ({
                                 </p>
 
                                 <div className={styles.priceGrid}>
-                                    {availableFuels.map((f) => (
-                                        <div
-                                            key={f}
-                                            className={`${styles.priceItem} ${fuelType === f ? styles.highlight : ''}`}
-                                        >
-                                            <span className={styles.priceType}>{FUEL_LABELS[f]}</span>
-                                            <span className={styles.priceValue}>{formatPrice(station.prices[f])}</span>
-                                        </div>
-                                    ))}
+                                    {availableFuels.map((f) => {
+                                        const mine = mineAt(station, f);
+                                        return (
+                                            <div
+                                                key={f}
+                                                className={`${styles.priceItem} ${fuelType === f ? styles.highlight : ''}`}
+                                                title={mine && hasDirect(mine) ? `Bonificado · surtidor ${formatPrice(station.prices[f])}` : undefined}
+                                            >
+                                                <span className={styles.priceType}>{FUEL_LABELS[f]}</span>
+                                                <span className={styles.priceValue}>
+                                                    {formatPrice(mine?.pay ?? station.prices[f])}
+                                                    {mine && hasDirect(mine) && (
+                                                        <span className={`material-symbols-outlined ${styles.bonusIcon}`} aria-label="bonificado">
+                                                            savings
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
 
                                 <div className={styles.cardFooter}>

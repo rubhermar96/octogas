@@ -1,0 +1,257 @@
+/* Página "Mis descuentos" (MyDiscounts.tsx). El formulario usa PriceAlerts.module.css. */
+
+.wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* --- Lista --- */
+.list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    padding: 1.1rem 1.2rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.card.expired {
+    opacity: 0.65;
+}
+
+.cardHead {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.cardIcon {
+    font-size: 28px;
+    color: var(--primary);
+}
+
+.cardName {
+    font-family: var(--font-header);
+    font-size: 1.1rem;
+    line-height: 1.2;
+}
+
+.amount {
+    margin-top: 0.2rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.expiredTag {
+    margin-left: auto;
+    padding: 0.1rem 0.45rem;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.facts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    margin: 0;
+}
+
+.facts div {
+    display: grid;
+    grid-template-columns: 6.5rem 1fr;
+    gap: 0.5rem;
+    font-size: 0.88rem;
+    line-height: 1.45;
+}
+
+.facts dt {
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.facts dd {
+    margin: 0;
+}
+
+.empty {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    padding: 1.2rem 1.25rem;
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.empty :global(.material-symbols-outlined) {
+    font-size: 32px;
+    color: var(--primary);
+}
+
+/* --- Ventana del formulario --- */
+.dialog {
+    width: min(620px, calc(100% - 2rem));
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+}
+
+.dialog::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(3px);
+}
+
+.panel {
+    padding: 0 1.4rem 1.25rem;
+}
+
+.panelHead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 0 -1.4rem;
+    padding: 1rem 0.75rem 0.85rem 1.4rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+}
+
+.panelHead h2 {
+    font-family: var(--font-header);
+    font-size: 1.2rem;
+}
+
+.close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    color: var(--text-muted);
+}
+
+.close:hover {
+    color: var(--text);
+}
+
+.panelFoot {
+    position: sticky;
+    bottom: 0;
+    margin: 0 -1.4rem -1.25rem;
+    padding: 0.85rem 1.4rem 1.1rem;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+}
+
+/* En el móvil, a pantalla completa. */
+@media (max-width: 560px) {
+    .dialog {
+        width: 100%;
+        max-width: none;
+        height: 100%;
+        max-height: none;
+        margin: 0;
+        border: none;
+    }
+    .panel {
+        padding: 0 1rem 1.25rem;
+    }
+    .panelHead {
+        margin: 0 -1rem;
+        padding-left: 1rem;
+    }
+    .panelFoot {
+        margin: 0 -1rem -1.25rem;
+        padding: 0.85rem 1rem 1.1rem;
+    }
+}
+
+/* --- Campos --- */
+.input {
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.input:focus,
+.amountRow select:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+}
+
+.wide {
+    width: 100%;
+}
+
+.amountRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.amountRow .input {
+    width: 6rem;
+}
+
+.search {
+    max-width: 18rem;
+}
+
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.chip {
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.chip:hover {
+    border-color: var(--primary);
+}
+
+.chipOn {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: var(--on-primary);
+}
+
+@media (max-width: 560px) {
+    .search {
+        max-width: none;
+    }
+    .facts div {
+        grid-template-columns: 1fr;
+        gap: 0.1rem;
+    }
+}

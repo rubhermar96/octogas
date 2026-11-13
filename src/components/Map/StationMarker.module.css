@@ -140,3 +140,35 @@
 :global(.leaflet-popup-content) {
     margin: 1rem;
 }
+
+/* Con Mis descuentos: surtidor tachado (si hay directos) y lo que vuelve al saldo. */
+.popupPump {
+    font-size: 0.6rem;
+    color: #64748b;
+}
+
+.popupBalance {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.1rem;
+    margin-top: 0.1rem;
+    font-size: 0.62rem;
+    font-weight: 800;
+    color: #047857;
+}
+
+.popupBalance :global(.material-symbols-outlined) {
+    font-size: 11px;
+}
+
+.popupDiscounts {
+    margin: 0.5rem 0 0;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    color: #475569;
+}
+
+.popupDiscounts a {
+    color: #047857;
+    font-weight: 700;
+}

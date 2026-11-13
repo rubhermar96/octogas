@@ -9,6 +9,7 @@ import CompareToggle from "../../../../components/CompareToggle.astro";
 import FavoriteToggle from "../../../../components/Favorites/FavoriteToggle.astro";
 import RecentVisit from "../../../../components/Recent/RecentVisit.astro";
 import RecentStrip from "../../../../components/Recent/RecentStrip.astro";
+import StationDiscounts from "../../../../components/Discounts/StationDiscounts.astro";
 import { slugify } from "../../../../lib/slug";
 import { stationSlug, stationUrl, provinceUrl, municipioUrl } from "../../../../lib/stationUrl";
 import { placeSlug, displayProvince, displayCity } from "../../../../lib/placeName";
@@ -322,9 +323,9 @@ const mapStations = [lastSeen ? { ...station, prices: {} } : station, ...nearby]
                 <div class="price-grid" data-reveal-items>
                     {
                         availableFuels.map((f) => (
-                            <div class:list={["price-card", { stale: lastSeen }]}>
+                            <div class:list={["price-card", { stale: lastSeen }]} data-price-card data-fuel={f} data-price={station.prices[f]}>
                                 <span class="ptype">{FUEL_LABELS[f]}</span>
-                                <span class="pval">{fmt(station.prices[f])} <small>{FUEL_UNIT[f]}</small></span>
+                                <span class="pval" data-pval>{fmt(station.prices[f])} <small>{FUEL_UNIT[f]}</small></span>
                             </div>
                         ))
                     }
@@ -346,6 +347,8 @@ const mapStations = [lastSeen ? { ...station, prices: {} } : station, ...nearby]
                         </div>
                     )
                 }
+
+                <StationDiscounts stationId={station.id} brand={station.brand} stale={!!lastSeen} />
             </section>
 
             {

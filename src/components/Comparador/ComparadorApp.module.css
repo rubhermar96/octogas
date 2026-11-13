@@ -461,6 +461,14 @@
     color: var(--primary);
 }
 
+/* Con Mis descuentos: etiqueta, desglose y precio de surtidor (Bonus.tsx). */
+.mine {
+    display: flex;
+    justify-content: center;
+    margin-top: 0.3rem;
+    text-align: left;
+}
+
 .cellInfo {
     font-size: 0.82rem;
     color: var(--text-muted);
